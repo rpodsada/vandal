@@ -21,14 +21,22 @@ export interface MonitorGeometry {
 }
 
 /**
+ * One CSS coordinate on a monitor's overlay → monitor-local physical pixel.
+ * Physical pixel p covers CSS [p/scale, (p+1)/scale), so we floor.
+ */
+export function cssToLocalPhysical(css: number, scale: number): number {
+  return Math.floor(css * scale + EPS);
+}
+
+/**
  * CSS point on a monitor's overlay → virtual-desktop physical pixel.
  * Physical pixel p covers CSS [p/scale, (p+1)/scale), so we floor.
  */
 export function cssToPhysical(monitor: MonitorGeometry, css: CssPoint): PhysicalPoint {
   const { physicalBounds: b, scaleFactor: s } = monitor;
   return {
-    x: b.x + Math.floor(css.x * s + EPS),
-    y: b.y + Math.floor(css.y * s + EPS),
+    x: b.x + cssToLocalPhysical(css.x, s),
+    y: b.y + cssToLocalPhysical(css.y, s),
   };
 }
 

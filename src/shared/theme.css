@@ -1,5 +1,6 @@
 :root {
   color-scheme: light dark;
+  --accent: #4c8dff;
   font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
 }
 

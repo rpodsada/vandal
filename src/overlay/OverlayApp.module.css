@@ -1,3 +1,10 @@
+.root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
 /* The canvas is at physical resolution and fills the viewport, which is sized
    to the monitor in physical pixels, so it maps 1:1 onto the screen. */
 .frame {
@@ -5,5 +12,164 @@
   width: 100vw;
   height: 100vh;
   image-rendering: pixelated;
-  cursor: crosshair;
+}
+
+.dimAll {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / var(--dim));
+  pointer-events: none;
+}
+
+/* ---- crosshair guides ---- */
+
+.guideV,
+.guideH {
+  position: absolute;
+  pointer-events: none;
+  background: rgb(255 255 255 / 0.55);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.25);
+}
+
+.guideV {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.guideH {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+/* ---- selection ---- */
+
+.selection {
+  position: absolute;
+  /* The huge spread dims everything outside the selection. */
+  box-shadow: 0 0 0 200vmax rgb(0 0 0 / var(--dim));
+  outline: 1px solid var(--accent);
+  pointer-events: none;
+}
+
+.handle {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -5px 0 0 -5px;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1.5px solid var(--accent);
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+}
+
+.nw {
+  left: 0;
+  top: 0;
+}
+.n {
+  left: 50%;
+  top: 0;
+}
+.ne {
+  left: 100%;
+  top: 0;
+}
+.e {
+  left: 100%;
+  top: 50%;
+}
+.se {
+  left: 100%;
+  top: 100%;
+}
+.s {
+  left: 50%;
+  top: 100%;
+}
+.sw {
+  left: 0;
+  top: 100%;
+}
+.w {
+  left: 0;
+  top: 50%;
+}
+
+.sizeAbove,
+.sizeInside {
+  position: absolute;
+  left: 0;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: rgb(18 18 20 / 0.84);
+  color: #fff;
+  font-size: 12px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sizeAbove {
+  bottom: 100%;
+  margin-bottom: 6px;
+}
+
+.sizeInside {
+  top: 6px;
+  left: 6px;
+}
+
+/* ---- hint bar ---- */
+
+.hint {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 16px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgb(22 22 26 / 0.8);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.08),
+    0 6px 24px rgb(0 0 0 / 0.35);
+  color: rgb(255 255 255 / 0.88);
+  font-size: 13px;
+  line-height: 20px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: hint-in 160ms ease-out;
+}
+
+.hintBottom {
+  top: auto;
+  bottom: 20px;
+}
+
+.hintItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hintItem kbd {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 0.14);
+  box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.08);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+}
+
+@keyframes hint-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -4px);
+  }
 }
