@@ -1,32 +1,38 @@
+/// <reference types="vitest/config" />
+import { resolve } from "node:path";
+import process from "node:process";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-// @ts-expect-error type error without @types/node package
-import process from "node:process";
+
 const host = process.env.TAURI_DEV_HOST;
+const page = (name: string) => resolve(import.meta.dirname, `${name}.html`);
 
 // https://vite.dev/config/
 export default defineConfig(() => ({
   plugins: [react()],
 
-  // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
-  //
-  // 1. prevent Vite from obscuring rust errors
+  // One entry per window type so the overlay bundle stays tiny (PLAN §4.1).
+  build: {
+    rolldownOptions: {
+      input: {
+        overlay: page("overlay"),
+        editor: page("editor"),
+        settings: page("settings"),
+      },
+    },
+  },
+
+  // Tauri: don't obscure Rust errors; fixed port; don't watch src-tauri.
   clearScreen: false,
-  // 2. tauri expects a fixed port, fail if that port is not available
   server: {
     port: 1420,
     strictPort: true,
     host: host || false,
-    hmr: host
-      ? {
-          protocol: "ws",
-          host,
-          port: 1421,
-        }
-      : undefined,
-    watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
-    },
+    hmr: host ? { protocol: "ws", host, port: 1421 } : undefined,
+    watch: { ignored: ["**/src-tauri/**"] },
+  },
+
+  test: {
+    include: ["src/**/*.test.ts"],
   },
 }));

@@ -1,0 +1,6 @@
+dist
+src-tauri
+src/shared/bindings.ts
+docs
+package-lock.json
+.vscode

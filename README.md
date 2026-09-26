@@ -1,7 +1,8 @@
-# Tauri + React + Typescript
+# capture-app
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+Tray-resident screen capture and markup tool for Windows. See [docs/PLAN.md](docs/PLAN.md).
 
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+```
+npm install
+npm run tauri dev     # Ctrl+Shift+F12 to capture, Esc to cancel
+```
