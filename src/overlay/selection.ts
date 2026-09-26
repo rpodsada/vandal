@@ -87,6 +87,19 @@ export function resizeRect(rect: Rect, edges: Edges, dx: number, dy: number, bou
 }
 
 /**
+ * Keyboard resize: grow/shrink from the right and bottom edges, keeping the
+ * top-left fixed. Unlike `resizeRect` it never flips; it stops at 1px and at
+ * the monitor edge.
+ */
+export function growRect(rect: Rect, dw: number, dh: number, bounds: Size): Rect {
+  return {
+    ...rect,
+    width: clamp(rect.width + dw, 1, bounds.width - rect.x),
+    height: clamp(rect.height + dh, 1, bounds.height - rect.y),
+  };
+}
+
+/**
  * What's under `p`: an edge/corner handle (within `tolerance` px of the
  * border), the inside of the rect, or nothing. Corners win over edges.
  */

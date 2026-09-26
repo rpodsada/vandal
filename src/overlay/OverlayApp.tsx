@@ -8,6 +8,7 @@ import {
   arrowDelta,
   clampPoint,
   cursorFor,
+  growRect,
   hitTest,
   moveRect,
   rectFromDrag,
@@ -132,7 +133,12 @@ export function OverlayApp() {
       const delta = arrowDelta(e.key, e.shiftKey ? 10 : 1);
       if (delta && selection && size && !drag) {
         e.preventDefault();
-        setSelection(moveRect(selection, delta.x, delta.y, size));
+        // Ctrl resizes from the bottom-right edge; plain arrows move.
+        setSelection(
+          e.ctrlKey
+            ? growRect(selection, delta.x, delta.y, size)
+            : moveRect(selection, delta.x, delta.y, size),
+        );
       }
     };
     const onContextMenu = (e: MouseEvent) => {

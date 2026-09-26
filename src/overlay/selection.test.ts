@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   arrowDelta,
   cursorFor,
+  growRect,
   hitTest,
   moveRect,
   rectFromDrag,
@@ -93,6 +94,23 @@ describe("resizeRect", () => {
       width: 90,
       height: 20,
     });
+  });
+});
+
+describe("growRect", () => {
+  const r = { x: 10, y: 10, width: 20, height: 10 };
+  it("grows and shrinks from the bottom-right, keeping the origin", () => {
+    expect(growRect(r, 1, 0, bounds)).toEqual({ ...r, width: 21 });
+    expect(growRect(r, -10, 0, bounds)).toEqual({ ...r, width: 10 });
+    expect(growRect(r, 0, 10, bounds)).toEqual({ ...r, height: 20 });
+    expect(growRect(r, 0, -1, bounds)).toEqual({ ...r, height: 9 });
+  });
+  it("stops at 1px instead of flipping", () => {
+    expect(growRect({ ...r, width: 5 }, -10, 0, bounds)).toEqual({ ...r, width: 1 });
+    expect(growRect({ ...r, height: 1 }, 0, -1, bounds)).toEqual({ ...r, height: 1 });
+  });
+  it("stops at the monitor edge", () => {
+    expect(growRect(r, 500, 500, bounds)).toEqual({ ...r, width: 90, height: 40 });
   });
 });
 
