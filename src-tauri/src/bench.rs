@@ -61,7 +61,7 @@ fn run(app: &AppHandle, iterations: usize) {
             let (tx, rx) = mpsc::channel();
             let handle = app.clone();
             let _ = app.run_on_main_thread(move || {
-                session::start_capture(&handle);
+                session::start_region(&handle);
                 let _ = tx.send(());
             });
             let _ = rx.recv();

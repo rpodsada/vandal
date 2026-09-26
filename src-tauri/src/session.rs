@@ -1,4 +1,4 @@
-//! One capture on screen: hotkey → grab → load overlays → show → cancel/commit
+//! One capture on screen: hotkey → grab → load overlays → show → commit/cancel
 //! (PLAN §4.2), with timing for the perf log.
 
 use std::collections::HashSet;
@@ -9,14 +9,18 @@ use specta::Type;
 use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
 
-use crate::capture::CaptureTiming;
+use crate::capture::{CaptureTiming, MonitorFrame};
+use crate::compose;
 use crate::frames::CaptureId;
-use crate::overlay;
+use crate::geometry::{monitor_at, virtual_bounds, MonitorInfo, PhysicalRect};
 use crate::protocol::{self, TransferFormat};
 use crate::state::AppState;
+use crate::{monitors, output, overlay};
 
 /// Show overlays even if some haven't reported ready by then.
 const READY_TIMEOUT: Duration = Duration::from_millis(500);
+/// Freshly created overlay windows need time to load their page.
+const READY_TIMEOUT_AFTER_REBUILD: Duration = Duration::from_millis(2500);
 
 /// Rust → overlay-n: fetch and draw this frame, then call `overlay_ready`.
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
@@ -24,11 +28,14 @@ const READY_TIMEOUT: Duration = Duration::from_millis(500);
 pub struct OverlayLoad {
     pub capture_id: CaptureId,
     pub monitor_index: u32,
+    pub physical_bounds: PhysicalRect,
     pub width: u32,
     pub height: u32,
     pub scale_factor: f64,
     pub format: TransferFormat,
     pub url: String,
+    pub dim_opacity: f64,
+    pub show_dimensions: bool,
 }
 
 /// Rust → overlays: you're now shown; reply with `overlay_visible` once painted.
@@ -36,6 +43,14 @@ pub struct OverlayLoad {
 #[serde(rename_all = "camelCase")]
 pub struct OverlayShown {
     pub capture_id: CaptureId,
+}
+
+/// Rust → overlays: a selection started on `monitor_index`; clear yours.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[serde(rename_all = "camelCase")]
+pub struct OverlayClearSelection {
+    pub capture_id: CaptureId,
+    pub monitor_index: u32,
 }
 
 /// Overlay → Rust: frame drawn, with the overlay-side timing.
@@ -49,12 +64,25 @@ pub struct OverlayReport {
     pub bytes: u32,
 }
 
+/// What the user chose on the overlay.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum CaptureTarget {
+    /// Virtual-desktop physical pixels.
+    Region {
+        rect: PhysicalRect,
+    },
+    MonitorUnderCursor,
+    AllMonitors,
+}
+
 pub struct Session {
     pub capture_id: CaptureId,
     pub format: TransferFormat,
     pub started: Instant,
     pub capture_timing: CaptureTiming,
     pub captured: Duration,
+    loads: Vec<OverlayLoad>,
     pending: HashSet<u32>,
     pub reports: Vec<OverlayReport>,
     pub ready: Option<Duration>,
@@ -86,9 +114,27 @@ fn opt_ms(d: Option<Duration>) -> String {
     d.map_or("-".into(), |d| format!("{:.1}ms", ms(d)))
 }
 
-/// Hotkey entry point. Grabs pixels *first*: nothing may change focus or show a
-/// window before the capture (PLAN §1.1).
-pub fn start_capture(app: &AppHandle) {
+/// Grab every monitor, noticing layout changes. Enumeration is read-only and
+/// sub-millisecond, so it doesn't break "capture before anything else".
+fn grab(state: &AppState) -> Option<(Vec<MonitorInfo>, bool, Vec<MonitorFrame>, CaptureTiming)> {
+    let known = state.monitors.read().unwrap().clone();
+    let current = monitors::enumerate().unwrap_or_else(|e| {
+        eprintln!("[capture] monitor enumeration failed: {e}");
+        known.clone()
+    });
+    let changed = current != known;
+    match state.capturer.capture_all(&current) {
+        Ok((frames, timing)) => Some((current, changed, frames, timing)),
+        Err(e) => {
+            eprintln!("[capture] {} capture failed: {e}", state.capturer.name());
+            None
+        }
+    }
+}
+
+/// Region-capture entry point (hotkey, tray, second launch). Grabs pixels
+/// *first*: nothing may change focus or show a window before that (PLAN §1.1).
+pub fn start_region(app: &AppHandle) {
     let started = Instant::now();
     let state = app.state::<AppState>();
     let mut session = state.session.lock().unwrap();
@@ -96,23 +142,36 @@ pub fn start_capture(app: &AppHandle) {
         eprintln!("[capture] ignored: a capture is already on screen");
         return;
     }
-    let monitors = state.monitors.read().unwrap().clone();
-    let (frames, capture_timing) = match state.capturer.capture_all(&monitors) {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("[capture] {} capture failed: {e}", state.capturer.name());
-            return;
-        }
+    let Some((monitors, layout_changed, frames, capture_timing)) = grab(&state) else {
+        return;
     };
     let captured = started.elapsed();
     let capture = state.frames.lock().unwrap().insert(frames);
     let format = *state.transfer_format.lock().unwrap();
+    let overlay_settings = state.settings.read().unwrap().overlay.clone();
+    let loads: Vec<OverlayLoad> = capture
+        .frames
+        .iter()
+        .map(|frame| OverlayLoad {
+            capture_id: capture.id,
+            monitor_index: frame.monitor.index,
+            physical_bounds: frame.monitor.physical_bounds,
+            width: frame.width,
+            height: frame.height,
+            scale_factor: frame.monitor.scale_factor,
+            format,
+            url: protocol::frame_url(capture.id, frame.monitor.index, format),
+            dim_opacity: overlay_settings.dim_opacity,
+            show_dimensions: overlay_settings.show_dimensions,
+        })
+        .collect();
     *session = Some(Session {
         capture_id: capture.id,
         format,
         started,
         capture_timing,
         captured,
+        loads: loads.clone(),
         pending: monitors.iter().map(|m| m.index).collect(),
         reports: Vec::new(),
         ready: None,
@@ -123,28 +182,80 @@ pub fn start_capture(app: &AppHandle) {
     });
     drop(session);
 
-    for frame in &capture.frames {
-        let m = &frame.monitor;
-        let load = OverlayLoad {
-            capture_id: capture.id,
-            monitor_index: m.index,
-            width: frame.width,
-            height: frame.height,
-            scale_factor: m.scale_factor,
-            format,
-            url: protocol::frame_url(capture.id, m.index, format),
-        };
-        if let Err(e) = load.emit_to(app, overlay::label(m.index)) {
-            eprintln!("[capture] emit to overlay {} failed: {e}", m.index);
-        }
-    }
-
     let app = app.clone();
     let id = capture.id;
-    std::thread::spawn(move || {
-        std::thread::sleep(READY_TIMEOUT);
-        show(&app, id, true);
-    });
+    if layout_changed {
+        eprintln!("[capture] display layout changed; rebuilding overlays");
+        *state.monitors.write().unwrap() = monitors.clone();
+        // Window creation must not run on the main thread while it's busy here.
+        std::thread::spawn(move || {
+            if let Err(e) = overlay::reconcile_pool(&app, &monitors) {
+                eprintln!("[overlay] rebuild failed: {e}");
+            }
+            emit_loads(&app, &loads);
+            std::thread::sleep(READY_TIMEOUT_AFTER_REBUILD);
+            show(&app, id, true);
+        });
+    } else {
+        emit_loads(&app, &loads);
+        std::thread::spawn(move || {
+            std::thread::sleep(READY_TIMEOUT);
+            show(&app, id, true);
+        });
+    }
+}
+
+fn emit_loads(app: &AppHandle, loads: &[OverlayLoad]) {
+    for load in loads {
+        if let Err(e) = load.emit_to(app, overlay::label(load.monitor_index)) {
+            eprintln!(
+                "[capture] emit to overlay {} failed: {e}",
+                load.monitor_index
+            );
+        }
+    }
+}
+
+/// Full-screen entry point: every monitor, straight to the output actions.
+pub fn capture_fullscreen(app: &AppHandle) {
+    let started = Instant::now();
+    let state = app.state::<AppState>();
+    if state.session.lock().unwrap().is_some() {
+        eprintln!("[capture] ignored: a capture is already on screen");
+        return;
+    }
+    let Some((monitors, layout_changed, frames, _)) = grab(&state) else {
+        return;
+    };
+    let capture = state.frames.lock().unwrap().insert(frames);
+    let frames: Vec<&MonitorFrame> = capture.frames.iter().map(|f| f.as_ref()).collect();
+    if let Some(image) = compose::compose(&frames, virtual_bounds(&monitors)) {
+        output::deliver(app, image, started);
+    }
+    if layout_changed {
+        *state.monitors.write().unwrap() = monitors.clone();
+        let app = app.clone();
+        std::thread::spawn(move || {
+            if let Err(e) = overlay::reconcile_pool(&app, &monitors) {
+                eprintln!("[overlay] rebuild failed: {e}");
+            }
+        });
+    }
+}
+
+/// An overlay page that loaded after its `OverlayLoad` was emitted (e.g. a
+/// window created by a display change) asks for it here.
+pub fn pending_load(app: &AppHandle, monitor_index: u32) -> Option<OverlayLoad> {
+    let state = app.state::<AppState>();
+    let guard = state.session.lock().unwrap();
+    let s = guard.as_ref()?;
+    if !s.pending.contains(&monitor_index) {
+        return None;
+    }
+    s.loads
+        .iter()
+        .find(|l| l.monitor_index == monitor_index)
+        .cloned()
 }
 
 pub fn overlay_ready(app: &AppHandle, capture_id: CaptureId, report: OverlayReport) {
@@ -176,7 +287,7 @@ fn show(app: &AppHandle, capture_id: CaptureId, by_timeout: bool) {
         s.shown_by_timeout = by_timeout;
         if by_timeout {
             eprintln!(
-                "[capture] #{capture_id}: overlays {:?} not ready after {READY_TIMEOUT:?}, showing anyway",
+                "[capture] #{capture_id}: overlays {:?} not ready in time, showing anyway",
                 s.pending
             );
         }
@@ -245,8 +356,16 @@ pub fn overlay_visible(app: &AppHandle, capture_id: CaptureId, monitor_index: u3
     }
 }
 
-/// Hide overlays and end the session. The frames stay in the FrameStore.
-pub fn cancel(app: &AppHandle, capture_id: CaptureId) {
+pub fn selection_started(app: &AppHandle, capture_id: CaptureId, monitor_index: u32) {
+    let _ = OverlayClearSelection {
+        capture_id,
+        monitor_index,
+    }
+    .emit(app);
+}
+
+/// End the session and hide the overlays. The frames stay in the FrameStore.
+fn end(app: &AppHandle, capture_id: CaptureId) -> Option<Session> {
     let state = app.state::<AppState>();
     let session = {
         let mut guard = state.session.lock().unwrap();
@@ -254,21 +373,50 @@ pub fn cancel(app: &AppHandle, capture_id: CaptureId) {
             Some(s) if s.capture_id == capture_id => guard.take(),
             _ => None,
         }
-    };
-    let Some(s) = session else {
-        return;
-    };
+    }?;
     overlay::hide_all(app);
     state.perf_log.lock().unwrap().push(PerfRecord {
-        format: s.format,
-        capture_timing: s.capture_timing,
-        captured: s.captured,
-        ready: s.ready,
-        shown: s.shown,
-        shown_by_timeout: s.shown_by_timeout,
-        visible: s.visible,
-        reports: s.reports,
+        format: session.format,
+        capture_timing: session.capture_timing.clone(),
+        captured: session.captured,
+        ready: session.ready,
+        shown: session.shown,
+        shown_by_timeout: session.shown_by_timeout,
+        visible: session.visible,
+        reports: session.reports.clone(),
     });
+    Some(session)
+}
+
+pub fn cancel(app: &AppHandle, capture_id: CaptureId) {
+    end(app, capture_id);
+}
+
+pub fn commit(app: &AppHandle, capture_id: CaptureId, target: CaptureTarget) {
+    let started = Instant::now();
+    if end(app, capture_id).is_none() {
+        return;
+    }
+    let state = app.state::<AppState>();
+    let Some(capture) = state.frames.lock().unwrap().get(capture_id) else {
+        return;
+    };
+    let monitors: Vec<MonitorInfo> = capture.frames.iter().map(|f| f.monitor.clone()).collect();
+    let rect = match target {
+        CaptureTarget::Region { rect } => rect,
+        CaptureTarget::MonitorUnderCursor => overlay::cursor_position()
+            .and_then(|p| monitor_at(&monitors, p))
+            .or_else(|| monitors.iter().find(|m| m.is_primary))
+            .or(monitors.first())
+            .map(|m| m.physical_bounds)
+            .unwrap_or_default(),
+        CaptureTarget::AllMonitors => virtual_bounds(&monitors),
+    };
+    let frames: Vec<&MonitorFrame> = capture.frames.iter().map(|f| f.as_ref()).collect();
+    match compose::compose(&frames, rect) {
+        Some(image) => output::deliver(app, image, started),
+        None => eprintln!("[capture] #{capture_id}: empty selection {rect:?}"),
+    }
 }
 
 /// The id of the capture currently on screen and whether it has been painted.

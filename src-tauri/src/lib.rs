@@ -1,17 +1,21 @@
 mod bench;
 mod capture;
 mod commands;
-// Parts of these APIs are first used in Phase 1 (selection, editor lifecycle).
+mod compose;
+// Some of these APIs are first used by the editor (Phase 2) and window snap (Phase 4).
 #[allow(dead_code)]
 mod frames;
 #[allow(dead_code)]
 mod geometry;
 mod hotkeys;
 mod monitors;
+mod output;
 mod overlay;
 mod protocol;
 mod session;
+mod settings;
 mod state;
+mod tray;
 
 use std::sync::{Mutex, RwLock};
 
@@ -26,13 +30,21 @@ use crate::state::AppState;
 fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
     tauri_specta::Builder::<tauri::Wry>::new()
         .commands(collect_commands![
+            commands::overlay_pending_load,
             commands::overlay_ready,
             commands::overlay_visible,
+            commands::selection_started,
+            commands::commit_selection,
             commands::cancel_capture,
         ])
-        .events(collect_events![session::OverlayLoad, session::OverlayShown])
+        .events(collect_events![
+            session::OverlayLoad,
+            session::OverlayShown,
+            session::OverlayClearSelection,
+        ])
         .typ::<geometry::MonitorInfo>()
         .typ::<geometry::PhysicalPoint>()
+        .typ::<settings::Settings>()
 }
 
 #[cfg(debug_assertions)]
@@ -63,7 +75,17 @@ pub fn run() {
 
     let specta = specta_builder();
 
-    let app = tauri::Builder::default()
+    let bench = std::env::var_os("CAPTURE_BENCH").is_some();
+    let mut builder = tauri::Builder::default();
+    if !bench {
+        // Must be the first plugin. A second launch triggers a capture instead.
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            session::start_region(app);
+        }));
+    }
+    let app = builder
+        .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(hotkeys::plugin())
         .register_asynchronous_uri_scheme_protocol(protocol::SCHEME, protocol::handle)
         .invoke_handler(specta.invoke_handler())
@@ -88,19 +110,32 @@ pub fn run() {
                 );
             }
 
+            let settings = settings::load(app.handle());
             app.manage(AppState {
                 capturer: Box::new(GdiCapturer),
-                frames: Mutex::new(FrameStore::new(3)),
+                frames: Mutex::new(FrameStore::new(
+                    settings.history.keep_frames_in_memory as usize,
+                )),
                 monitors: RwLock::new(monitors.clone()),
+                settings: RwLock::new(settings.clone()),
                 session: Mutex::new(None),
                 transfer_format: Mutex::new(transfer_format_from_env()),
                 perf_log: Mutex::new(Vec::new()),
             });
 
             overlay::create_pool(app.handle(), &monitors)?;
-            eprintln!("[startup] ready: press {} to capture", hotkeys::CAPTURE_HOTKEY);
+            overlay::watch_displays(app.handle());
+            if bench {
+                bench::maybe_start(app.handle());
+                return Ok(());
+            }
 
-            bench::maybe_start(app.handle());
+            hotkeys::register(app.handle(), &settings.hotkeys);
+            tray::create(app.handle(), &settings)?;
+            // Dev builds leave the Run key alone unless toggled from the tray.
+            #[cfg(not(debug_assertions))]
+            tray::apply_autostart(app.handle(), settings.startup.launch_on_login);
+            eprintln!("[startup] ready");
             Ok(())
         })
         .on_window_event(|window, event| {

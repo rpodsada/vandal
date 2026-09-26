@@ -25,22 +25,44 @@ pub fn is_overlay(label: &str) -> bool {
 
 pub fn create_pool(app: &AppHandle, monitors: &[MonitorInfo]) -> tauri::Result<()> {
     for m in monitors {
-        let window = tauri::WebviewWindowBuilder::new(
-            app,
-            label(m.index),
-            WebviewUrl::App("overlay.html".into()),
-        )
-        .title("capture-app overlay")
-        .decorations(false)
-        .resizable(false)
-        .shadow(false)
-        .skip_taskbar(true)
-        .always_on_top(true)
-        .visible(false)
-        .focused(false)
-        .background_color(Color(0, 0, 0, 255))
-        .build()?;
-        place(&window, m.physical_bounds)?;
+        create(app, m)?;
+    }
+    Ok(())
+}
+
+fn create(app: &AppHandle, m: &MonitorInfo) -> tauri::Result<()> {
+    let window = tauri::WebviewWindowBuilder::new(
+        app,
+        label(m.index),
+        WebviewUrl::App("overlay.html".into()),
+    )
+    .title("capture-app overlay")
+    .decorations(false)
+    .resizable(false)
+    .shadow(false)
+    .skip_taskbar(true)
+    .always_on_top(true)
+    .visible(false)
+    .focused(false)
+    .background_color(Color(0, 0, 0, 255))
+    .build()?;
+    place(&window, m.physical_bounds)
+}
+
+/// Match the pool to a new monitor layout: re-place existing overlays, create
+/// missing ones, destroy extras. Call off the main thread.
+pub fn reconcile_pool(app: &AppHandle, monitors: &[MonitorInfo]) -> tauri::Result<()> {
+    for m in monitors {
+        match app.get_webview_window(&label(m.index)) {
+            Some(window) => place(&window, m.physical_bounds)?,
+            None => create(app, m)?,
+        }
+    }
+    for (l, window) in app.webview_windows() {
+        let index = l.strip_prefix(PREFIX).and_then(|i| i.parse::<u32>().ok());
+        if index.is_some_and(|i| i as usize >= monitors.len()) {
+            window.destroy()?;
+        }
     }
     Ok(())
 }
@@ -83,7 +105,7 @@ fn ensure_placed(window: &WebviewWindow, r: PhysicalRect) {
     }
 }
 
-fn cursor_position() -> Option<PhysicalPoint> {
+pub fn cursor_position() -> Option<PhysicalPoint> {
     let mut p = POINT::default();
     unsafe { GetCursorPos(&mut p).ok()? };
     Some(PhysicalPoint::new(p.x, p.y))
@@ -147,4 +169,28 @@ pub fn hide_all(app: &AppHandle) {
             let _ = window.hide();
         }
     }
+}
+
+/// Rebuild the pool when monitors are plugged/unplugged or rescaled, so the
+/// next capture is instant. (Captures also detect changes themselves.)
+pub fn watch_displays(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        let state = app.state::<crate::state::AppState>();
+        if state.session.lock().unwrap().is_some() {
+            continue;
+        }
+        let Ok(current) = crate::monitors::enumerate() else {
+            continue;
+        };
+        if *state.monitors.read().unwrap() == current {
+            continue;
+        }
+        eprintln!("[overlay] display layout changed; rebuilding pool");
+        *state.monitors.write().unwrap() = current.clone();
+        if let Err(e) = reconcile_pool(&app, &current) {
+            eprintln!("[overlay] rebuild failed: {e}");
+        }
+    });
 }

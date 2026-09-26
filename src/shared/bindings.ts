@@ -8,21 +8,71 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 
 /** Commands */
 export const commands = {
+	/**  Overlay page mounted; returns its frame if a capture is waiting on it. */
+	overlayPendingLoad: (monitorIndex: number) => __TAURI_INVOKE<{
+	captureId: number,
+	monitorIndex: number,
+	physicalBounds: PhysicalRect,
+	width: number,
+	height: number,
+	scaleFactor: number | null,
+	format: TransferFormat,
+	url: string,
+	dimOpacity: number | null,
+	showDimensions: boolean,
+} | null>("overlay_pending_load", { monitorIndex }),
 	/**  Overlay finished drawing its frame. */
 	overlayReady: (captureId: number, report: OverlayReport) => __TAURI_INVOKE<void>("overlay_ready", { captureId, report }),
 	/**  Overlay has painted at least one frame since being shown. */
 	overlayVisible: (captureId: number, monitorIndex: number) => __TAURI_INVOKE<void>("overlay_visible", { captureId, monitorIndex }),
+	/**  The user started selecting on this monitor; other overlays clear theirs. */
+	selectionStarted: (captureId: number, monitorIndex: number) => __TAURI_INVOKE<void>("selection_started", { captureId, monitorIndex }),
+	/**  Confirm: crop and run the after-capture actions. */
+	commitSelection: (captureId: number, target: CaptureTarget) => __TAURI_INVOKE<void>("commit_selection", { captureId, target }),
 	/**  Esc / right-click on an overlay. */
 	cancelCapture: (captureId: number) => __TAURI_INVOKE<void>("cancel_capture", { captureId }),
 };
 
 /** Events */
 export const events = {
+	overlayClearSelection: makeEvent<OverlayClearSelection>("overlay-clear-selection"),
 	overlayLoad: makeEvent<OverlayLoad>("overlay-load"),
 	overlayShown: makeEvent<OverlayShown>("overlay-shown"),
 };
 
 /* Types */
+export type AfterCapture = {
+	copyToClipboard?: boolean,
+	/**  The editor arrives in Phase 2. */
+	openEditor?: boolean,
+	autoSave?: boolean,
+};
+
+/**  What the user chose on the overlay. */
+export type CaptureTarget = 
+/**  Virtual-desktop physical pixels. */
+{ kind: "region"; rect: PhysicalRect } | { kind: "monitorUnderCursor" } | { kind: "allMonitors" };
+
+export type EditorSettings = {
+	/**  Shape defined in Phase 3. */
+	toolPresets?: unknown[],
+	defaultTool?: string,
+	theme?: string,
+};
+
+export type History = {
+	keepFramesInMemory?: number,
+};
+
+/**  Human-readable accelerators, e.g. `"Win+Shift+F12"`. `None` = unassigned. */
+export type Hotkeys = {
+	region?: string | null,
+	fullscreen?: string | null,
+	/**  Window capture arrives in Phase 4; not registered yet. */
+	window?: string | null,
+	repeatLast?: string | null,
+};
+
 export type MonitorInfo = {
 	index: number,
 	/**  GDI device name, e.g. `\\.\DISPLAY1`. */
@@ -35,15 +85,24 @@ export type MonitorInfo = {
 	isPrimary: boolean,
 };
 
+/**  Rust → overlays: a selection started on `monitor_index`; clear yours. */
+export type OverlayClearSelection = {
+	captureId: number,
+	monitorIndex: number,
+};
+
 /**  Rust → overlay-n: fetch and draw this frame, then call `overlay_ready`. */
 export type OverlayLoad = {
 	captureId: number,
 	monitorIndex: number,
+	physicalBounds: PhysicalRect,
 	width: number,
 	height: number,
 	scaleFactor: number | null,
 	format: TransferFormat,
 	url: string,
+	dimOpacity: number | null,
+	showDimensions: boolean,
 };
 
 /**  Overlay → Rust: frame drawn, with the overlay-side timing. */
@@ -53,6 +112,12 @@ export type OverlayReport = {
 	decodeMs: number | null,
 	drawMs: number | null,
 	bytes: number,
+};
+
+export type OverlaySettings = {
+	dimOpacity?: number | null,
+	showLoupe?: boolean,
+	showDimensions?: boolean,
 };
 
 /**  Rust → overlays: you're now shown; reply with `overlay_visible` once painted. */
@@ -70,6 +135,29 @@ export type PhysicalRect = {
 	y: number,
 	width: number,
 	height: number,
+};
+
+export type SaveSettings = {
+	/**  May contain `%ENV%` variables. */
+	directory?: string,
+	/**  Tokens: `{yyyy} {MM} {dd} {HH} {mm} {ss}`. */
+	filenameTemplate?: string,
+	format?: string,
+};
+
+export type Settings = {
+	version?: number,
+	hotkeys?: Hotkeys,
+	afterCapture?: AfterCapture,
+	save?: SaveSettings,
+	overlay?: OverlaySettings,
+	editor?: EditorSettings,
+	startup?: Startup,
+	history?: History,
+};
+
+export type Startup = {
+	launchOnLogin?: boolean,
 };
 
 /**  How frame pixels are encoded for the overlay (benchmarked in docs/perf.md). */
