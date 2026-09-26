@@ -174,7 +174,7 @@ export function OverlayApp() {
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     if (!size) return;
     const p = toLocal(e);
-    if (drag) setPointer(p);
+    setPointer(p);
     if (!drag) return;
     switch (drag.mode) {
       case "create": {
@@ -201,7 +201,7 @@ export function OverlayApp() {
   };
 
   const onPointerUp = () => {
-    // A click without a drag clears the selection rather than making a 1Ã—1 one.
+    // A click without a drag clears the selection rather than making a 1×1 one.
     if (drag?.mode === "create" && !drag.moved) setSelection(null);
     setDrag(null);
   };
@@ -259,7 +259,7 @@ export function OverlayApp() {
             HANDLES.map((h) => <span key={h} className={`${styles.handle} ${styles[h]}`} />)}
           {showDimensions && (
             <span className={css(selection.y) < 32 ? styles.sizeInside : styles.sizeAbove}>
-              {selection.width} Ã— {selection.height}
+              {selection.width} × {selection.height}
             </span>
           )}
         </div>

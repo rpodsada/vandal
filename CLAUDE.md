@@ -31,6 +31,9 @@ npm run lint && npm test && npx tsc --noEmit
 npm run tauri dev   # smoke run
 ```
 
+Never edit source files with Windows PowerShell `Get-Content`/`Set-Content`: 5.1 reads UTF-8 as
+Windows-1252 and corrupts non-ASCII text (`src/shared/encoding.test.ts` catches this).
+
 Run Node tooling from PowerShell. Git Bash on this machine has an old nvm Node 16 first on PATH.
 
 ## Handy
