@@ -1,0 +1,9 @@
+/* The canvas is at physical resolution and fills the viewport, which is sized
+   to the monitor in physical pixels, so it maps 1:1 onto the screen. */
+.frame {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  image-rendering: pixelated;
+  cursor: crosshair;
+}
