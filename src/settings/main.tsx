@@ -1,10 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "../shared/theme.css";
+import { SettingsApp } from "./SettingsApp";
 
-// Placeholder until Phase 3.
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <p>Settings</p>
+    <SettingsApp />
   </StrictMode>,
 );

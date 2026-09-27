@@ -1,0 +1,201 @@
+/* ---- toggle switch ---- */
+
+.toggleWrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toggleState {
+  min-width: 22px;
+  color: var(--text);
+  font-size: 14px;
+  text-align: right;
+}
+
+.switch {
+  position: relative;
+  width: 40px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--text-2);
+  border-radius: 10px;
+  background: transparent;
+  cursor: default;
+  transition: background 120ms ease;
+}
+
+.thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-2);
+  transition:
+    transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 100ms ease;
+}
+
+.switch:hover .thumb {
+  width: 14px;
+  height: 14px;
+  top: 2px;
+}
+
+.switch[aria-checked="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.switch[aria-checked="true"] .thumb {
+  background: var(--on-accent);
+  transform: translateX(20px);
+}
+
+.switch[aria-checked="true"]:hover .thumb {
+  transform: translateX(18px);
+}
+
+.switch:focus-visible,
+.button:focus-visible,
+.slider:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.switch:disabled {
+  opacity: 0.6;
+}
+
+/* ---- text inputs ---- */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input {
+  user-select: text;
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--control-bg);
+  box-shadow: inset 0 0 0 1px var(--control-border);
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+
+.input:hover {
+  background: var(--control-bg-hover);
+}
+
+.input:focus {
+  background: var(--control-bg-focus);
+  box-shadow:
+    inset 0 0 0 1px var(--control-border),
+    inset 0 -2px 0 var(--accent);
+}
+
+.preview,
+.help {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.previewValue {
+  color: var(--text);
+}
+
+/* ---- folder ---- */
+
+.folderRow {
+  display: flex;
+  gap: 8px;
+}
+
+.button {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--button-bg);
+  box-shadow: inset 0 0 0 1px var(--control-border);
+  color: var(--text);
+  font: inherit;
+  cursor: default;
+}
+
+.button:hover {
+  background: var(--button-bg-hover);
+}
+
+.button:active {
+  background: var(--button-bg-active);
+  color: var(--text-2);
+}
+
+/* ---- slider ---- */
+
+.sliderWrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sliderValue {
+  min-width: 36px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.slider {
+  width: 180px;
+  height: 20px;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) var(--fill), var(--text-3) var(--fill));
+}
+
+.slider::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: var(--accent) padding-box;
+  border: 5px solid var(--thumb-ring);
+  box-shadow: 0 0 0 1px var(--control-border);
+  appearance: none;
+  transition: border-width 100ms ease;
+}
+
+.slider:hover::-webkit-slider-thumb {
+  border-width: 4px;
+}
+
+.slider:active::-webkit-slider-thumb {
+  border-width: 6px;
+}
+
+/* ---- info ---- */
+
+.info {
+  color: var(--text-2);
+}

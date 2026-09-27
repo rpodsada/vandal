@@ -49,7 +49,7 @@
   position: absolute;
   /* The huge spread dims everything outside the selection. */
   box-shadow: 0 0 0 200vmax rgb(0 0 0 / var(--dim));
-  outline: 1px solid var(--accent);
+  outline: 1px solid var(--overlay-accent);
   pointer-events: none;
 }
 
@@ -60,7 +60,7 @@
   margin: -5px 0 0 -5px;
   box-sizing: border-box;
   background: #fff;
-  border: 1.5px solid var(--accent);
+  border: 1.5px solid var(--overlay-accent);
   border-radius: 2px;
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
 }

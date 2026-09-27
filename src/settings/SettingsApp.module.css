@@ -1,0 +1,232 @@
+.app {
+  /* App chrome, not a document: no stray text selection (inputs still select). */
+  user-select: none;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ---- sidebar ---- */
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 8px 16px 12px;
+  background: var(--bg-nav);
+  overflow-y: auto;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  margin: 0 4px 4px;
+  padding: 0 10px;
+  border-radius: 6px;
+  background: var(--control-bg);
+  box-shadow: inset 0 0 0 1px var(--control-border);
+  color: var(--text-2);
+}
+
+.search:focus-within {
+  box-shadow:
+    inset 0 0 0 1px var(--control-border),
+    inset 0 -2px 0 var(--accent);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
+
+.search input::-webkit-search-cancel-button {
+  filter: grayscale(1);
+}
+
+.navList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.navItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+.navItem:hover {
+  background: var(--hover);
+}
+
+.navItem[aria-current="page"] {
+  background: var(--selected);
+}
+
+.navItem[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.navItem:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+/* ---- content ---- */
+
+.nav,
+.main {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-3) transparent;
+}
+
+.main {
+  overflow-y: auto;
+  padding: 20px 32px 40px;
+}
+
+.main > * {
+  max-width: 880px;
+}
+
+.title {
+  margin: 8px 0 20px;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 36px;
+}
+
+.sectionDescription,
+.empty {
+  margin: -8px 0 20px;
+  color: var(--text-2);
+}
+
+.group {
+  margin-bottom: 24px;
+}
+
+.groupTitle {
+  margin: 0 0 8px 2px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.groupDescription {
+  margin: -4px 0 8px 2px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.card {
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--border);
+  overflow: hidden;
+}
+
+.row,
+.rowStacked {
+  display: flex;
+  gap: 24px;
+  padding: 14px 16px;
+  min-height: 40px;
+}
+
+.row {
+  align-items: center;
+}
+
+.rowStacked {
+  flex-direction: column;
+  gap: 10px;
+}
+
+.row + .row,
+.row + .rowStacked,
+.rowStacked + .row,
+.rowStacked + .rowStacked {
+  border-top: 1px solid var(--border);
+}
+
+.row[data-disabled],
+.rowStacked[data-disabled] {
+  opacity: 0.5;
+}
+
+.rowText {
+  flex: 1;
+  min-width: 0;
+}
+
+.label {
+  display: block;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.description {
+  margin: 2px 0 0;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.control {
+  flex-shrink: 0;
+}
+
+.rowStacked .control {
+  width: 100%;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--error-bg);
+  box-shadow: 0 0 0 1px var(--error-border);
+}
+
+.error button {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

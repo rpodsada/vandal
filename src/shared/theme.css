@@ -1,10 +1,79 @@
+/* Design tokens shared by all windows. Light by default, dark via the OS
+   setting. Values follow Windows 11's Fluent palette. */
+
 :root {
   color-scheme: light dark;
-  --accent: #4c8dff;
-  font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+
+  /* Fixed accent for the capture overlay (drawn over arbitrary screenshots). */
+  --overlay-accent: #4c8dff;
+
+  --accent: #1f6fe5;
+  --on-accent: #fff;
+  --focus: #1b1b1b;
+
+  --bg: #f3f3f3;
+  --bg-nav: var(--bg);
+  --surface: #fbfbfb;
+  --border: rgb(0 0 0 / 0.07);
+  --hover: rgb(0 0 0 / 0.04);
+  --selected: rgb(0 0 0 / 0.06);
+
+  --text: #1b1b1b;
+  --text-2: #5d5d5d;
+  --text-3: #c4c4c4;
+
+  --control-bg: #fff;
+  --control-bg-hover: #f9f9f9;
+  --control-bg-focus: #fff;
+  --control-border: rgb(0 0 0 / 0.14);
+  --button-bg: #fbfbfb;
+  --button-bg-hover: #f6f6f6;
+  --button-bg-active: #f0f0f0;
+  --thumb-ring: #fff;
+
+  --error-bg: #fde7e9;
+  --error-border: rgb(196 43 28 / 0.25);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #6aa7ff;
+    --on-accent: #0b1a33;
+    --focus: #fff;
+
+    --bg: #202020;
+    --surface: #2b2b2b;
+    --border: rgb(255 255 255 / 0.06);
+    --hover: rgb(255 255 255 / 0.05);
+    --selected: rgb(255 255 255 / 0.07);
+
+    --text: #fff;
+    --text-2: #c5c5c5;
+    --text-3: #5a5a5a;
+
+    --control-bg: rgb(255 255 255 / 0.06);
+    --control-bg-hover: rgb(255 255 255 / 0.08);
+    --control-bg-focus: #1f1f1f;
+    --control-border: rgb(255 255 255 / 0.1);
+    --button-bg: rgb(255 255 255 / 0.06);
+    --button-bg-hover: rgb(255 255 255 / 0.09);
+    --button-bg-active: rgb(255 255 255 / 0.04);
+    --thumb-ring: #454545;
+
+    --error-bg: #442726;
+    --error-border: rgb(255 153 164 / 0.25);
+  }
 }
 
 html,
 body {
   margin: 0;
+}
+
+button,
+input {
+  font: inherit;
 }
