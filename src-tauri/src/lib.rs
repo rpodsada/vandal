@@ -1,7 +1,9 @@
 mod bench;
 mod capture;
+mod cli;
 mod commands;
 mod compose;
+mod decode;
 mod editor;
 mod fonts;
 // Some of these APIs are first used by the editor (Phase 2) and window snap (Phase 4).
@@ -117,12 +119,17 @@ pub fn run() {
     let mut builder = tauri::Builder::default();
     if !bench {
         // Must be the first plugin. A second launch triggers a capture instead.
-        // `--settings` opens Settings; a plain second launch starts a capture.
-        builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+        // `--settings` opens Settings, `--edit <path>` opens an image; a
+        // plain second launch starts a capture.
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+            let files = cli::edit_paths(&args, std::path::Path::new(&cwd));
             if args.iter().any(|a| a == "--settings") {
                 settings_window::open(app);
-            } else {
+            } else if files.is_empty() {
                 session::start_region(app);
+            }
+            for file in files {
+                editor::open_file(app, &file);
             }
         }));
     }
@@ -183,6 +190,11 @@ pub fn run() {
             tray::apply_autostart(app.handle(), settings.startup.launch_on_login);
             if std::env::args().any(|a| a == "--settings") {
                 settings_window::open(app.handle());
+            }
+            let args: Vec<String> = std::env::args().collect();
+            let cwd = std::env::current_dir().unwrap_or_default();
+            for file in cli::edit_paths(&args, &cwd) {
+                editor::open_file(app.handle(), &file);
             }
             eprintln!("[startup] ready");
             Ok(())

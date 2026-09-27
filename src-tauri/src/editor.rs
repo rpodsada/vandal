@@ -14,6 +14,7 @@
 //! Rust.
 
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -36,7 +37,7 @@ use crate::compose::{self, RgbaImage};
 use crate::frames::Capture;
 use crate::geometry::{monitor_at, virtual_bounds, MonitorInfo, PhysicalRect};
 use crate::state::AppState;
-use crate::{output, overlay, protocol, session};
+use crate::{decode, output, overlay, protocol, session};
 
 pub type EditorId = u32;
 
@@ -205,12 +206,49 @@ pub fn open_capture(
         dx: -bounds.x,
         dy: -bounds.y,
     });
+    let title = capture_title(app);
     open(
         app,
         Arc::new(image),
         crop.relative_to(bounds.origin()),
         markup,
+        title,
     );
+}
+
+/// Open an editor on an image file (PLAN 2D). Decodes on a worker thread; a
+/// file that can't be opened gets an error notification.
+pub fn open_file(app: &AppHandle, path: &Path) {
+    let app = app.clone();
+    let path = path.to_path_buf();
+    std::thread::spawn(move || match decode::decode_file(&path) {
+        Ok(image) => {
+            let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
+            let name = path.file_name().map_or_else(
+                || path.display().to_string(),
+                |n| n.to_string_lossy().into_owned(),
+            );
+            let title = format!("{name} — {}", crate::product_name(&app));
+            open(&app, Arc::new(image), crop, None, title);
+        }
+        Err(message) => output::notify_error(&app, "Couldn't open the image", &message),
+    });
+}
+
+/// A capture's window title: the name it would be saved under.
+fn capture_title(app: &AppHandle) -> String {
+    let save = app
+        .state::<AppState>()
+        .settings
+        .read()
+        .unwrap()
+        .save
+        .clone();
+    format!(
+        "{} — {}",
+        output::render_template(&save.filename_template, &output::Timestamp::now_local()),
+        crate::product_name(app)
+    )
 }
 
 /// Open an editor on a delivered image (the notification's Edit action).
@@ -230,10 +268,17 @@ pub fn open_recent(app: &AppHandle, image_id: u32) {
         return;
     };
     let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
-    open(app, image, crop, None);
+    let title = capture_title(app);
+    open(app, image, crop, None, title);
 }
 
-fn open(app: &AppHandle, image: Arc<RgbaImage>, crop: PhysicalRect, markup: Option<HandoffMarkup>) {
+fn open(
+    app: &AppHandle,
+    image: Arc<RgbaImage>,
+    crop: PhysicalRect,
+    markup: Option<HandoffMarkup>,
+    title: String,
+) {
     let remembered = load_window_state(app);
     let state = app.state::<AppState>();
     let id = state.editors.lock().unwrap().insert(Editor {
@@ -259,12 +304,6 @@ fn open(app: &AppHandle, image: Arc<RgbaImage>, crop: PhysicalRect, markup: Opti
         monitor.scale_factor,
         (crop.width as u32, crop.height as u32),
         remembered.size(),
-    );
-    let settings = state.settings.read().unwrap().save.clone();
-    let title = format!(
-        "{} — {}",
-        output::render_template(&settings.filename_template, &output::Timestamp::now_local()),
-        crate::product_name(app)
     );
 
     // Creating a webview from the main thread's event handlers can deadlock
