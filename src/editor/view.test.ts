@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { displaySize, FIT_MARGIN, fitZoom } from "./view";
+import {
+  clampView,
+  displaySize,
+  FIT_MARGIN,
+  fitView,
+  fitZoom,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  panBy,
+  snapToDevice,
+  stepZoom,
+  wheelZoomFactor,
+  zoomAt,
+  zoomLabel,
+} from "./view";
 
 const viewport = (w: number, h: number) => ({
   width: w + 2 * FIT_MARGIN,
@@ -35,5 +49,108 @@ describe("displaySize", () => {
       width: 500,
       height: 300,
     });
+  });
+});
+
+const vp = { width: 1000, height: 800 };
+
+describe("clampView", () => {
+  it("centres an image smaller than the viewport", () => {
+    expect(clampView({ zoom: 1, x: -500, y: 900 }, { width: 400, height: 200 }, vp, 1)).toEqual({
+      zoom: 1,
+      x: 300,
+      y: 300,
+    });
+  });
+
+  it("keeps a large image's edges from moving in past the margin", () => {
+    const image = { width: 3000, height: 2000 };
+    expect(clampView({ zoom: 1, x: 500, y: 500 }, image, vp, 1)).toMatchObject({
+      x: FIT_MARGIN,
+      y: FIT_MARGIN,
+    });
+    expect(clampView({ zoom: 1, x: -9999, y: -9999 }, image, vp, 1)).toMatchObject({
+      x: 1000 - FIT_MARGIN - 3000,
+      y: 800 - FIT_MARGIN - 2000,
+    });
+    expect(clampView({ zoom: 1, x: -100, y: -200 }, image, vp, 1)).toMatchObject({
+      x: -100,
+      y: -200,
+    });
+  });
+
+  it("treats each axis on its own", () => {
+    // Wide and short: x is free within limits, y is centred.
+    const v = clampView({ zoom: 1, x: -50, y: 0 }, { width: 3000, height: 100 }, vp, 1);
+    expect(v).toEqual({ zoom: 1, x: -50, y: 350 });
+  });
+});
+
+describe("fitView", () => {
+  it("fits and centres", () => {
+    const v = fitView({ width: 2000, height: 500 }, viewport(1000, 800), 1);
+    expect(v.zoom).toBe(0.5);
+    expect(v.x).toBe(FIT_MARGIN);
+    expect(v.y).toBeCloseTo((800 + 2 * FIT_MARGIN - 250) / 2);
+  });
+});
+
+describe("zoomAt", () => {
+  const image = { width: 4000, height: 3000 };
+
+  it("keeps the image point under the anchor still", () => {
+    const view = { zoom: 0.5, x: -100, y: -50 };
+    const anchor = { x: 400, y: 300 };
+    const before = { x: (anchor.x - view.x) / view.zoom, y: (anchor.y - view.y) / view.zoom };
+    const next = zoomAt(view, 1, anchor, image, vp, 1);
+    const after = { x: (anchor.x - next.x) / next.zoom, y: (anchor.y - next.y) / next.zoom };
+    expect(after.x).toBeCloseTo(before.x);
+    expect(after.y).toBeCloseTo(before.y);
+  });
+
+  it("clamps the zoom range", () => {
+    const view = { zoom: 1, x: 0, y: 0 };
+    expect(zoomAt(view, 1000, { x: 0, y: 0 }, image, vp, 1).zoom).toBe(MAX_ZOOM);
+    expect(zoomAt(view, 0, { x: 0, y: 0 }, image, vp, 1).zoom).toBe(MIN_ZOOM);
+  });
+});
+
+describe("panBy", () => {
+  it("moves and clamps", () => {
+    const image = { width: 3000, height: 2000 };
+    const v = panBy({ zoom: 1, x: -100, y: -100 }, -50, 20, image, vp, 1);
+    expect(v).toEqual({ zoom: 1, x: -150, y: -80 });
+    expect(panBy(v, 10_000, 0, image, vp, 1).x).toBe(FIT_MARGIN);
+  });
+});
+
+describe("stepZoom", () => {
+  it("goes to the next preset either way", () => {
+    expect(stepZoom(1, 1)).toBe(1.5);
+    expect(stepZoom(1, -1)).toBe(0.75);
+    expect(stepZoom(0.8, 1)).toBe(1);
+    expect(stepZoom(0.8, -1)).toBe(0.75);
+  });
+
+  it("stops at the ends", () => {
+    expect(stepZoom(MAX_ZOOM, 1)).toBe(MAX_ZOOM);
+    expect(stepZoom(0.1, -1)).toBe(MIN_ZOOM);
+  });
+});
+
+describe("helpers", () => {
+  it("wheel notches zoom symmetrically", () => {
+    expect(wheelZoomFactor(100) * wheelZoomFactor(-100)).toBeCloseTo(1);
+    expect(wheelZoomFactor(-100)).toBeGreaterThan(1);
+  });
+
+  it("snaps to device pixels", () => {
+    expect(snapToDevice(10.3, 1)).toBe(10);
+    expect(snapToDevice(10.5, 1.5)).toBeCloseTo(10.6667); // 15.75 device px -> 16
+  });
+
+  it("labels zoom", () => {
+    expect(zoomLabel(0.6667)).toBe("67%");
+    expect(zoomLabel(1.5)).toBe("150%");
   });
 });
