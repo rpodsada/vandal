@@ -67,12 +67,37 @@ describe("annotationBounds and translateAnnotation", () => {
     },
     { id: "l", kind: "line", from: { x: 5, y: 1 }, to: { x: 1, y: 7 }, style },
     { id: "p", kind: "pen", points: [3, 3, 1, 9, 6, 4], style },
+    {
+      id: "t",
+      kind: "text",
+      x: 10,
+      y: 20,
+      width: 100,
+      autoWidth: false,
+      rotation: 0,
+      text: "one\ntwo",
+      fontFamily: "Segoe UI",
+      fontSize: 15,
+      color: "#000",
+      align: "left",
+      background: false,
+    },
   ];
 
   it("bounds each kind", () => {
     expect(annotationBounds(cases[0])).toEqual({ x: 1, y: 2, width: 3, height: 4 });
     expect(annotationBounds(cases[1])).toEqual({ x: 1, y: 1, width: 4, height: 6 });
     expect(annotationBounds(cases[2])).toEqual({ x: 1, y: 3, width: 5, height: 6 });
+    // 15 pt = 20 px, two lines at 1.2.
+    expect(annotationBounds(cases[3])).toEqual({ x: 10, y: 20, width: 100, height: 48 });
+  });
+
+  it("rotates text about its top-left corner", () => {
+    const b = annotationBounds({ ...cases[3], rotation: 90 } as Annotation);
+    expect(b.x).toBeCloseTo(-38);
+    expect(b.y).toBeCloseTo(20);
+    expect(b.width).toBeCloseTo(48);
+    expect(b.height).toBeCloseTo(100);
   });
 
   it("moves bounds by the offset for every kind", () => {

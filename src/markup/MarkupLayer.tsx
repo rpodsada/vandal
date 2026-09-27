@@ -10,6 +10,7 @@ import {
   Rect as KRect,
   Shape,
   Stage,
+  Text,
   Transformer,
 } from "react-konva";
 import { layerOf, registerAnnotationGroup } from "./export";
@@ -20,6 +21,9 @@ import {
   rectsIntersect,
   simplifyPath,
   snapAngle,
+  TEXT_LINE_HEIGHT,
+  textLineHeight,
+  textPx,
   translateAnnotation,
 } from "./geometry";
 import { docStore, useDoc } from "./model/store";
@@ -32,7 +36,10 @@ import type {
   PenAnnotation,
   Point,
   Rect,
+  TextAnnotation,
 } from "./model/types";
+import { TextEditor } from "./TextEditor";
+import { createText, editText, finishTextEdit } from "./textEditing";
 import { useToolStore } from "./toolStore";
 import styles from "./markup.module.css";
 
@@ -48,6 +55,18 @@ const MIN_DRAWN = 4;
 const PEN_TOLERANCE = 0.5;
 /** Cardinal-spline tension for freehand strokes: a light smoothing of mouse jitter. */
 const PEN_TENSION = 0.3;
+/** Transformer anchors for text: width only, since the size comes from the font. */
+const TEXT_ANCHORS = ["middle-left", "middle-right"];
+const ALL_ANCHORS = [
+  "top-left",
+  "top-center",
+  "top-right",
+  "middle-right",
+  "middle-left",
+  "bottom-left",
+  "bottom-center",
+  "bottom-right",
+];
 /** Degrees from a 45° step within which rotation snaps to it. */
 const ROTATION_SNAP = 6;
 
@@ -86,6 +105,7 @@ type Drag =
   | { mode: "draw"; start: Point; id: AnnotationId }
   | { mode: "endpoint"; id: AnnotationId; end: "from" | "to"; anchor: Point }
   | { mode: "stroke"; id: AnnotationId; start: Point; last: Point }
+  | { mode: "text"; start: Point; client: Point }
   | { mode: "marquee"; start: Point; base: AnnotationId[] };
 
 /** Line-like annotations get endpoint handles instead of the transformer. */
@@ -98,9 +118,9 @@ function isStroke(a: Annotation): a is PenAnnotation | HighlighterAnnotation {
   return a.kind === "pen" || a.kind === "highlighter";
 }
 
-/** Rects and ellipses get the resize/rotate transformer. */
+/** Rects, ellipses and text get the resize/rotate transformer. */
 function isBoxed(a: Annotation): boolean {
-  return a.kind === "rect" || a.kind === "ellipse";
+  return a.kind === "rect" || a.kind === "ellipse" || a.kind === "text";
 }
 
 /**
@@ -112,6 +132,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
   const doc = useDoc((s) => s.doc);
   const selection = useDoc((s) => s.selection);
   const tool = useToolStore((s) => s.tool);
+  const editing = useToolStore((s) => s.editing);
   const stageRef = useRef<Konva.Stage>(null);
   const groupRef = useRef<Konva.Group>(null);
   const highlightsRef = useRef<Konva.Group>(null);
@@ -166,6 +187,11 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
   const onPointerDown = (e: KonvaEventObject<PointerEvent>) => {
     const ev = e.evt;
     if (!interactive || ev.button !== 0) return;
+    // A click while typing just finishes the text.
+    if (useToolStore.getState().editing) {
+      finishTextEdit();
+      return;
+    }
     // Transformer handles run themselves.
     if (e.target.getParent() instanceof Konva.Transformer) return;
 
@@ -216,6 +242,9 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
       const base = ev.shiftKey ? store.selection : [];
       store.select(base);
       drag = { mode: "marquee", start: p, base };
+    } else if (tool === "text") {
+      store.select([]);
+      drag = { mode: "text", start: p, client: { x: ev.clientX, y: ev.clientY } };
     } else {
       const { style, filled, arrowHead } = useToolStore.getState();
       store.select([]);
@@ -291,6 +320,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
           break;
         }
         case "marquee":
+        case "text":
           setMarquee(rectFromDrag(drag.start, q));
           break;
       }
@@ -331,6 +361,29 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
           s.endGesture();
           break;
         }
+        case "text": {
+          // A click makes a box that grows as you type; a drag sets the wrap width.
+          setMarquee(null);
+          const q = toSource(u.clientX, u.clientY);
+          const dragged = Math.abs(u.clientX - drag.client.x) >= 2 * DRAG_THRESHOLD;
+          const { font, style } = useToolStore.getState();
+          createText({
+            kind: "text",
+            x: dragged ? Math.min(drag.start.x, q.x) : drag.start.x,
+            // A click puts the first line's middle at the pointer.
+            y: dragged ? Math.min(drag.start.y, q.y) : drag.start.y - textLineHeight(font.size) / 2,
+            width: dragged ? Math.abs(q.x - drag.start.x) : 0,
+            autoWidth: !dragged,
+            rotation: 0,
+            text: "",
+            fontFamily: font.family,
+            fontSize: font.size,
+            color: style.color,
+            align: "left",
+            background: false,
+          });
+          break;
+        }
         case "marquee": {
           const box = rectFromDrag(drag.start, toSource(u.clientX, u.clientY));
           setMarquee(null);
@@ -362,7 +415,14 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
           ? "move"
           : tool === "select"
             ? "default"
-            : "crosshair";
+            : tool === "text"
+              ? "text"
+              : "crosshair";
+  };
+
+  const onDblClick = (e: KonvaEventObject<MouseEvent>) => {
+    if (!interactive || e.target.name() !== "annotation") return;
+    editText(e.target.id());
   };
 
   /** Turn the transformer's scale into real size, so strokes keep their width. */
@@ -370,6 +430,24 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
     const store = docStore.getState();
     for (const node of trRef.current?.nodes() ?? []) {
       const a = store.doc.annotations.find((x) => x.id === node.id());
+      if (a?.kind === "text") {
+        // Only the width changes (the anchors allow nothing else); rotation is
+        // about the top-left corner, which Konva keeps in x/y.
+        const sx = Math.abs(node.scaleX());
+        const resized = Math.abs(sx - 1) > 1e-6;
+        const w = Math.max(textPx(a.fontSize), node.width() * sx);
+        const x = node.x();
+        const y = node.y();
+        const rotation = node.rotation();
+        node.scaleX(1);
+        node.scaleY(1);
+        store.update(a.id, (t) =>
+          t.kind === "text"
+            ? { ...t, x, y, rotation, ...(resized ? { width: w, autoWidth: false } : {}) }
+            : t,
+        );
+        continue;
+      }
       if (!a || (a.kind !== "rect" && a.kind !== "ellipse")) continue;
       const w = Math.max(1, a.rect.width * Math.abs(node.scaleX()));
       const h = Math.max(1, a.rect.height * Math.abs(node.scaleY()));
@@ -387,6 +465,10 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
   };
 
   const { crop } = doc;
+  const textSelected = doc.annotations.some((a) => a.kind === "text" && selection.includes(a.id));
+  const editedText = doc.annotations.find(
+    (a): a is TextAnnotation => a.kind === "text" && a.id === editing?.id,
+  );
   const groupProps = {
     x: offset.x,
     y: offset.y,
@@ -406,6 +488,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
         listening={interactive}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
+        onDblClick={onDblClick}
       >
         <Layer ref={highlightLayerRef}>
           <Group ref={highlightsRef} {...groupProps}>
@@ -421,7 +504,12 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
             {doc.annotations
               .filter((a) => layerOf(a) === "annotations")
               .map((a) => (
-                <AnnotationShape key={a.id} a={a} hitSlop={HIT_SLOP / scale} />
+                <AnnotationShape
+                  key={a.id}
+                  a={a}
+                  hitSlop={HIT_SLOP / scale}
+                  hidden={a.id === editing?.id}
+                />
               ))}
           </Group>
         </Layer>
@@ -432,6 +520,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
             flipEnabled={false}
             // Corners resize freely; Shift keeps the proportions.
             keepRatio={false}
+            enabledAnchors={textSelected ? TEXT_ANCHORS : ALL_ANCHORS}
             borderStroke={CHROME}
             anchorStroke={CHROME}
             anchorFill="#ffffff"
@@ -499,6 +588,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
           )}
         </Layer>
       </Stage>
+      {editedText && <TextEditor a={editedText} scale={scale} offset={offset} />}
     </div>
   );
 }
@@ -513,7 +603,37 @@ function drawnBigEnough(a: Annotation, scale: number): boolean {
 }
 
 /** One annotation as a Konva node. Shapes are positioned about their centre so rotation works. */
-function AnnotationShape({ a, hitSlop }: { a: Annotation; hitSlop: number }) {
+function AnnotationShape({
+  a,
+  hitSlop,
+  hidden = false,
+}: {
+  a: Annotation;
+  hitSlop: number;
+  /** Being typed into: the text editor shows it instead. */
+  hidden?: boolean;
+}) {
+  if (a.kind === "text") {
+    return (
+      <Text
+        id={a.id}
+        name="annotation"
+        x={a.x}
+        y={a.y}
+        rotation={a.rotation}
+        text={a.text}
+        fontFamily={a.fontFamily}
+        fontSize={textPx(a.fontSize)}
+        lineHeight={TEXT_LINE_HEIGHT}
+        fill={a.color}
+        align={a.align}
+        width={a.autoWidth ? undefined : a.width}
+        wrap={a.autoWidth ? "none" : "word"}
+        visible={!hidden}
+        perfectDrawEnabled={false}
+      />
+    );
+  }
   if (hasEndpoints(a)) return <SegmentShape a={a} hitSlop={hitSlop} />;
   if (isStroke(a)) {
     const { color, width, opacity } = a.style;

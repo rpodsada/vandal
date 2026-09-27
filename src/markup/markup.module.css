@@ -68,3 +68,19 @@
   position: absolute;
   inset: 0;
 }
+
+/* In-place text editing: a textarea exactly over the canvas text. */
+.textEditor {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  outline: 1px dashed #4c8dff;
+  outline-offset: 3px;
+  resize: none;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  transform-origin: 0 0;
+  min-width: 2px;
+}

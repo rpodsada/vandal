@@ -38,7 +38,10 @@ export function renderLayer(doc: Doc, name: LayerName): Uint8ClampedArray<ArrayB
   try {
     const layer = new Konva.Layer();
     stage.add(layer);
-    layer.add(source.clone({ x: -crop.x, y: -crop.y, scaleX: 1, scaleY: 1 }));
+    const clone = source.clone({ x: -crop.x, y: -crop.y, scaleX: 1, scaleY: 1 });
+    // Text being typed into is hidden on screen (the textarea shows it) but exported.
+    clone.find(".annotation").forEach((n) => n.visible(true));
+    layer.add(clone);
     const canvas = stage.toCanvas({ pixelRatio: 1 });
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("No 2D canvas context.");

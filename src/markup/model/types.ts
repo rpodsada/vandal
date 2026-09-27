@@ -77,11 +77,13 @@ export type TextAlign = "left" | "center" | "right";
 
 export interface TextAnnotation extends Base {
   kind: "text";
-  /** Top-left of the box. */
+  /** Top-left of the box; rotation (degrees) is about this corner. */
   x: number;
   y: number;
-  /** Wrap width in source px. */
+  /** Wrap width in source px (with `autoWidth`, the measured width of the longest line). */
   width: number;
+  /** Grows to fit the text instead of wrapping (a click-created box, until resized). */
+  autoWidth: boolean;
   rotation: number;
   text: string;
   fontFamily: string;

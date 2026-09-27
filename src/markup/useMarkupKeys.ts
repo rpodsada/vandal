@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { isTyping } from "../shared/dom";
 import { translateAnnotation } from "./geometry";
 import { docStore } from "./model/store";
+import { editText } from "./textEditing";
 import type { Annotation, NewAnnotation } from "./model/types";
 import { TOOL_KEYS, useToolStore } from "./toolStore";
 
@@ -33,6 +34,15 @@ function handlePlain(e: KeyboardEvent): boolean {
     return true;
   }
   switch (e.code) {
+    case "Enter":
+    case "NumpadEnter": {
+      // Enter on one selected text object starts typing into it.
+      const [id] = store.selection;
+      const a = store.doc.annotations.find((x) => x.id === id);
+      if (store.selection.length !== 1 || a?.kind !== "text") return false;
+      editText(id);
+      return true;
+    }
     case "Delete":
     case "Backspace":
       if (!store.selection.length) return false;

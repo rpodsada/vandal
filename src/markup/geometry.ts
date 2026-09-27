@@ -58,11 +58,37 @@ export function annotationBounds(a: Annotation): Rect {
         a.points.filter((_, i) => i % 2 === 1),
       );
     case "text": {
+      // Approximate: counts hard line breaks, not word wrapping.
       const lines = Math.max(1, a.text.split("\n").length);
-      const box = { x: a.x, y: a.y, width: a.width, height: lines * a.fontSize * 1.3 };
-      return rotatedBounds(box, a.rotation);
+      const height = lines * textLineHeight(a.fontSize);
+      const t = (a.rotation * Math.PI) / 180;
+      const cos = Math.cos(t);
+      const sin = Math.sin(t);
+      const corners = [
+        [0, 0],
+        [a.width, 0],
+        [a.width, height],
+        [0, height],
+      ].map(([u, v]) => ({ x: a.x + u * cos - v * sin, y: a.y + u * sin + v * cos }));
+      return pointsBounds(
+        corners.map((c) => c.x),
+        corners.map((c) => c.y),
+      );
     }
   }
+}
+
+/** Line height as a multiple of the font size, shared by the canvas and the text editor. */
+export const TEXT_LINE_HEIGHT = 1.2;
+
+/** Font size in source px for a size in pt (at 96 dpi, like Windows at 100%). */
+export function textPx(fontSize: number): number {
+  return (fontSize * 96) / 72;
+}
+
+/** Height of one line of text in source px. */
+export function textLineHeight(fontSize: number): number {
+  return textPx(fontSize) * TEXT_LINE_HEIGHT;
 }
 
 /** `a` moved by (dx, dy). */

@@ -51,6 +51,12 @@ const TOOL_BUTTONS: { id: ToolId; label: string; key: string; icon: ReactNode }[
     key: "E",
     icon: <ellipse cx="12" cy="12" rx="8.5" ry="6.5" />,
   },
+  {
+    id: "text",
+    label: "Text",
+    key: "T",
+    icon: <path d="M5 7V5h14v2M12 5v14M9 19h6" />,
+  },
 ];
 
 /** Tools, then undo/redo. Shared by quick edit and the editor (PLAN §4.6). */
