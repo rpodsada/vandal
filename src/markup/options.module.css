@@ -288,3 +288,54 @@
   font-size: 11px;
   color: var(--text-2);
 }
+
+.options svg .tint {
+  fill: currentColor;
+  stroke: none;
+  opacity: 0.35;
+}
+
+/* ---- border / fill chip (shapes with both) ---- */
+
+.chip {
+  position: relative;
+  width: 32px;
+  height: 30px;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.chipBorder,
+.chipFill {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+/* The border color as a ring, over the fill dot (like Paint's two colors). */
+.chipBorder {
+  left: 0;
+  top: 0;
+  z-index: 1;
+  border: 5px solid;
+  background: transparent;
+  box-shadow: 0 0 0 1px var(--control-border);
+}
+
+.chipFill {
+  right: 0;
+  bottom: 0;
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--control-border);
+}
+
+.chipBorder[aria-pressed="true"],
+.chipFill[aria-pressed="true"] {
+  z-index: 2;
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 4px var(--accent);
+}

@@ -42,6 +42,8 @@ export function useHeldKeys(): HeldKeys {
         }
         return;
       }
+      // Shift keeps them: Ctrl+Shift+digit picks a fill color.
+      if (e.key === "Shift") return;
       // Any other key: this was a shortcut, not a look at the badges.
       window.clearTimeout(timer);
       set({ ctrl: false, alt: false });

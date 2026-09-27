@@ -11,8 +11,16 @@ import type {
   ArrowEnds,
   ArrowHead,
   Doc,
+  ShapeFill,
 } from "./model/types";
-import { rememberColor, rememberWidth, TOOL_FOR_KIND, toolColor, toolWidth } from "./styles";
+import {
+  rememberColor,
+  rememberWidth,
+  TOOL_FOR_KIND,
+  toolColor,
+  toolFill,
+  toolWidth,
+} from "./styles";
 import { useToolStore, type ToolId } from "./toolStore";
 
 export interface StyleTarget {
@@ -46,7 +54,9 @@ export function styleTarget(
 export interface TargetValues {
   color: string;
   width: number | null;
-  filled: boolean | null;
+  fill: ShapeFill | null;
+  /** The fill color with `fill: "both"`. */
+  fillColor: string | null;
   head: ArrowHead | null;
   ends: ArrowEnds | null;
 }
@@ -60,7 +70,8 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
     return {
       color: toolColor(t),
       width: t === "text" ? null : toolWidth(t),
-      filled: t === "rect" || t === "ellipse" ? !!tools.filled[t] : null,
+      fill: t === "rect" || t === "ellipse" ? toolFill(t).fill : null,
+      fillColor: t === "rect" || t === "ellipse" ? (toolFill(t).color ?? toolColor(t)) : null,
       head: t === "arrow" ? tools.arrowHead : null,
       ends: t === "arrow" ? tools.arrowEnds : null,
     };
@@ -68,7 +79,8 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
   return {
     color: a.kind === "text" ? a.color : a.style.color,
     width: a.kind === "text" ? null : a.style.width,
-    filled: a.kind === "rect" || a.kind === "ellipse" ? a.filled : null,
+    fill: a.kind === "rect" || a.kind === "ellipse" ? a.fill : null,
+    fillColor: a.kind === "rect" || a.kind === "ellipse" ? a.fillColor : null,
     head: a.kind === "arrow" ? a.head : null,
     ends: a.kind === "arrow" ? a.ends : null,
   };
@@ -88,7 +100,8 @@ export function targetSections(target: StyleTarget) {
 export interface StylePatch {
   color?: string;
   width?: number;
-  filled?: boolean;
+  fill?: ShapeFill;
+  fillColor?: string;
   head?: ArrowHead;
   ends?: ArrowEnds;
 }
@@ -102,8 +115,20 @@ function patchAnnotation(a: Annotation, p: StylePatch): Annotation {
       style: { ...a.style, color: p.color ?? a.style.color, width: p.width ?? a.style.width },
     } as Annotation;
   }
-  if (p.filled !== undefined && (next.kind === "rect" || next.kind === "ellipse"))
-    next = { ...next, filled: p.filled };
+  if (next.kind === "rect" || next.kind === "ellipse") {
+    if (p.fill !== undefined && p.fill !== next.fill) {
+      // Turning on border + fill keeps a solid shape's look, else uses the
+      // tool's fill color (or the border color until one is picked).
+      const fillColor =
+        p.fill !== "both"
+          ? next.fillColor
+          : next.fill === "solid"
+            ? next.style.color
+            : (toolFill(TOOL_FOR_KIND[next.kind]).color ?? next.style.color);
+      next = { ...next, fill: p.fill, fillColor };
+    }
+    if (p.fillColor !== undefined) next = { ...next, fillColor: p.fillColor };
+  }
   if (p.head !== undefined && next.kind === "arrow") next = { ...next, head: p.head };
   if (p.ends !== undefined && next.kind === "arrow") next = { ...next, ends: p.ends };
   return next;
@@ -135,8 +160,14 @@ export function applyStyle(patch: StylePatch): void {
   for (const tool of tools) {
     if (patch.color !== undefined) rememberColor(tool, patch.color);
     if (patch.width !== undefined && tool !== "text") rememberWidth(tool, patch.width);
-    if (patch.filled !== undefined && (tool === "rect" || tool === "ellipse"))
-      useToolStore.setState((s) => ({ filled: { ...s.filled, [tool]: patch.filled } }));
+    if (tool === "rect" || tool === "ellipse") {
+      if (patch.fill !== undefined)
+        useToolStore.setState((s) => ({ fills: { ...s.fills, [tool]: patch.fill } }));
+      if (patch.fillColor !== undefined)
+        useToolStore.setState((s) => ({
+          fillColors: { ...s.fillColors, [tool]: patch.fillColor },
+        }));
+    }
     if (patch.head !== undefined && tool === "arrow")
       useToolStore.setState({ arrowHead: patch.head });
     if (patch.ends !== undefined && tool === "arrow")

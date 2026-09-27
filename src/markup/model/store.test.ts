@@ -6,7 +6,8 @@ const rect = (x = 0): NewAnnotation => ({
   kind: "rect",
   rect: { x, y: 0, width: 10, height: 10 },
   rotation: 0,
-  filled: false,
+  fill: "none",
+  fillColor: "#000",
   style: { color: "#e53935", width: 4, opacity: 1 },
 });
 const fresh = () => createDocStore(emptyDoc({ width: 100, height: 80 }));

@@ -38,7 +38,7 @@ import type {
   Rect,
   TextAnnotation,
 } from "./model/types";
-import { toolColor, toolStroke, useStyleConfig } from "./styles";
+import { toolColor, toolFill, toolStroke, useStyleConfig } from "./styles";
 import { TextEditor } from "./TextEditor";
 import { createText, editText, finishTextEdit } from "./textEditing";
 import { useToolStore } from "./toolStore";
@@ -307,7 +307,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
     } else {
       const style = toolStroke(tool);
       const { arrowHead, arrowEnds } = useToolStore.getState();
-      const filled = !!useToolStore.getState().filled[tool];
+      const shapeFill = toolFill(tool);
       store.select([]);
       store.beginGesture();
       const id =
@@ -319,7 +319,8 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
                 kind: tool,
                 rect: { x: p.x, y: p.y, width: 0, height: 0 },
                 rotation: 0,
-                filled,
+                fill: shapeFill.fill,
+                fillColor: shapeFill.color ?? style.color,
                 style,
               });
       drag = { mode: "draw", start: p, id };
@@ -742,9 +743,9 @@ function AnnotationShape({
     y: rect.y + rect.height / 2,
     rotation: a.rotation,
     opacity: style.opacity,
-    stroke: a.filled ? undefined : style.color,
+    stroke: a.fill === "solid" ? undefined : style.color,
     strokeWidth: style.width,
-    fill: a.filled ? style.color : undefined,
+    fill: a.fill === "none" ? undefined : a.fill === "solid" ? style.color : a.fillColor,
     hitStrokeWidth: style.width + hitSlop,
     perfectDrawEnabled: false,
   };

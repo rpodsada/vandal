@@ -8,7 +8,7 @@ import { isTyping } from "../shared/dom";
 import { translateAnnotation } from "./geometry";
 import { docStore } from "./model/store";
 import { digitSlot, pickByDigit, slotIndex } from "./pickers";
-import { applyStyle, styleTarget, targetSections } from "./restyle";
+import { applyStyle, styleTarget, targetSections, targetValues } from "./restyle";
 import { paletteFor, widthPickerFor } from "./styles";
 import { editText } from "./textEditing";
 import type { Annotation, NewAnnotation } from "./model/types";
@@ -40,13 +40,14 @@ function pickWidth(slot: number): boolean {
   return true;
 }
 
-/** Ctrl+digit: color preset slot. */
-function pickColor(slot: number): boolean {
+/** Ctrl+digit: color preset slot; with Shift, the fill of a shape with border and fill. */
+function pickColor(slot: number, toFill: boolean): boolean {
   const target = styleTarget();
   if (!target) return false;
+  if (toFill && targetValues(target, docStore.getState().doc).fill !== "both") return false;
   const palette = paletteFor(target.tool);
   const i = slotIndex(palette.length, slot);
-  if (i !== null) applyStyle({ color: palette[i] });
+  if (i !== null) applyStyle(toFill ? { fillColor: palette[i] } : { color: palette[i] });
   return true;
 }
 
@@ -101,7 +102,7 @@ function handlePlain(e: KeyboardEvent): boolean {
 function handleCtrl(e: KeyboardEvent): boolean {
   const store = docStore.getState();
   const slot = digitSlot(e.code);
-  if (slot !== null) return !e.shiftKey && pickColor(slot);
+  if (slot !== null) return pickColor(slot, e.shiftKey);
   switch (e.code) {
     case "KeyZ":
       if (e.shiftKey) store.redo();

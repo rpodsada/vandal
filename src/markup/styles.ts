@@ -4,7 +4,7 @@
 
 import { create } from "zustand";
 import type { NumberPicker, StyleSettings } from "../shared/ipc";
-import type { AnnotationKind, StrokeStyle } from "./model/types";
+import type { AnnotationKind, ShapeFill, StrokeStyle } from "./model/types";
 import { nearestValue } from "./pickers";
 import { useToolStore, type ToolId } from "./toolStore";
 
@@ -90,6 +90,12 @@ export function toolColor(tool: ToolId): string {
 export function toolWidth(tool: ToolId): number {
   const picked = useToolStore.getState().widths[tool];
   return picked ?? nearestValue(widthPickerFor(tool), PREFERRED_WIDTH[tool] ?? DEFAULT_WIDTH);
+}
+
+/** A shape tool's fill mode, and its fill color for "both" (null: not picked yet). */
+export function toolFill(tool: ToolId): { fill: ShapeFill; color: string | null } {
+  const t = useToolStore.getState();
+  return { fill: t.fills[tool] ?? "none", color: t.fillColors[tool] ?? null };
 }
 
 export function toolStroke(tool: ToolId): StrokeStyle {

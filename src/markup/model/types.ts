@@ -68,13 +68,17 @@ export interface ArrowAnnotation extends Base {
   style: StrokeStyle;
 }
 
+export type ShapeFill = "none" | "solid" | "both";
+
 export interface ShapeAnnotation extends Base {
   kind: "rect" | "ellipse";
   /** Unrotated bounds; rotation (degrees) is about the centre. */
   rect: Rect;
   rotation: number;
-  /** Filled with the stroke color instead of outlined. */
-  filled: boolean;
+  /** Border only, filled with the border color (no border), or both. */
+  fill: ShapeFill;
+  /** The fill with `fill: "both"`. */
+  fillColor: string;
   style: StrokeStyle;
 }
 
