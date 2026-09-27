@@ -52,7 +52,8 @@ export interface LineAnnotation extends Base {
   style: StrokeStyle;
 }
 
-export type ArrowHead = "filled" | "open" | "none";
+/** No-head arrows are lines: the line tool draws them. */
+export type ArrowHead = "filled" | "open";
 
 export interface ArrowAnnotation extends Base {
   kind: "arrow";

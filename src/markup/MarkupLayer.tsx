@@ -38,6 +38,7 @@ import type {
   Rect,
   TextAnnotation,
 } from "./model/types";
+import { toolColor, toolStroke } from "./styles";
 import { TextEditor } from "./TextEditor";
 import { createText, editText, finishTextEdit } from "./textEditing";
 import { useToolStore } from "./toolStore";
@@ -202,8 +203,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
 
     if (tool === "pen" || tool === "highlighter") {
       // Freehand tools always draw, even over other annotations.
-      const tools = useToolStore.getState();
-      const style = tool === "highlighter" ? tools.highlighterStyle : tools.style;
+      const style = toolStroke(tool);
       store.select([]);
       store.beginGesture();
       const id = store.add({ kind: tool, points: [p.x, p.y], style });
@@ -246,7 +246,9 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
       store.select([]);
       drag = { mode: "text", start: p, client: { x: ev.clientX, y: ev.clientY } };
     } else {
-      const { style, filled, arrowHead } = useToolStore.getState();
+      const style = toolStroke(tool);
+      const { arrowHead } = useToolStore.getState();
+      const filled = !!useToolStore.getState().filled[tool];
       store.select([]);
       store.beginGesture();
       const id =
@@ -366,7 +368,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
           setMarquee(null);
           const q = toSource(u.clientX, u.clientY);
           const dragged = Math.abs(u.clientX - drag.client.x) >= 2 * DRAG_THRESHOLD;
-          const { font, style } = useToolStore.getState();
+          const { font } = useToolStore.getState();
           createText({
             kind: "text",
             x: dragged ? Math.min(drag.start.x, q.x) : drag.start.x,
@@ -378,7 +380,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
             text: "",
             fontFamily: font.family,
             fontSize: font.size,
-            color: style.color,
+            color: toolColor("text"),
             align: "left",
             background: false,
           });

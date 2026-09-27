@@ -1,11 +1,15 @@
 // Keyboard shortcuts shared by quick edit and the editor: tools, undo/redo,
-// delete, nudge, duplicate, select all, stacking order and the Esc ladder.
+// delete, nudge, duplicate, select all, stacking order, the style digits and
+// the Esc ladder.
 // Host-specific keys (copy, save, zoom, close) live in the host.
 
 import { useEffect } from "react";
 import { isTyping } from "../shared/dom";
 import { translateAnnotation } from "./geometry";
 import { docStore } from "./model/store";
+import { digitSlot, pickByDigit, slotIndex } from "./pickers";
+import { applyStyle, styleTarget, targetSections } from "./restyle";
+import { paletteFor, widthPickerFor } from "./styles";
 import { editText } from "./textEditing";
 import type { Annotation, NewAnnotation } from "./model/types";
 import { TOOL_KEYS, useToolStore } from "./toolStore";
@@ -16,7 +20,9 @@ const DUPLICATE_OFFSET = 10;
 export function useMarkupKeys(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e.target) || e.altKey) return;
+      // Ctrl+digit still recolors text while typing into it (PLAN Phase 2).
+      if (isTyping(e.target) && !(e.ctrlKey && digitSlot(e.code))) return;
+      if (e.altKey) return;
       if (e.ctrlKey ? handleCtrl(e) : handlePlain(e)) e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
@@ -25,9 +31,30 @@ export function useMarkupKeys(): void {
 }
 
 /** Returns true when the key was handled. */
+/** Digit: line width of the tool or selection (by the width picker's slots). */
+function pickWidth(slot: number): boolean {
+  const target = styleTarget();
+  if (!target || !targetSections(target).width) return false;
+  const width = pickByDigit(widthPickerFor(target.tool), slot);
+  if (width !== null) applyStyle({ width });
+  return true;
+}
+
+/** Ctrl+digit: color preset slot. */
+function pickColor(slot: number): boolean {
+  const target = styleTarget();
+  if (!target) return false;
+  const palette = paletteFor(target.tool);
+  const i = slotIndex(palette.length, slot);
+  if (i !== null) applyStyle({ color: palette[i] });
+  return true;
+}
+
 function handlePlain(e: KeyboardEvent): boolean {
   const store = docStore.getState();
   const tools = useToolStore.getState();
+  const slot = digitSlot(e.code);
+  if (slot !== null) return !e.shiftKey && pickWidth(slot);
   const tool = TOOL_KEYS[e.code];
   if (tool && !e.shiftKey) {
     tools.setTool(tool);
@@ -73,6 +100,8 @@ function handlePlain(e: KeyboardEvent): boolean {
 
 function handleCtrl(e: KeyboardEvent): boolean {
   const store = docStore.getState();
+  const slot = digitSlot(e.code);
+  if (slot !== null) return !e.shiftKey && pickColor(slot);
   switch (e.code) {
     case "KeyZ":
       if (e.shiftKey) store.redo();

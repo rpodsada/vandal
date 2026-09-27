@@ -144,7 +144,7 @@ export interface ArrowGeometry {
 export function arrowGeometry(
   from: Point,
   to: Point,
-  head: ArrowHead,
+  head: ArrowHead | "none",
   width: number,
 ): ArrowGeometry {
   const dx = to.x - from.x;

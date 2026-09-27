@@ -144,6 +144,13 @@ export type EditorSettings = {
 	 *  the last change).
 	 */
 	onClose?: EditorOnClose,
+	/**
+	 *  Tools on the global palette share one current color; off = each tool
+	 *  remembers its own.
+	 */
+	shareColor?: boolean,
+	/**  Slot-number badges and shortcut tooltips on the style pickers. */
+	showShortcutHints?: boolean,
 };
 
 /**  What to do with the finished image. */
@@ -181,6 +188,12 @@ export type MonitorInfo = {
 	scaleFactor: number | null,
 	isPrimary: boolean,
 };
+
+/**
+ *  A number control: a free range, or a list of presets shown as a stepped
+ *  slider, a dropdown or buttons. Lists are kept ascending.
+ */
+export type NumberPicker = { control: "slider"; min: number | null; max: number | null } | { control: "stepped"; values: (number | null)[] } | { control: "dropdown"; values: (number | null)[] } | { control: "buttons"; values: (number | null)[] };
 
 /**  Rust → overlays: a selection started on `monitor_index`; clear yours. */
 export type OverlayClearSelection = {
@@ -251,6 +264,8 @@ export type Settings = {
 	save?: SaveSettings,
 	overlay?: OverlaySettings,
 	editor?: EditorSettings,
+	/**  Style pickers for the markup tools. */
+	styles?: Styles,
 	startup?: Startup,
 	history?: History,
 	tray?: TraySettings,
@@ -261,6 +276,21 @@ export type SettingsChanged = Settings;
 
 export type Startup = {
 	launchOnLogin?: boolean,
+};
+
+export type Styles = {
+	/**  Color presets in the user's order, `#rrggbb`. */
+	palette?: string[],
+	/**  Line width in source px. */
+	width?: NumberPicker,
+	/**  Per-tool overrides, keyed by tool id (`"highlighter"`, ...). */
+	tools?: { [key in string]: ToolStyles },
+};
+
+/**  A tool's own palette and/or width picker, used instead of the global ones. */
+export type ToolStyles = {
+	palette?: string[] | null,
+	width?: NumberPicker | null,
 };
 
 /**  How frame pixels are encoded for the overlay (benchmarked in docs/perf.md). */

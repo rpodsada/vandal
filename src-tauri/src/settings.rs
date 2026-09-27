@@ -17,6 +17,7 @@ use tauri_plugin_store::StoreExt;
 use tauri_specta::Event;
 
 use crate::state::AppState;
+use crate::styles::Styles;
 
 pub const CURRENT_VERSION: u32 = 2;
 const STORE_FILE: &str = "settings.json";
@@ -31,6 +32,8 @@ pub struct Settings {
     pub save: SaveSettings,
     pub overlay: OverlaySettings,
     pub editor: EditorSettings,
+    /// Style pickers for the markup tools.
+    pub styles: Styles,
     pub startup: Startup,
     pub history: History,
     pub tray: TraySettings,
@@ -45,6 +48,7 @@ impl Default for Settings {
             save: SaveSettings::default(),
             overlay: OverlaySettings::default(),
             editor: EditorSettings::default(),
+            styles: Styles::default(),
             startup: Startup::default(),
             history: History::default(),
             tray: TraySettings::default(),
@@ -160,6 +164,11 @@ pub struct EditorSettings {
     /// What closing the editor does with the image (unless already done since
     /// the last change).
     pub on_close: EditorOnClose,
+    /// Tools on the global palette share one current color; off = each tool
+    /// remembers its own.
+    pub share_color: bool,
+    /// Slot-number badges and shortcut tooltips on the style pickers.
+    pub show_shortcut_hints: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -186,6 +195,8 @@ impl Default for EditorSettings {
             theme: "system".into(),
             notification_edit_button: true,
             on_close: EditorOnClose::default(),
+            share_color: true,
+            show_shortcut_hints: true,
         }
     }
 }
@@ -246,6 +257,7 @@ pub fn validate(mut s: Settings) -> Result<Settings, String> {
     }
     s.overlay.dim_opacity = s.overlay.dim_opacity.clamp(0.0, 0.9);
     s.history.keep_frames_in_memory = s.history.keep_frames_in_memory.clamp(1, 20);
+    s.styles = s.styles.normalized();
     Ok(s)
 }
 
@@ -309,7 +321,10 @@ pub fn migrate(stored: Option<Value>) -> (Settings, bool) {
             if version < 2 {
                 settings.after_capture.open_editor = false;
             }
-            let changed = version != u64::from(CURRENT_VERSION);
+            // Hand edits can leave picker specs the pages can't draw.
+            let styles = settings.styles.clone().normalized();
+            let changed = version != u64::from(CURRENT_VERSION) || styles != settings.styles;
+            settings.styles = styles;
             settings.version = CURRENT_VERSION;
             (settings, changed)
         }
@@ -540,5 +555,19 @@ mod tests {
         assert_eq!(v["editor"]["onClose"]["save"], false);
         assert_eq!(v["save"]["format"], "png");
         assert_eq!(v["history"]["keepFramesInMemory"], 3);
+        assert_eq!(v["editor"]["shareColor"], true);
+        assert_eq!(v["editor"]["showShortcutHints"], true);
+        assert_eq!(v["styles"]["width"]["control"], "buttons");
+    }
+
+    #[test]
+    fn stored_styles_are_repaired_on_load() {
+        let (s, changed) = migrate(Some(json!({
+            "version": 2,
+            "styles": { "palette": ["#ABC", "bad"], "width": { "control": "slider", "min": 9, "max": 1 } },
+        })));
+        assert!(changed);
+        assert_eq!(s.styles.palette, vec!["#aabbcc".to_string()]);
+        assert_eq!(s.styles.width, Styles::default().width);
     }
 }

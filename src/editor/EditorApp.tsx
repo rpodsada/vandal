@@ -10,6 +10,8 @@ import { Stage } from "./Stage";
 import { StatusBar, type Notice } from "./StatusBar";
 import { useViewStore } from "./viewStore";
 import { isTyping } from "../shared/dom";
+import { useStyleConfig } from "../markup/styles";
+import { ToolOptions } from "../markup/ToolOptions";
 import styles from "./EditorApp.module.css";
 
 type Status =
@@ -61,12 +63,18 @@ export function EditorApp() {
     return () => cancelAnimationFrame(id);
   }, [status.kind]);
 
-  // Settings decide what closing does.
+  // Settings decide what closing does, and give the style pickers.
   useEffect(() => {
-    void commands.getSettings().then((s) => (settingsRef.current = s as Settings));
-    const unlisten = events.settingsChanged.listen(
-      ({ payload }) => (settingsRef.current = payload as Settings),
-    );
+    const apply = (s: Settings) => {
+      settingsRef.current = s;
+      useStyleConfig.setState({
+        styles: s.styles,
+        shareColor: s.editor.shareColor,
+        showShortcutHints: s.editor.showShortcutHints,
+      });
+    };
+    void commands.getSettings().then((s) => apply(s as Settings));
+    const unlisten = events.settingsChanged.listen(({ payload }) => apply(payload as Settings));
     return () => void unlisten.then((f) => f());
   }, []);
 
@@ -168,6 +176,9 @@ export function EditorApp() {
         onSave={() => void run("save")}
         onSaveAs={() => void run("saveAs")}
       />
+      <div className={styles.optionsBar}>
+        <ToolOptions />
+      </div>
       <Stage canvasRef={canvasRef} message={status.kind === "error" ? status.message : undefined} />
       <StatusBar notice={notice} onReveal={(path) => void commands.revealFile(path)} />
     </div>

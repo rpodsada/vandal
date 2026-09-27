@@ -17,6 +17,7 @@ mod session;
 mod settings;
 mod settings_window;
 mod state;
+mod styles;
 mod tray;
 
 use std::sync::{Mutex, RwLock};

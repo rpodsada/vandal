@@ -297,3 +297,17 @@
   color: var(--text-2);
   font-size: 12px;
 }
+
+/* ---- tool options (mockup: the Editor board's second row) ---- */
+
+.optionsBar {
+  /* Above the image, so option menus open over it. */
+  position: relative;
+  z-index: 5;
+  flex-shrink: 0;
+  padding: 0 8px;
+  background: var(--surface);
+  box-shadow:
+    inset 0 1px 0 var(--border),
+    inset 0 -1px 0 var(--border);
+}

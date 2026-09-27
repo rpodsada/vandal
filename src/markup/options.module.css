@@ -1,0 +1,290 @@
+/* Tool options (mockup: ToolOptions board). Measurements follow the mockup. */
+
+.options {
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 4px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.options svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.options svg .solid {
+  fill: currentColor;
+}
+
+.hint {
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.sep {
+  width: 1px;
+  height: 24px;
+  flex-shrink: 0;
+  background: var(--border);
+}
+
+.group {
+  display: flex;
+  gap: 2px;
+}
+
+/* ---- slot-number badges ---- */
+
+.badge,
+.stopKey {
+  position: absolute;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 2px;
+  box-sizing: border-box;
+  border-radius: 7px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 10px;
+  line-height: 14px;
+  text-align: center;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.badge {
+  top: -9px;
+  right: -9px;
+}
+
+.stopKey {
+  top: -14px;
+}
+
+/* ---- colors ---- */
+
+.swatches {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 2px;
+}
+
+.swatch {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--control-border);
+}
+
+.swatch[aria-pressed="true"] {
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 4px var(--accent);
+}
+
+/* ---- toggle buttons (widths, fill) ---- */
+
+.toggle {
+  position: relative;
+  min-width: 34px;
+  height: 30px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
+
+.toggle:hover {
+  background: var(--hover);
+}
+
+.toggle[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.line {
+  display: block;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: currentColor;
+}
+
+/* ---- sliders ---- */
+
+.sliderRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.track {
+  position: relative;
+  height: 22px;
+  flex-shrink: 0;
+  touch-action: none;
+}
+
+.trackBg,
+.trackFill {
+  position: absolute;
+  left: 0;
+  top: 9px;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.trackBg {
+  right: 0;
+  background: color-mix(in srgb, var(--text) 30%, transparent);
+}
+
+.trackFill {
+  background: var(--accent);
+}
+
+.stop {
+  position: absolute;
+  top: 9px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-2);
+}
+
+.stop[data-passed="true"] {
+  background: var(--thumb-ring);
+}
+
+.thumb {
+  position: absolute;
+  top: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--thumb-ring);
+  box-shadow:
+    0 0 0 1px var(--control-border),
+    0 1px 2px rgb(0 0 0 / 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumbDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.value {
+  min-width: 44px;
+  white-space: nowrap;
+}
+
+/* ---- dropdowns ---- */
+
+.dropdownRoot {
+  position: relative;
+}
+
+.dropdown {
+  height: 30px;
+  min-width: 96px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 10px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--control-bg);
+  box-shadow: inset 0 0 0 1px var(--control-border);
+  color: var(--text);
+  font: inherit;
+  white-space: nowrap;
+}
+
+.dropdown:hover {
+  background: var(--control-bg-hover);
+}
+
+.options svg.chevron {
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+}
+
+.options svg.headIcon {
+  width: 22px;
+  height: 16px;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  min-width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow:
+    0 8px 24px rgb(0 0 0 / 0.16),
+    0 0 0 1px var(--border);
+}
+
+.menuRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  margin: 0 4px;
+  padding: 0 10px 0 14px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.menuRow:hover {
+  background: var(--hover);
+}
+
+.menuRow[aria-checked="true"] {
+  background: var(--accent-soft);
+}
+
+.menuLabel {
+  flex-grow: 1;
+}
+
+.menuKey {
+  font-size: 11px;
+  color: var(--text-2);
+}
