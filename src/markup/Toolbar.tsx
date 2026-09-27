@@ -5,6 +5,7 @@ import styles from "./markup.module.css";
 
 const TOOL_BUTTONS: { id: ToolId; label: string; key: string; icon: ReactNode }[] = [
   { id: "select", label: "Select", key: "V", icon: <path d="M6 3.5l12 7.2-5.4 1.4-2.6 5.4z" /> },
+  { id: "line", label: "Line", key: "L", icon: <path d="M5 19L19 5" /> },
   {
     id: "arrow",
     label: "Arrow",

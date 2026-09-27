@@ -21,7 +21,14 @@ import {
   translateAnnotation,
 } from "./geometry";
 import { docStore, useDoc } from "./model/store";
-import type { Annotation, AnnotationId, ArrowAnnotation, Point, Rect } from "./model/types";
+import type {
+  Annotation,
+  AnnotationId,
+  ArrowAnnotation,
+  LineAnnotation,
+  Point,
+  Rect,
+} from "./model/types";
 import { useToolStore } from "./toolStore";
 import styles from "./markup.module.css";
 
@@ -73,8 +80,8 @@ type Drag =
   | { mode: "marquee"; start: Point; base: AnnotationId[] };
 
 /** Line-like annotations get endpoint handles instead of the transformer. */
-function hasEndpoints(a: Annotation): a is ArrowAnnotation {
-  return a.kind === "arrow";
+function hasEndpoints(a: Annotation): a is ArrowAnnotation | LineAnnotation {
+  return a.kind === "arrow" || a.kind === "line";
 }
 
 /**
@@ -179,13 +186,15 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
       const id =
         tool === "arrow"
           ? store.add({ kind: "arrow", from: p, to: p, head: arrowHead, style })
-          : store.add({
-              kind: tool,
-              rect: { x: p.x, y: p.y, width: 0, height: 0 },
-              rotation: 0,
-              filled,
-              style,
-            });
+          : tool === "line"
+            ? store.add({ kind: "line", from: p, to: p, style })
+            : store.add({
+                kind: tool,
+                rect: { x: p.x, y: p.y, width: 0, height: 0 },
+                rotation: 0,
+                filled,
+                style,
+              });
       drag = { mode: "draw", start: p, id };
     }
 
@@ -210,7 +219,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
         case "draw": {
           const start = drag.start;
           s.update(drag.id, (a) => {
-            if (a.kind === "arrow") return { ...a, to: m.shiftKey ? snapAngle(start, q) : q };
+            if (hasEndpoints(a)) return { ...a, to: m.shiftKey ? snapAngle(start, q) : q };
             if (a.kind === "rect" || a.kind === "ellipse")
               return { ...a, rect: rectFromDrag(start, q, m.shiftKey) };
             return a;
@@ -410,14 +419,14 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
 function drawnBigEnough(a: Annotation, scale: number): boolean {
   if (a.kind === "rect" || a.kind === "ellipse")
     return a.rect.width * scale >= MIN_DRAWN && a.rect.height * scale >= MIN_DRAWN;
-  if (a.kind === "arrow")
+  if (hasEndpoints(a))
     return Math.hypot(a.to.x - a.from.x, a.to.y - a.from.y) * scale >= 2 * MIN_DRAWN;
   return true;
 }
 
 /** One annotation as a Konva node. Shapes are positioned about their centre so rotation works. */
 function AnnotationShape({ a, hitSlop }: { a: Annotation; hitSlop: number }) {
-  if (a.kind === "arrow") return <ArrowShape a={a} hitSlop={hitSlop} />;
+  if (hasEndpoints(a)) return <SegmentShape a={a} hitSlop={hitSlop} />;
   if (a.kind !== "rect" && a.kind !== "ellipse") return null; // other kinds: later steps
   const { rect, style } = a;
   const common = {
@@ -446,34 +455,35 @@ function AnnotationShape({ a, hitSlop }: { a: Annotation; hitSlop: number }) {
   );
 }
 
-/** Shaft plus head, drawn from {@link arrowGeometry} so export matches exactly. */
-function ArrowShape({ a, hitSlop }: { a: ArrowAnnotation; hitSlop: number }) {
+/** A line, or an arrow's shaft plus head, drawn from {@link arrowGeometry} so export matches exactly. */
+function SegmentShape({ a, hitSlop }: { a: ArrowAnnotation | LineAnnotation; hitSlop: number }) {
   const { color, width, opacity } = a.style;
+  const head = a.kind === "arrow" ? a.head : "none";
   return (
     <Shape
       id={a.id}
       name="annotation"
       stroke={color}
       strokeWidth={width}
-      fill={a.head === "filled" ? color : undefined}
+      fill={head === "filled" ? color : undefined}
       lineCap="round"
       lineJoin="round"
       opacity={opacity}
       hitStrokeWidth={width + hitSlop}
       perfectDrawEnabled={false}
       sceneFunc={(ctx, shape) => {
-        const g = arrowGeometry(a.from, a.to, a.head, width);
+        const g = arrowGeometry(a.from, a.to, head, width);
         ctx.beginPath();
         ctx.moveTo(g.shaft[0], g.shaft[1]);
         ctx.lineTo(g.shaft[2], g.shaft[3]);
-        if (g.head && a.head === "open") {
+        if (g.head && head === "open") {
           const [l, t, r] = g.head;
           ctx.moveTo(l.x, l.y);
           ctx.lineTo(t.x, t.y);
           ctx.lineTo(r.x, r.y);
         }
         ctx.strokeShape(shape);
-        if (g.head && a.head === "filled") {
+        if (g.head && head === "filled") {
           const [l, t, r] = g.head;
           ctx.beginPath();
           ctx.moveTo(l.x, l.y);

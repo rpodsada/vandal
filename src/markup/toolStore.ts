@@ -5,12 +5,13 @@ import { create } from "zustand";
 import type { ArrowHead, StrokeStyle } from "./model/types";
 
 /** Tools built so far; the list grows one tool per increment. */
-export const TOOLS = ["select", "arrow", "rect", "ellipse"] as const;
+export const TOOLS = ["select", "line", "arrow", "rect", "ellipse"] as const;
 export type ToolId = (typeof TOOLS)[number];
 
 /** Single-key shortcuts (KeyboardEvent.code). */
 export const TOOL_KEYS: Record<string, ToolId> = {
   KeyV: "select",
+  KeyL: "line",
   KeyA: "arrow",
   KeyR: "rect",
   KeyE: "ellipse",
