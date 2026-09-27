@@ -107,6 +107,7 @@ pub fn deliver(app: &AppHandle, image: RgbaImage, started: Instant) {
                 saved,
                 preview,
                 offer_save: settings.save.notification_save_button,
+                offer_edit: settings.editor.notification_edit_button,
             },
         );
     });
@@ -120,7 +121,8 @@ fn save_recent(app: &AppHandle, image_id: u32) {
         notify_error(app, "Couldn't save screenshot", "It's no longer in memory.");
         return;
     };
-    let save = state.settings.read().unwrap().save.clone();
+    let settings = state.settings.read().unwrap().clone();
+    let save = settings.save;
     match save_with_template(&save, &image) {
         Ok(path) => notify_capture(
             app,
@@ -132,6 +134,7 @@ fn save_recent(app: &AppHandle, image_id: u32) {
                 preview: Some(path.clone()),
                 saved: Some(path),
                 offer_save: false,
+                offer_edit: settings.editor.notification_edit_button,
             },
         ),
         Err(e) => notify_error(app, "Couldn't save screenshot", &e),
@@ -329,6 +332,8 @@ struct CaptureToast {
     preview: Option<PathBuf>,
     /// Show a "Save" button (only meaningful when not already saved).
     offer_save: bool,
+    /// Show an "Edit" button (the toast body opens the editor regardless).
+    offer_edit: bool,
 }
 
 fn notify_capture(app: &AppHandle, t: CaptureToast) {
@@ -350,7 +355,9 @@ fn notify_capture(app: &AppHandle, t: CaptureToast) {
     if let Some(p) = &t.preview {
         toast = toast.image(p, "Capture preview");
     }
-    toast = toast.add_button("Edit", "edit");
+    if t.offer_edit {
+        toast = toast.add_button("Edit", "edit");
+    }
     if t.saved.is_some() {
         toast = toast.add_button("Open folder", "open-folder");
     } else if t.offer_save {

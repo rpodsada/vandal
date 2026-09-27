@@ -154,6 +154,9 @@ pub struct EditorSettings {
     pub tool_presets: Vec<Value>,
     pub default_tool: String,
     pub theme: String,
+    /// Show an "Edit" button on capture notifications. Clicking the
+    /// notification itself opens the editor either way.
+    pub notification_edit_button: bool,
 }
 
 impl Default for EditorSettings {
@@ -162,6 +165,7 @@ impl Default for EditorSettings {
             tool_presets: Vec::new(),
             default_tool: "arrow".into(),
             theme: "system".into(),
+            notification_edit_button: true,
         }
     }
 }
@@ -496,6 +500,7 @@ mod tests {
         ));
         assert_eq!(s.save.directory, "D:/x");
         assert!(s.save.notification_save_button);
+        assert!(s.editor.notification_edit_button);
         assert!(!s.tray.show_auto_save_toggle);
     }
 

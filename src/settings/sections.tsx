@@ -145,6 +145,15 @@ export const sections: Section[] = [
             keywords: ["toast", "popup"],
           },
           {
+            id: "notification-edit-button",
+            kind: "toggle",
+            path: "editor.notificationEditButton",
+            label: "Edit button on notifications",
+            description:
+              "Open a capture in the editor from its notification. Clicking the notification itself does this too.",
+            keywords: ["toast", "popup", "editor", "markup"],
+          },
+          {
             id: "tray-auto-save-toggle",
             kind: "toggle",
             path: "tray.showAutoSaveToggle",

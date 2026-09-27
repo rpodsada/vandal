@@ -105,6 +105,11 @@ export type EditorSettings = {
 	toolPresets?: unknown[],
 	defaultTool?: string,
 	theme?: string,
+	/**
+	 *  Show an "Edit" button on capture notifications. Clicking the
+	 *  notification itself opens the editor either way.
+	 */
+	notificationEditButton?: boolean,
 };
 
 export type History = {
