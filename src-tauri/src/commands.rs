@@ -131,6 +131,16 @@ pub fn get_settings(app: AppHandle) -> Settings {
     app.state::<AppState>().settings.read().unwrap().clone()
 }
 
+/// Add a color to the presets the given tool uses (the custom color picker's
+/// "Save as preset"). Returns a message to show if it can't.
+#[tauri::command]
+#[specta::specta]
+pub fn add_color_preset(app: AppHandle, tool: String, color: String) -> Result<(), String> {
+    let mut s = app.state::<AppState>().settings.read().unwrap().clone();
+    s.styles.add_preset(&tool, &color)?;
+    settings::update(&app, s).map(|_| ())
+}
+
 /// Open (or focus) the settings window, e.g. from the editor's status bar.
 #[tauri::command]
 #[specta::specta]

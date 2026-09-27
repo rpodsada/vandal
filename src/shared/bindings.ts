@@ -40,6 +40,11 @@ export const commands = {
 	/**  Open (or focus) the settings window, e.g. from the editor's status bar. */
 	openSettings: () => __TAURI_INVOKE<void>("open_settings"),
 	/**
+	 *  Add a color to the presets the given tool uses (the custom color picker's
+	 *  "Save as preset"). Returns a message to show if it can't.
+	 */
+	addColorPreset: (tool: string, color: string) => typedError<null, string>(__TAURI_INVOKE("add_color_preset", { tool, color })),
+	/**
 	 *  Folder picker, modal to the calling window. Paths under the user profile
 	 *  come back as `%USERPROFILE%\...`.
 	 */

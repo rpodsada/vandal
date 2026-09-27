@@ -29,6 +29,7 @@ export const CONTROL_HINTS = {
     "[Shift]+click sets the background · [Ctrl+1…0] text color · [Ctrl+Shift+1…0] background color",
   "chip.fill": "Choose which color the swatches set · [Shift]+click a swatch sets the fill",
   "chip.box": "Choose which color the swatches set · [Shift]+click a swatch sets the background",
+  customColor: "Pick any color · [Esc] puts the old one back · Save it as a preset from there",
   width: "[1…0] Pick a width by number",
   size: "[1…0] Pick a size by number",
   font: "[Alt+1…0] Pick a font by number · Type to filter the list",

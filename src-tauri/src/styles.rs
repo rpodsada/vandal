@@ -208,10 +208,49 @@ impl Styles {
     }
 }
 
+impl Styles {
+    /// Add `color` to the presets `tool` uses: its own palette if it has one,
+    /// else the global one (the custom picker's "Save as preset").
+    pub fn add_preset(&mut self, tool: &str, color: &str) -> Result<(), String> {
+        let color = normalize_color(color).ok_or_else(|| format!("Not a color: {color}"))?;
+        let palette = match self.tools.get_mut(tool).and_then(|o| o.palette.as_mut()) {
+            Some(own) => own,
+            None => &mut self.palette,
+        };
+        if palette.contains(&color) {
+            return Err("That color is already a preset.".into());
+        }
+        if palette.len() >= MAX_PRESETS {
+            return Err(format!("The palette is full ({MAX_PRESETS} colors)."));
+        }
+        palette.push(color);
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn presets_go_to_the_palette_the_tool_uses() {
+        let mut s = Styles::default();
+        s.add_preset("pen", "#ABC").unwrap();
+        assert_eq!(s.palette.last().unwrap(), "#aabbcc");
+        s.add_preset("highlighter", "#123456").unwrap();
+        let own = s.tools["highlighter"].palette.as_ref().unwrap();
+        assert_eq!(own.last().unwrap(), "#123456");
+        assert!(!s.palette.contains(&"#123456".to_string()));
+
+        assert!(s.add_preset("pen", "#aabbcc").is_err()); // already there
+        assert!(s.add_preset("pen", "blue").is_err());
+        while s.palette.len() < MAX_PRESETS {
+            let c = format!("#00000{}", s.palette.len());
+            s.add_preset("pen", &c).unwrap();
+        }
+        assert!(s.add_preset("pen", "#fefefe").is_err()); // full
+    }
 
     #[test]
     fn default_shape_matches_plan() {

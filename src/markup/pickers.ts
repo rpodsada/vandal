@@ -4,6 +4,9 @@
 
 import type { NumberPicker } from "../shared/ipc";
 
+/** Most presets a picker or palette holds (`styles.rs` MAX_PRESETS). */
+export const MAX_PRESETS = 10;
+
 /** The slot (1–10) a digit key stands for: 1–9, and 0 = 10. Number row or numpad. */
 export function digitSlot(code: string): number | null {
   const m = /^(?:Digit|Numpad)(\d)$/.exec(code);

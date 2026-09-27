@@ -218,6 +218,13 @@ export function endStyleDrag(): void {
   docStore.getState().endGesture();
 }
 
+/** Abandon the drag: the objects go back to how they were (restore tool memory separately). */
+export function cancelStyleDrag(): void {
+  if (!draggingOwnGesture) return;
+  draggingOwnGesture = false;
+  docStore.getState().cancelGesture();
+}
+
 /** Apply a style change to the current target (objects and/or tool memory). */
 export function applyStyle(patch: StylePatch): void {
   const target = styleTarget();

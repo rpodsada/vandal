@@ -1,3 +1,4 @@
+import { CustomColor } from "./CustomColor";
 import { hint } from "./HintLine";
 import type { ReactNode } from "react";
 import { Dropdown } from "./Dropdown";
@@ -353,6 +354,12 @@ export function ToolOptions() {
             {hints && held.ctrl && <span className={styles.badge}>{slotKey(i)}</span>}
           </button>
         ))}
+        <CustomColor
+          value={current}
+          palette={palette}
+          tool={target.tool}
+          onPick={(c) => pickColor(c, editingFill)}
+        />
       </div>
     </div>
   );

@@ -446,3 +446,169 @@
   font-size: 15px;
   font-family: Georgia, "Times New Roman", serif;
 }
+
+/* ---- custom color (PLAN 2A.6c) ---- */
+
+/* The dashed swatch after the presets; filled with the color in use when that
+   color isn't a preset. */
+.customSwatch {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  padding: 3px;
+  border: 1.5px dashed var(--text-2);
+  border-radius: 50%;
+  background: conic-gradient(#f44, #fd4, #4d4, #4dd, #44f, #d4d, #f44);
+  background-clip: content-box;
+}
+
+.customSwatch[aria-pressed="true"] {
+  padding: 0;
+  border-style: solid;
+  border-color: transparent;
+  box-shadow:
+    inset 0 0 0 1px var(--control-border),
+    0 0 0 2px var(--bg),
+    0 0 0 4px var(--accent);
+}
+
+.colorMenu {
+  width: 260px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 12px;
+  gap: 12px;
+  cursor: default;
+}
+
+.colorPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.svArea,
+.hueBar {
+  position: relative;
+  touch-action: none;
+  outline-offset: 2px;
+}
+
+.svArea {
+  height: 140px;
+  border-radius: 4px;
+  cursor: crosshair;
+}
+
+.hueBar {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+  cursor: pointer;
+}
+
+.areaThumb {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.4);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.colorFields {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.colorPreview {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--control-border);
+}
+
+.colorField {
+  width: 36px;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  outline: 0;
+  background: var(--control-bg);
+  box-shadow: inset 0 0 0 1px var(--control-border);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.colorField:focus {
+  box-shadow:
+    inset 0 0 0 1px var(--control-border),
+    inset 0 -2px 0 var(--accent);
+}
+
+.hexField {
+  width: 76px;
+  flex-grow: 1;
+}
+
+.colorError {
+  color: #c42b1c;
+  font-size: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .colorError {
+    color: #ff99a4;
+  }
+}
+
+.colorActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.ghostButton,
+.accentButton {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.ghostButton {
+  background: var(--button-bg);
+  box-shadow: inset 0 0 0 1px var(--control-border);
+  color: var(--text);
+}
+
+.ghostButton:hover:not(:disabled) {
+  background: var(--button-bg-hover);
+}
+
+.ghostButton:disabled {
+  color: var(--text-3);
+}
+
+.accentButton {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.accentButton:hover {
+  filter: brightness(1.08);
+}
