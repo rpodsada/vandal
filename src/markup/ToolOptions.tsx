@@ -1,3 +1,4 @@
+import { hint } from "./HintLine";
 import type { ReactNode } from "react";
 import { Dropdown } from "./Dropdown";
 import { useDoc } from "./model/store";
@@ -97,13 +98,8 @@ export function ToolOptions() {
 
   const target = styleTarget(doc, selection, tool, editing);
   if (!target) {
-    return (
-      <div className={styles.options}>
-        <span className={styles.hint}>
-          Click an object to select it · Shift+click adds · Del deletes · Ctrl+D duplicates
-        </span>
-      </div>
-    );
+    // Nothing to style: the status bar's hint line says what to do.
+    return <div className={styles.options} />;
   }
 
   const values = targetValues(target, doc);
@@ -139,31 +135,35 @@ export function ToolOptions() {
     >
       {show.text && text && (
         <>
-          <FontPickerControl
-            picker={config.styles.font}
-            fonts={fontChoices(config)}
-            value={text.fontFamily}
-            showKeys={hints && held.alt}
-            hints={hints}
-            onPick={(fontFamily) => applyStyle({ fontFamily })}
-          />
-          <NumberPickerControl
-            picker={config.styles.fontSize}
-            value={text.fontSize}
-            unit="pt"
-            label="Size"
-            showKeys={hints && held.digit}
-            hints={hints}
-            onPick={(fontSize) => applyStyle({ fontSize })}
-            onDragStart={beginStyleDrag}
-            onDragEnd={endStyleDrag}
-          />
+          <span className={styles.hintArea} {...hint("font")}>
+            <FontPickerControl
+              picker={config.styles.font}
+              fonts={fontChoices(config)}
+              value={text.fontFamily}
+              showKeys={hints && held.alt}
+              hints={hints}
+              onPick={(fontFamily) => applyStyle({ fontFamily })}
+            />
+          </span>
+          <span className={styles.hintArea} {...hint("size")}>
+            <NumberPickerControl
+              picker={config.styles.fontSize}
+              value={text.fontSize}
+              unit="pt"
+              label="Size"
+              showKeys={hints && held.digit}
+              hints={hints}
+              onPick={(fontSize) => applyStyle({ fontSize })}
+              onDragStart={beginStyleDrag}
+              onDragEnd={endStyleDrag}
+            />
+          </span>
           <span className={styles.sep} />
         </>
       )}
       <div className={styles.swatches}>
         {twoColors && (
-          <div className={styles.chip}>
+          <div className={styles.chip} {...hint(show.text ? "chip.box" : "chip.fill")}>
             <button
               type="button"
               className={styles.chipBorder}
@@ -189,6 +189,7 @@ export function ToolOptions() {
             key={c}
             type="button"
             className={styles.swatch}
+            {...hint(twoColors ? (show.text ? "swatch.box" : "swatch.fill") : "swatch")}
             style={{ background: c }}
             aria-pressed={c.toLowerCase() === current}
             aria-label={`Color ${i + 1}`}
@@ -204,25 +205,27 @@ export function ToolOptions() {
       {show.width && values.width !== null && (
         <>
           <span className={styles.sep} />
-          <NumberPickerControl
-            picker={widthPicker}
-            value={values.width}
-            unit="px"
-            label="Line width"
-            lines
-            showKeys={hints && held.digit}
-            hints={hints}
-            onPick={(width) => applyStyle({ width })}
-            onDragStart={beginStyleDrag}
-            onDragEnd={endStyleDrag}
-          />
+          <span className={styles.hintArea} {...hint("width")}>
+            <NumberPickerControl
+              picker={widthPicker}
+              value={values.width}
+              unit="px"
+              label="Line width"
+              lines
+              showKeys={hints && held.digit}
+              hints={hints}
+              onPick={(width) => applyStyle({ width })}
+              onDragStart={beginStyleDrag}
+              onDragEnd={endStyleDrag}
+            />
+          </span>
         </>
       )}
 
       {show.fill && values.fill !== null && (
         <>
           <span className={styles.sep} />
-          <div className={styles.group}>
+          <div className={styles.group} {...hint("fill")}>
             {FILLS.map((f) => (
               <button
                 key={f.id}
@@ -250,6 +253,7 @@ export function ToolOptions() {
               type="button"
               className={`${styles.toggle} ${styles.letter}`}
               aria-pressed={text.bold}
+              {...hint("bold")}
               aria-label="Bold"
               title={`Bold${hints ? " (Ctrl+B)" : ""}`}
               onClick={() => applyStyle({ bold: !text.bold })}
@@ -260,6 +264,7 @@ export function ToolOptions() {
               type="button"
               className={`${styles.toggle} ${styles.letter}`}
               aria-pressed={text.italic}
+              {...hint("italic")}
               aria-label="Italic"
               title={`Italic${hints ? " (Ctrl+I)" : ""}`}
               onClick={() => applyStyle({ italic: !text.italic })}
@@ -273,6 +278,7 @@ export function ToolOptions() {
               type="button"
               className={styles.toggle}
               aria-pressed={text.background}
+              {...hint("box")}
               aria-label="Background box"
               title="Background box"
               onClick={() => applyStyle({ background: !text.background })}
@@ -288,6 +294,7 @@ export function ToolOptions() {
                 type="button"
                 className={styles.toggle}
                 aria-pressed={text.align === al.id}
+                {...hint("align")}
                 aria-label={al.label}
                 title={al.label}
                 onClick={() => applyStyle({ align: al.id })}
@@ -304,12 +311,15 @@ export function ToolOptions() {
       {show.head && values.head !== null && (
         <>
           <span className={styles.sep} />
-          <HeadPicker head={values.head} />
+          <span className={styles.hintArea} {...hint("head")}>
+            <HeadPicker head={values.head} />
+          </span>
           <div className={styles.group}>
             <button
               type="button"
               className={styles.toggle}
               aria-pressed={values.ends !== "both"}
+              {...hint("ends.one")}
               aria-label="Head on one end"
               title={
                 values.ends === "both" ? "Head on one end" : "Head on one end (click again to flip)"
@@ -329,6 +339,7 @@ export function ToolOptions() {
               type="button"
               className={styles.toggle}
               aria-pressed={values.ends === "both"}
+              {...hint("ends.both")}
               aria-label="Heads on both ends"
               title="Heads on both ends"
               onClick={() => applyStyle({ ends: "both" })}

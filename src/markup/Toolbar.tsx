@@ -1,3 +1,4 @@
+import { hint } from "./HintLine";
 import type { ReactNode } from "react";
 import { canRedo, canUndo, docStore, useDoc } from "./model/store";
 import { useToolStore, type ToolId } from "./toolStore";
@@ -72,6 +73,7 @@ export function Toolbar() {
           key={b.id}
           type="button"
           className={styles.tool}
+          {...hint(`tool.${b.id}`)}
           aria-label={`${b.label} (${b.key})`}
           aria-pressed={tool === b.id}
           title={`${b.label} (${b.key})`}
@@ -86,6 +88,7 @@ export function Toolbar() {
       <button
         type="button"
         className={styles.tool}
+        {...hint("undo")}
         aria-label="Undo (Ctrl+Z)"
         title="Undo (Ctrl+Z)"
         disabled={!undoable}
@@ -99,6 +102,7 @@ export function Toolbar() {
       <button
         type="button"
         className={styles.tool}
+        {...hint("redo")}
         aria-label="Redo (Ctrl+Y)"
         title="Redo (Ctrl+Y)"
         disabled={!redoable}

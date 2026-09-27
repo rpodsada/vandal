@@ -25,9 +25,9 @@
   fill: currentColor;
 }
 
-.hint {
-  color: var(--text-2);
-  white-space: nowrap;
+/* Tags a picker for the hint line without affecting its layout. */
+.hintArea {
+  display: contents;
 }
 
 .sep {

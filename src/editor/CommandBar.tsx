@@ -1,3 +1,4 @@
+import { hint } from "../markup/HintLine";
 import { useEffect, useRef, useState } from "react";
 import { Toolbar } from "../markup/Toolbar";
 import styles from "./EditorApp.module.css";
@@ -19,6 +20,7 @@ export function CommandBar({ busy, onNewCapture, onCopy, onSave, onSaveAs }: Pro
       <button
         type="button"
         className={styles.button}
+        {...hint("newCapture")}
         title="New capture (Ctrl+N)"
         onClick={onNewCapture}
       >
@@ -31,6 +33,7 @@ export function CommandBar({ busy, onNewCapture, onCopy, onSave, onSaveAs }: Pro
       <button
         type="button"
         className={styles.button}
+        {...hint("copy")}
         title="Copy (Ctrl+C)"
         disabled={busy}
         onClick={onCopy}
@@ -78,7 +81,7 @@ function SaveButton({
   }, [open]);
 
   return (
-    <div ref={ref} className={styles.split}>
+    <div ref={ref} className={styles.split} {...hint("save")}>
       <button
         type="button"
         className={styles.splitMain}

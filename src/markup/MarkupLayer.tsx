@@ -1,3 +1,4 @@
+import { setDragHint, setOverObject } from "./hints";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
@@ -334,6 +335,21 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
       drag = { mode: "draw", start: p, id };
     }
 
+    setDragHint(
+      drag.mode === "stroke"
+        ? "stroke"
+        : drag.mode === "endpoint" ||
+            (drag.mode === "draw" && (tool === "line" || tool === "arrow"))
+          ? "segment"
+          : drag.mode === "draw"
+            ? tool === "ellipse"
+              ? "circle"
+              : "square"
+            : drag.mode === "text"
+              ? "text"
+              : null,
+    );
+
     const onMove = (m: PointerEvent) => {
       const q = toSource(m.clientX, m.clientY);
       const s = docStore.getState();
@@ -399,6 +415,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
     const onUp = (u: PointerEvent) => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      setDragHint(null);
       const s = docStore.getState();
       switch (drag.mode) {
         case "move":
@@ -483,6 +500,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
     if (e.target.getParent() instanceof Konva.Transformer) return;
     hovered.current = e.target.name();
     setCursor(hovered.current, e.evt.ctrlKey);
+    setOverObject(hovered.current === "annotation" || hovered.current === "endpoint");
   };
 
   const onDblClick = (e: KonvaEventObject<MouseEvent>) => {
@@ -553,6 +571,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
         listening={interactive}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
+        onMouseLeave={() => setOverObject(false)}
         onDblClick={onDblClick}
       >
         <Layer ref={highlightLayerRef}>
@@ -601,6 +620,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
             }
             onTransformStart={() => {
               docStore.getState().beginGesture();
+              setDragHint(trRef.current?.getActiveAnchor() === "rotater" ? "rotate" : "resize");
               // Keep the rotate cursor while dragging, even off the handle.
               const container = stageRef.current?.container();
               if (container && trRef.current?.getActiveAnchor() === "rotater") {
@@ -609,6 +629,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
             }}
             onTransform={bakeTransform}
             onTransformEnd={() => {
+              setDragHint(null);
               bakeTransform();
               docStore.getState().endGesture();
             }}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { HintLine, hint } from "../markup/HintLine";
 import { commands } from "../shared/ipc";
 import { zoomLabel } from "./view";
 import { useViewStore } from "./viewStore";
@@ -43,18 +44,19 @@ export function StatusBar({
           )}
         </span>
       ) : (
-        image && (
-          <span>
-            {image.width} × {image.height} px
-          </span>
-        )
+        <HintLine />
       )}
+      <span className={styles.spacer} />
       {image && (
         <>
-          <span className={styles.spacer} />
+          <span className={styles.size}>
+            {image.width} × {image.height} px
+          </span>
+          <span className={styles.divider} />
           <button
             type="button"
             className={styles.iconButton}
+            {...hint("zoom")}
             aria-label="Zoom out"
             title="Zoom out (Ctrl+−)"
             onClick={() => zoomStep(-1)}
@@ -71,6 +73,7 @@ export function StatusBar({
           <button
             type="button"
             className={styles.iconButton}
+            {...hint("zoom")}
             aria-label="Zoom in"
             title="Zoom in (Ctrl+=)"
             onClick={() => zoomStep(1)}
@@ -83,6 +86,7 @@ export function StatusBar({
           <button
             type="button"
             className={styles.textButton}
+            {...hint("fit")}
             title="Fit to window (Ctrl+0)"
             onClick={fit}
           >
@@ -91,6 +95,7 @@ export function StatusBar({
           <button
             type="button"
             className={styles.textButton}
+            {...hint("actualSize")}
             title="Actual size (Ctrl+Shift+0)"
             onClick={() => zoomTo(1)}
           >
@@ -98,11 +103,11 @@ export function StatusBar({
           </button>
         </>
       )}
-      {!image && <span className={styles.spacer} />}
       <span className={styles.divider} />
       <button
         type="button"
         className={styles.iconButton}
+        {...hint("settings")}
         aria-label="Settings"
         title="Settings"
         onClick={() => void commands.openSettings()}
@@ -157,6 +162,7 @@ function ZoomMenu({
       <button
         type="button"
         className={styles.zoomButton}
+        {...hint("zoom")}
         aria-haspopup="menu"
         aria-expanded={open}
         title="Zoom"
