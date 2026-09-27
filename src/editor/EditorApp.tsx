@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { docStore } from "../markup/model/store";
+import { emptyDoc } from "../markup/model/types";
 import { commands, type EditorInit } from "../shared/ipc";
 import { Stage } from "./Stage";
 import { StatusBar } from "./StatusBar";
@@ -25,6 +27,7 @@ export function EditorApp() {
         const pixels = new Uint8ClampedArray(await res.arrayBuffer());
         if (cancelled) return;
         paintCrop(canvasRef.current!, init, pixels);
+        docStore.getState().load(emptyDoc({ width: init.width, height: init.height }, init.crop));
         useViewStore.getState().setImage({ width: init.crop.width, height: init.crop.height });
         setStatus({ kind: "ready", init });
       } catch (e) {
@@ -54,6 +57,14 @@ export function EditorApp() {
         case "KeyW":
           if (e.shiftKey) return;
           void getCurrentWindow().close();
+          break;
+        case "KeyZ":
+          if (e.shiftKey) docStore.getState().redo();
+          else docStore.getState().undo();
+          break;
+        case "KeyY":
+          if (e.shiftKey) return;
+          docStore.getState().redo();
           break;
         case "Equal":
         case "NumpadAdd":
