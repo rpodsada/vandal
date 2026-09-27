@@ -18,7 +18,7 @@ use tauri_specta::Event;
 
 use crate::state::AppState;
 
-pub const CURRENT_VERSION: u32 = 1;
+pub const CURRENT_VERSION: u32 = 2;
 const STORE_FILE: &str = "settings.json";
 const STORE_KEY: &str = "settings";
 
@@ -89,7 +89,8 @@ impl Default for Hotkeys {
 #[serde(default, rename_all = "camelCase")]
 pub struct AfterCapture {
     pub copy_to_clipboard: bool,
-    /// The editor arrives in Phase 2.
+    /// Open captures in the editor. The other actions then wait for the
+    /// editor, which copies/saves itself.
     pub open_editor: bool,
     pub auto_save: bool,
 }
@@ -98,7 +99,7 @@ impl Default for AfterCapture {
     fn default() -> Self {
         Self {
             copy_to_clipboard: true,
-            open_editor: true,
+            open_editor: false,
             auto_save: false,
         }
     }
@@ -279,6 +280,11 @@ pub fn migrate(stored: Option<Value>) -> (Settings, bool) {
 
     match serde_json::from_value::<Settings>(value.clone()) {
         Ok(mut settings) => {
+            // v1 → v2: `openEditor` defaulted to true before the editor existed,
+            // so a stored true was never a choice. Quick edit is the default flow now.
+            if version < 2 {
+                settings.after_capture.open_editor = false;
+            }
             let changed = version != u64::from(CURRENT_VERSION);
             settings.version = CURRENT_VERSION;
             (settings, changed)
@@ -398,7 +404,7 @@ mod tests {
     #[test]
     fn partial_file_fills_defaults() {
         let (s, changed) = migrate(Some(json!({
-            "version": 1,
+            "version": 2,
             "afterCapture": { "autoSave": true },
         })));
         assert!(!changed);
@@ -417,17 +423,31 @@ mod tests {
 
     #[test]
     fn unknown_fields_are_ignored() {
-        let (s, _) = migrate(Some(json!({ "version": 1, "fromTheFuture": true })));
+        let (s, _) = migrate(Some(json!({ "version": 2, "fromTheFuture": true })));
         assert_eq!(s, Settings::default());
     }
 
     #[test]
     fn wrong_types_fall_back_to_defaults() {
         let (s, changed) = migrate(Some(
-            json!({ "version": 1, "overlay": { "dimOpacity": "x" } }),
+            json!({ "version": 2, "overlay": { "dimOpacity": "x" } }),
         ));
         assert!(changed);
         assert_eq!(s, Settings::default());
+    }
+
+    #[test]
+    fn v1_open_editor_is_reset() {
+        let v1 = json!({ "version": 1, "afterCapture": { "openEditor": true, "autoSave": true } });
+        let (s, changed) = migrate(Some(v1));
+        assert!(changed);
+        assert!(!s.after_capture.open_editor);
+        assert!(s.after_capture.auto_save, "other fields kept");
+
+        let v2 = json!({ "version": 2, "afterCapture": { "openEditor": true } });
+        let (s, changed) = migrate(Some(v2));
+        assert!(!changed);
+        assert!(s.after_capture.open_editor, "a v2 choice is kept");
     }
 
     #[test]
@@ -482,7 +502,7 @@ mod tests {
     #[test]
     fn default_shape_matches_plan() {
         let v = serde_json::to_value(Settings::default()).unwrap();
-        assert_eq!(v["version"], 1);
+        assert_eq!(v["version"], 2);
         let region = if cfg!(debug_assertions) {
             "Ctrl+Win+F12"
         } else {
@@ -490,6 +510,7 @@ mod tests {
         };
         assert_eq!(v["hotkeys"]["region"], region);
         assert_eq!(v["afterCapture"]["copyToClipboard"], true);
+        assert_eq!(v["afterCapture"]["openEditor"], false);
         assert_eq!(v["save"]["format"], "png");
         assert_eq!(v["history"]["keepFramesInMemory"], 3);
     }

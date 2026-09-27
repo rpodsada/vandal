@@ -134,13 +134,14 @@ pub fn show_all(app: &AppHandle, monitors: &[MonitorInfo]) {
     }
 }
 
-/// Make `hwnd` the foreground window so the overlay gets keyboard input.
+/// Make `hwnd` the foreground window so it gets keyboard input (overlays,
+/// and editors opened from a notification or a capture).
 ///
 /// By the time overlays are shown we may have lost the foreground rights the
 /// hotkey granted (and we're not on the thread that received it), so a plain
 /// `SetForegroundWindow` can be refused. Fall back to briefly attaching to the
 /// current foreground thread's input queue, which lifts the restriction.
-fn force_foreground(hwnd: HWND) {
+pub(crate) fn force_foreground(hwnd: HWND) {
     unsafe {
         if SetForegroundWindow(hwnd).as_bool() {
             return;
@@ -157,7 +158,7 @@ fn force_foreground(hwnd: HWND) {
         }
         if !ok {
             eprintln!(
-                "[overlay] could not take foreground; keyboard input will not reach the overlay"
+                "[focus] could not take foreground; keyboard input will not reach the window"
             );
         }
     }

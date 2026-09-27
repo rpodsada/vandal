@@ -59,6 +59,8 @@ Run Node tooling from PowerShell. Git Bash on this machine has an old nvm Node 1
 - Synthetic-input testing from PowerShell: pass coordinates as `[int]` params. A bare `-100`
   command argument is a _string_, and `"-100" + 10` concatenates. Send arrow keys with
   `KEYEVENTF_EXTENDEDKEY`, or Windows treats them as numpad keys and drops Shift.
+  Pass real scan codes too (e.g. `keybd_event(0x57, 0x11, ...)` for W): with scan code 0 the
+  webview sees an empty `KeyboardEvent.code`, and our shortcuts match on `code`.
 - Benchmark + pixel-alignment check: `npm run tauri build -- --no-bundle`, then
   `CAPTURE_BENCH=10 src-tauri/target/release/capture-app.exe`. Record results in `docs/perf.md`.
 - `CAPTURE_TRANSFER=bmp` switches the overlay transfer format.

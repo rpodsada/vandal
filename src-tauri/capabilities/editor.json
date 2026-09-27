@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "editor",
+  "description": "Editor windows: close themselves (Ctrl+W). Pixels come from the capture protocol; showing, copying and saving happen in Rust. No filesystem access.",
+  "windows": ["editor-*"],
+  "permissions": ["core:window:allow-close"]
+}

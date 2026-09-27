@@ -17,6 +17,8 @@
   --bg: #f3f3f3;
   --bg-nav: var(--bg);
   --surface: #fbfbfb;
+  /* Editor backdrop around the image. */
+  --canvas: #e4e4e4;
   --border: rgb(0 0 0 / 0.07);
   --hover: rgb(0 0 0 / 0.04);
   --selected: rgb(0 0 0 / 0.06);
@@ -46,6 +48,7 @@
 
     --bg: #202020;
     --surface: #2b2b2b;
+    --canvas: #171717;
     --border: rgb(255 255 255 / 0.06);
     --hover: rgb(255 255 255 / 0.05);
     --selected: rgb(255 255 255 / 0.07);

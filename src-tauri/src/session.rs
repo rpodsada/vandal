@@ -11,11 +11,11 @@ use tauri_specta::Event;
 
 use crate::capture::{CaptureTiming, MonitorFrame};
 use crate::compose;
-use crate::frames::CaptureId;
+use crate::frames::{Capture, CaptureId};
 use crate::geometry::{monitor_at, virtual_bounds, MonitorInfo, PhysicalRect};
 use crate::protocol::{self, TransferFormat};
 use crate::state::AppState;
-use crate::{monitors, output, overlay};
+use crate::{editor, monitors, output, overlay};
 
 /// Show overlays even if some haven't reported ready by then.
 const READY_TIMEOUT: Duration = Duration::from_millis(500);
@@ -216,7 +216,8 @@ fn emit_loads(app: &AppHandle, loads: &[OverlayLoad]) {
     }
 }
 
-/// Full-screen entry point: every monitor, straight to the output actions.
+/// Full-screen entry point: every monitor, straight to the output actions (or
+/// the editor, which then finishes the job).
 pub fn capture_fullscreen(app: &AppHandle) {
     let started = Instant::now();
     let state = app.state::<AppState>();
@@ -228,10 +229,7 @@ pub fn capture_fullscreen(app: &AppHandle) {
         return;
     };
     let capture = state.frames.lock().unwrap().insert(frames);
-    let frames: Vec<&MonitorFrame> = capture.frames.iter().map(|f| f.as_ref()).collect();
-    if let Some(image) = compose::compose(&frames, virtual_bounds(&monitors)) {
-        output::deliver(app, image, started);
-    }
+    finish(app, &capture, virtual_bounds(&monitors), started);
     if layout_changed {
         *state.monitors.write().unwrap() = monitors.clone();
         let app = app.clone();
@@ -412,10 +410,28 @@ pub fn commit(app: &AppHandle, capture_id: CaptureId, target: CaptureTarget) {
             .unwrap_or_default(),
         CaptureTarget::AllMonitors => virtual_bounds(&monitors),
     };
+    finish(app, &capture, rect, started);
+}
+
+/// Hand `rect` of a capture to the editor or the after-capture actions. When
+/// the editor opens, the actions are held back: the editor's own copy/save
+/// (and on-close actions) finish the job (PLAN Phase 2).
+fn finish(app: &AppHandle, capture: &Capture, rect: PhysicalRect, started: Instant) {
+    let open_editor = app
+        .state::<AppState>()
+        .settings
+        .read()
+        .unwrap()
+        .after_capture
+        .open_editor;
+    if open_editor {
+        editor::open_capture(app, capture, rect);
+        return;
+    }
     let frames: Vec<&MonitorFrame> = capture.frames.iter().map(|f| f.as_ref()).collect();
     match compose::compose(&frames, rect) {
         Some(image) => output::deliver(app, image, started),
-        None => eprintln!("[capture] #{capture_id}: empty selection {rect:?}"),
+        None => eprintln!("[capture] #{}: empty selection {rect:?}", capture.id),
     }
 }
 

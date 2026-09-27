@@ -4,6 +4,7 @@
 use tauri::{AppHandle, Manager, WebviewWindow};
 use tauri_plugin_dialog::DialogExt;
 
+use crate::editor::{self, EditorInit};
 use crate::frames::CaptureId;
 use crate::output;
 use crate::session::{self, CaptureTarget, OverlayLoad, OverlayReport};
@@ -50,6 +51,22 @@ pub fn commit_selection(app: AppHandle, capture_id: CaptureId, target: CaptureTa
 #[specta::specta]
 pub fn cancel_capture(app: AppHandle, capture_id: CaptureId) {
     session::cancel(&app, capture_id);
+}
+
+// ---------- editor ----------
+
+/// Editor page mounted: what it shows. `None` if the editor is already gone.
+#[tauri::command]
+#[specta::specta]
+pub fn editor_init(app: AppHandle, window: WebviewWindow) -> Option<EditorInit> {
+    editor::init(&app, window.label())
+}
+
+/// Editor page painted its image; show the window.
+#[tauri::command]
+#[specta::specta]
+pub fn editor_ready(app: AppHandle, window: WebviewWindow) {
+    editor::ready(&app, &window);
 }
 
 // ---------- settings window ----------

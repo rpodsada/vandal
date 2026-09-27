@@ -1,6 +1,7 @@
 use std::sync::{Mutex, RwLock};
 
 use crate::capture::Capturer;
+use crate::editor::Editors;
 use crate::frames::FrameStore;
 use crate::geometry::MonitorInfo;
 use crate::output::RecentImages;
@@ -19,6 +20,8 @@ pub struct AppState {
     pub transfer_format: Mutex<TransferFormat>,
     /// Delivered images, for the notification's "Save" button.
     pub recent_images: Mutex<RecentImages>,
+    /// Open editor windows and the images they own.
+    pub editors: Mutex<Editors>,
     /// Completed sessions, for the benchmark summary.
     pub perf_log: Mutex<Vec<PerfRecord>>,
 }

@@ -49,6 +49,19 @@ export const commands = {
 	 *  creating it first so the button always does something.
 	 */
 	openFolder: (path: string) => typedError<null, string>(__TAURI_INVOKE("open_folder", { path })),
+	/**  Editor page mounted: what it shows. `None` if the editor is already gone. */
+	editorInit: () => __TAURI_INVOKE<{
+	editorId: number,
+	/**  Base image size in pixels. */
+	width: number,
+	height: number,
+	/**  The visible part of the base image. */
+	crop: PhysicalRect,
+	/**  Raw RGBA bytes of the base image. */
+	url: string,
+} | null>("editor_init"),
+	/**  Editor page painted its image; show the window. */
+	editorReady: () => __TAURI_INVOKE<void>("editor_ready"),
 };
 
 /** Events */
@@ -62,7 +75,10 @@ export const events = {
 /* Types */
 export type AfterCapture = {
 	copyToClipboard?: boolean,
-	/**  The editor arrives in Phase 2. */
+	/**
+	 *  Open captures in the editor. The other actions then wait for the
+	 *  editor, which copies/saves itself.
+	 */
 	openEditor?: boolean,
 	autoSave?: boolean,
 };
@@ -71,6 +87,18 @@ export type AfterCapture = {
 export type CaptureTarget = 
 /**  Virtual-desktop physical pixels. */
 { kind: "region"; rect: PhysicalRect } | { kind: "monitorUnderCursor" } | { kind: "allMonitors" };
+
+/**  Editor page → Rust on mount: what to show. */
+export type EditorInit = {
+	editorId: number,
+	/**  Base image size in pixels. */
+	width: number,
+	height: number,
+	/**  The visible part of the base image. */
+	crop: PhysicalRect,
+	/**  Raw RGBA bytes of the base image. */
+	url: string,
+};
 
 export type EditorSettings = {
 	/**  Shape defined in Phase 3. */

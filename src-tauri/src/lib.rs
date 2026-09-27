@@ -2,6 +2,7 @@ mod bench;
 mod capture;
 mod commands;
 mod compose;
+mod editor;
 // Some of these APIs are first used by the editor (Phase 2) and window snap (Phase 4).
 #[allow(dead_code)]
 mod frames;
@@ -42,6 +43,8 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::pick_folder,
             commands::preview_filename,
             commands::open_folder,
+            commands::editor_init,
+            commands::editor_ready,
         ])
         .events(collect_events![
             session::OverlayLoad,
@@ -143,6 +146,7 @@ pub fn run() {
                 session: Mutex::new(None),
                 transfer_format: Mutex::new(transfer_format_from_env()),
                 recent_images: Mutex::new(output::RecentImages::new()),
+                editors: Mutex::new(editor::Editors::default()),
                 perf_log: Mutex::new(Vec::new()),
             });
 
@@ -164,16 +168,19 @@ pub fn run() {
             eprintln!("[startup] ready");
             Ok(())
         })
-        .on_window_event(|window, event| {
+        .on_window_event(|window, event| match event {
             // Alt+F4 on an overlay must cancel, not destroy a pooled window.
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                if overlay::is_overlay(window.label()) {
-                    api.prevent_close();
-                    if let Some((id, _)) = session::current(window.app_handle()) {
-                        session::cancel(window.app_handle(), id);
-                    }
+            WindowEvent::CloseRequested { api, .. } if overlay::is_overlay(window.label()) => {
+                api.prevent_close();
+                if let Some((id, _)) = session::current(window.app_handle()) {
+                    session::cancel(window.app_handle(), id);
                 }
             }
+            WindowEvent::CloseRequested { .. } if editor::id_from_label(window.label()).is_some() => {
+                editor::closing(window.app_handle(), window);
+            }
+            WindowEvent::Destroyed => editor::destroyed(window.app_handle(), window.label()),
+            _ => {}
         })
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

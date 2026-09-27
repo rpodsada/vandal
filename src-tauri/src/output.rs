@@ -350,26 +350,28 @@ fn notify_capture(app: &AppHandle, t: CaptureToast) {
     if let Some(p) = &t.preview {
         toast = toast.image(p, "Capture preview");
     }
-    if let Some(path) = t.saved {
-        toast = toast
-            .add_button("Open folder", "open-folder")
-            .on_activated(move |_action| {
-                // Button or toast body: both reveal the file.
-                reveal_in_explorer(&path);
-                Ok(())
-            });
+    toast = toast.add_button("Edit", "edit");
+    if t.saved.is_some() {
+        toast = toast.add_button("Open folder", "open-folder");
     } else if t.offer_save {
-        let app = app.clone();
-        let image_id = t.image_id;
-        toast = toast
-            .add_button("Save", "save")
-            .on_activated(move |action| {
-                if action.as_deref() == Some("save") {
-                    save_recent(&app, image_id);
-                }
-                Ok(())
-            });
+        toast = toast.add_button("Save", "save");
     }
+    let app = app.clone();
+    let (image_id, saved) = (t.image_id, t.saved);
+    toast = toast.on_activated(move |action| {
+        match action.as_deref() {
+            // A click on the toast body (thumbnail included) edits, like the button.
+            None | Some("edit") => crate::editor::open_recent(&app, image_id),
+            Some("save") => save_recent(&app, image_id),
+            Some("open-folder") => {
+                if let Some(path) = &saved {
+                    reveal_in_explorer(path);
+                }
+            }
+            Some(other) => eprintln!("[output] unknown toast action {other:?}"),
+        }
+        Ok(())
+    });
     if let Err(e) = toast.show() {
         eprintln!("[output] toast failed: {e}");
     }

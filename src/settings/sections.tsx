@@ -100,6 +100,15 @@ export const sections: Section[] = [
             description: "Every capture is saved to the folder below.",
             keywords: ["auto-save", "autosave", "disk"],
           },
+          {
+            id: "open-editor",
+            kind: "toggle",
+            path: "afterCapture.openEditor",
+            label: "Open in the editor",
+            description:
+              "Captures open in the full editor. Copying and saving then happen from the editor instead of right away.",
+            keywords: ["edit", "markup", "annotate"],
+          },
         ],
       },
       {

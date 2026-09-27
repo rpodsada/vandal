@@ -1,7 +1,8 @@
 //! `capture://` custom URI scheme (served as `http://capture.localhost/` on
 //! Windows). Moves frame pixels to the webview without JSON/base64 IPC.
 //!
-//! `GET /frame/{capture_id}/{monitor_index}?fmt=rgba|bmp`
+//! - `GET /frame/{capture_id}/{monitor_index}?fmt=rgba|bmp`: a monitor frame (overlay)
+//! - `GET /editor/{editor_id}`: an editor's base image, raw RGBA
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -9,6 +10,7 @@ use tauri::http::{header, Request, Response, StatusCode};
 use tauri::{Manager, Runtime, UriSchemeContext, UriSchemeResponder};
 
 use crate::capture::MonitorFrame;
+use crate::editor::EditorId;
 use crate::state::AppState;
 
 pub const SCHEME: &str = "capture";
@@ -39,41 +41,70 @@ pub fn frame_url(capture_id: u32, monitor_index: u32, format: TransferFormat) ->
     )
 }
 
+pub fn editor_url(editor_id: EditorId) -> String {
+    format!("http://{SCHEME}.localhost/editor/{editor_id}")
+}
+
+#[derive(Debug, PartialEq)]
+enum Route {
+    Frame {
+        capture_id: u32,
+        monitor_index: u32,
+        format: TransferFormat,
+    },
+    Editor(EditorId),
+}
+
 pub fn handle<R: Runtime>(
     ctx: UriSchemeContext<'_, R>,
     request: Request<Vec<u8>>,
     responder: UriSchemeResponder,
 ) {
-    let Some((capture_id, monitor_index, format)) = parse(request.uri()) else {
-        responder.respond(error(StatusCode::BAD_REQUEST));
-        return;
-    };
-    let frame = ctx
-        .app_handle()
-        .state::<AppState>()
-        .frames
-        .lock()
+    let state = ctx.app_handle().state::<AppState>();
+    match parse(request.uri()) {
+        Some(Route::Frame {
+            capture_id,
+            monitor_index,
+            format,
+        }) => {
+            let Some(frame) = state
+                .frames
+                .lock()
+                .unwrap()
+                .frame(capture_id, monitor_index)
+            else {
+                responder.respond(error(StatusCode::NOT_FOUND));
+                return;
+            };
+            // Encode off the webview's thread.
+            std::thread::spawn(move || {
+                let (body, content_type) = match format {
+                    TransferFormat::Rgba => (bgra_to_rgba(&frame.bgra), "application/octet-stream"),
+                    TransferFormat::Bmp => (encode_bmp(&frame), "image/bmp"),
+                };
+                responder.respond(ok(body, content_type));
+            });
+        }
+        Some(Route::Editor(id)) => {
+            let Some(image) = state.editors.lock().unwrap().image(id) else {
+                responder.respond(error(StatusCode::NOT_FOUND));
+                return;
+            };
+            std::thread::spawn(move || {
+                responder.respond(ok(image.rgba.clone(), "application/octet-stream"));
+            });
+        }
+        None => responder.respond(error(StatusCode::BAD_REQUEST)),
+    }
+}
+
+fn ok(body: Vec<u8>, content_type: &str) -> Response<Vec<u8>> {
+    Response::builder()
+        .header(header::CONTENT_TYPE, content_type)
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(header::CACHE_CONTROL, "no-store")
+        .body(body)
         .unwrap()
-        .frame(capture_id, monitor_index);
-    let Some(frame) = frame else {
-        responder.respond(error(StatusCode::NOT_FOUND));
-        return;
-    };
-    // Encode off the webview's thread.
-    std::thread::spawn(move || {
-        let (body, content_type) = match format {
-            TransferFormat::Rgba => (bgra_to_rgba(&frame.bgra), "application/octet-stream"),
-            TransferFormat::Bmp => (encode_bmp(&frame), "image/bmp"),
-        };
-        responder.respond(
-            Response::builder()
-                .header(header::CONTENT_TYPE, content_type)
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .header(header::CACHE_CONTROL, "no-store")
-                .body(body)
-                .unwrap(),
-        );
-    });
 }
 
 fn error(status: StatusCode) -> Response<Vec<u8>> {
@@ -84,22 +115,24 @@ fn error(status: StatusCode) -> Response<Vec<u8>> {
         .unwrap()
 }
 
-fn parse(uri: &tauri::http::Uri) -> Option<(u32, u32, TransferFormat)> {
-    let mut parts = uri.path().trim_start_matches('/').split('/');
-    if parts.next()? != "frame" {
-        return None;
+fn parse(uri: &tauri::http::Uri) -> Option<Route> {
+    let parts: Vec<&str> = uri.path().trim_start_matches('/').split('/').collect();
+    match parts.as_slice() {
+        ["frame", capture_id, monitor_index] => {
+            let format = match uri.query().unwrap_or("fmt=rgba") {
+                "fmt=rgba" => TransferFormat::Rgba,
+                "fmt=bmp" => TransferFormat::Bmp,
+                _ => return None,
+            };
+            Some(Route::Frame {
+                capture_id: capture_id.parse().ok()?,
+                monitor_index: monitor_index.parse().ok()?,
+                format,
+            })
+        }
+        ["editor", id] if uri.query().is_none() => Some(Route::Editor(id.parse().ok()?)),
+        _ => None,
     }
-    let capture_id = parts.next()?.parse().ok()?;
-    let monitor_index = parts.next()?.parse().ok()?;
-    if parts.next().is_some() {
-        return None;
-    }
-    let format = match uri.query().unwrap_or("fmt=rgba") {
-        "fmt=rgba" => TransferFormat::Rgba,
-        "fmt=bmp" => TransferFormat::Bmp,
-        _ => return None,
-    };
-    Some((capture_id, monitor_index, format))
 }
 
 /// BGRA (alpha undefined) → RGBA with alpha forced opaque.
@@ -185,11 +218,24 @@ mod tests {
 
     #[test]
     fn parses_frame_urls() {
+        let frame = |capture_id, monitor_index, format| {
+            Some(Route::Frame {
+                capture_id,
+                monitor_index,
+                format,
+            })
+        };
         let uri: tauri::http::Uri = frame_url(7, 2, TransferFormat::Bmp).parse().unwrap();
-        assert_eq!(parse(&uri), Some((7, 2, TransferFormat::Bmp)));
+        assert_eq!(parse(&uri), frame(7, 2, TransferFormat::Bmp));
         let uri: tauri::http::Uri = "capture://localhost/frame/1/0".parse().unwrap();
-        assert_eq!(parse(&uri), Some((1, 0, TransferFormat::Rgba)));
+        assert_eq!(parse(&uri), frame(1, 0, TransferFormat::Rgba));
+        let uri: tauri::http::Uri = editor_url(4).parse().unwrap();
+        assert_eq!(parse(&uri), Some(Route::Editor(4)));
         for bad in [
+            "http://capture.localhost/editor",
+            "http://capture.localhost/editor/x",
+            "http://capture.localhost/editor/1/2",
+            "http://capture.localhost/editor/1?fmt=bmp",
             "http://capture.localhost/frame/1",
             "http://capture.localhost/frame/x/0",
             "http://capture.localhost/frame/1/0/extra",
