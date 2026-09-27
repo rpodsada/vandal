@@ -1,10 +1,12 @@
 //! Post-capture actions: clipboard, save to file, toast (PLAN §4.2, Phase 1.5).
 
 use std::borrow::Cow;
+use std::collections::VecDeque;
 use std::fs::File;
 use std::io::BufWriter;
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Instant;
 
 use tauri::{AppHandle, Manager};
@@ -15,12 +17,55 @@ use crate::compose::RgbaImage;
 use crate::settings::{SaveSettings, Settings};
 use crate::state::AppState;
 
+/// The last few delivered images, so a notification's "Save" button can write
+/// one after the fact without holding pixels in the toast callback.
+pub struct RecentImages {
+    next_id: u32,
+    items: VecDeque<(u32, Arc<RgbaImage>)>,
+}
+
+impl RecentImages {
+    const KEEP: usize = 5;
+
+    pub fn new() -> Self {
+        Self {
+            next_id: 1,
+            items: VecDeque::new(),
+        }
+    }
+
+    pub fn push(&mut self, image: Arc<RgbaImage>) -> u32 {
+        let id = self.next_id;
+        self.next_id = self.next_id.wrapping_add(1).max(1);
+        self.items.push_back((id, image));
+        while self.items.len() > Self::KEEP {
+            self.items.pop_front();
+        }
+        id
+    }
+
+    pub fn get(&self, id: u32) -> Option<Arc<RgbaImage>> {
+        self.items
+            .iter()
+            .find(|(i, _)| *i == id)
+            .map(|(_, img)| img.clone())
+    }
+}
+
 /// Hand a finished capture to the configured actions. Returns immediately; the
 /// work runs on a background thread so the overlay can disappear at once.
 pub fn deliver(app: &AppHandle, image: RgbaImage, started: Instant) {
     let settings: Settings = app.state::<AppState>().settings.read().unwrap().clone();
     let app = app.clone();
     std::thread::spawn(move || {
+        let image = Arc::new(image);
+        let image_id = app
+            .state::<AppState>()
+            .recent_images
+            .lock()
+            .unwrap()
+            .push(image.clone());
+
         let copied = settings.after_capture.copy_to_clipboard
             && match copy_to_clipboard(&image) {
                 Ok(()) => true,
@@ -52,8 +97,45 @@ pub fn deliver(app: &AppHandle, image: RgbaImage, started: Instant) {
         };
 
         let preview = saved.clone().or_else(|| write_preview(&image).ok());
-        notify_capture(&app, &image, copied, saved.as_deref(), preview.as_deref());
+        notify_capture(
+            &app,
+            CaptureToast {
+                image_id,
+                width: image.width,
+                height: image.height,
+                copied,
+                saved,
+                preview,
+                offer_save: settings.save.notification_save_button,
+            },
+        );
     });
+}
+
+/// The notification's "Save" button: write a recent capture with the current
+/// save settings, then confirm with an "Open folder" notification.
+fn save_recent(app: &AppHandle, image_id: u32) {
+    let state = app.state::<AppState>();
+    let Some(image) = state.recent_images.lock().unwrap().get(image_id) else {
+        notify_error(app, "Couldn't save screenshot", "It's no longer in memory.");
+        return;
+    };
+    let save = state.settings.read().unwrap().save.clone();
+    match save_with_template(&save, &image) {
+        Ok(path) => notify_capture(
+            app,
+            CaptureToast {
+                image_id,
+                width: image.width,
+                height: image.height,
+                copied: false,
+                preview: Some(path.clone()),
+                saved: Some(path),
+                offer_save: false,
+            },
+        ),
+        Err(e) => notify_error(app, "Couldn't save screenshot", &e),
+    }
 }
 
 // ---------- clipboard ----------
@@ -156,6 +238,26 @@ pub fn expand_env(s: &str, lookup: impl Fn(&str) -> Option<String>) -> String {
     out
 }
 
+/// Inverse of [`expand_env`] for one variable: `C:\Users\me\Pictures` →
+/// `%USERPROFILE%\Pictures`, so stored paths survive a profile rename or move.
+pub fn contract_env(path: &str, name: &str, value: &str) -> String {
+    let value = value.trim_end_matches('\\');
+    if value.is_empty() || path.len() < value.len() || !path.is_char_boundary(value.len()) {
+        return path.to_string();
+    }
+    let (head, rest) = path.split_at(value.len());
+    if head.eq_ignore_ascii_case(value) && (rest.is_empty() || rest.starts_with('\\')) {
+        format!("%{name}%{rest}")
+    } else {
+        path.to_string()
+    }
+}
+
+/// Expand env vars in a stored directory setting.
+pub fn resolve_dir(dir: &str) -> PathBuf {
+    PathBuf::from(expand_env(dir, |k| std::env::var(k).ok()))
+}
+
 /// `dir/stem.ext`, or `dir/stem (2).ext`, `(3)`… if taken.
 pub fn unique_path(dir: &Path, stem: &str, ext: &str, exists: impl Fn(&Path) -> bool) -> PathBuf {
     let first = dir.join(format!("{stem}.{ext}"));
@@ -169,7 +271,7 @@ pub fn unique_path(dir: &Path, stem: &str, ext: &str, exists: impl Fn(&Path) -> 
 }
 
 pub fn save_with_template(save: &SaveSettings, image: &RgbaImage) -> Result<PathBuf, String> {
-    let dir = PathBuf::from(expand_env(&save.directory, |k| std::env::var(k).ok()));
+    let dir = resolve_dir(&save.directory);
     std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     let stem = render_template(&save.filename_template, &Timestamp::now_local());
     let path = unique_path(&dir, &stem, "png", |p| p.exists());
@@ -218,21 +320,26 @@ fn app_id(app: &AppHandle) -> String {
     }
 }
 
-fn notify_capture(
-    app: &AppHandle,
-    image: &RgbaImage,
+struct CaptureToast {
+    image_id: u32,
+    width: u32,
+    height: u32,
     copied: bool,
-    saved: Option<&Path>,
-    preview: Option<&Path>,
-) {
-    let title = match (copied, saved.is_some()) {
+    saved: Option<PathBuf>,
+    preview: Option<PathBuf>,
+    /// Show a "Save" button (only meaningful when not already saved).
+    offer_save: bool,
+}
+
+fn notify_capture(app: &AppHandle, t: CaptureToast) {
+    let title = match (t.copied, t.saved.is_some()) {
         (true, true) => "Screenshot copied and saved",
         (true, false) => "Screenshot copied to clipboard",
         (false, true) => "Screenshot saved",
         (false, false) => "Screenshot captured",
     };
-    let mut detail = format!("{} × {}", image.width, image.height);
-    if let Some(p) = saved.and_then(|p| p.file_name()) {
+    let mut detail = format!("{} × {}", t.width, t.height);
+    if let Some(p) = t.saved.as_deref().and_then(|p| p.file_name()) {
         detail.push_str(&format!(" · {}", p.to_string_lossy()));
     }
 
@@ -240,16 +347,26 @@ fn notify_capture(
         .title(title)
         .text1(&detail)
         .sound(None);
-    if let Some(p) = preview {
+    if let Some(p) = &t.preview {
         toast = toast.image(p, "Capture preview");
     }
-    if let Some(path) = saved {
-        let path = path.to_path_buf();
+    if let Some(path) = t.saved {
         toast = toast
             .add_button("Open folder", "open-folder")
             .on_activated(move |_action| {
                 // Button or toast body: both reveal the file.
                 reveal_in_explorer(&path);
+                Ok(())
+            });
+    } else if t.offer_save {
+        let app = app.clone();
+        let image_id = t.image_id;
+        toast = toast
+            .add_button("Save", "save")
+            .on_activated(move |action| {
+                if action.as_deref() == Some("save") {
+                    save_recent(&app, image_id);
+                }
                 Ok(())
             });
     }
@@ -314,6 +431,49 @@ mod tests {
         assert_eq!(expand_env("100% sure", lookup), "100% sure");
         assert_eq!(expand_env("%%", lookup), "%%");
         assert_eq!(expand_env("no vars", lookup), "no vars");
+    }
+
+    #[test]
+    fn contracts_profile_prefix() {
+        let home = r"C:\Users\Rich";
+        assert_eq!(
+            contract_env(r"C:\Users\Rich\Pictures\Shots", "USERPROFILE", home),
+            r"%USERPROFILE%\Pictures\Shots"
+        );
+        assert_eq!(
+            contract_env(r"c:\users\rich", "USERPROFILE", home),
+            "%USERPROFILE%"
+        );
+        // Not a path-component boundary.
+        assert_eq!(
+            contract_env(r"C:\Users\Richard\x", "USERPROFILE", home),
+            r"C:\Users\Richard\x"
+        );
+        assert_eq!(contract_env(r"D:\Shots", "USERPROFILE", home), r"D:\Shots");
+        assert_eq!(contract_env(r"C:\x", "USERPROFILE", ""), r"C:\x");
+        // Round-trips through expand_env.
+        let stored = contract_env(r"C:\Users\Rich\Pictures", "USERPROFILE", home);
+        assert_eq!(
+            expand_env(&stored, |_| Some(home.to_string())),
+            r"C:\Users\Rich\Pictures"
+        );
+    }
+
+    #[test]
+    fn recent_images_keeps_last_few() {
+        let img = || {
+            Arc::new(RgbaImage {
+                width: 1,
+                height: 1,
+                rgba: vec![0; 4],
+            })
+        };
+        let mut recent = RecentImages::new();
+        let ids: Vec<u32> = (0..7).map(|_| recent.push(img())).collect();
+        assert!(recent.get(ids[0]).is_none());
+        assert!(recent.get(ids[1]).is_none());
+        assert!(recent.get(ids[2]).is_some());
+        assert!(recent.get(ids[6]).is_some());
     }
 
     #[test]

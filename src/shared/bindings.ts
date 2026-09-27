@@ -31,6 +31,24 @@ export const commands = {
 	commitSelection: (captureId: number, target: CaptureTarget) => __TAURI_INVOKE<void>("commit_selection", { captureId, target }),
 	/**  Esc / right-click on an overlay. */
 	cancelCapture: (captureId: number) => __TAURI_INVOKE<void>("cancel_capture", { captureId }),
+	getSettings: () => __TAURI_INVOKE<Settings>("get_settings"),
+	/**
+	 *  Validate, save and apply. Returns the settings as stored (values may be
+	 *  normalized), or a message to show the user.
+	 */
+	updateSettings: (settings: Settings) => typedError<Settings, string>(__TAURI_INVOKE("update_settings", { settings })),
+	/**
+	 *  Folder picker, modal to the calling window. Paths under the user profile
+	 *  come back as `%USERPROFILE%\...`.
+	 */
+	pickFolder: (current: string) => __TAURI_INVOKE<string | null>("pick_folder", { current }),
+	/**  What a file saved now with this template would be called. */
+	previewFilename: (template: string) => __TAURI_INVOKE<string>("preview_filename", { template }),
+	/**
+	 *  Open a (settings-style, may contain `%VARS%`) folder in Explorer,
+	 *  creating it first so the button always does something.
+	 */
+	openFolder: (path: string) => typedError<null, string>(__TAURI_INVOKE("open_folder", { path })),
 };
 
 /** Events */
@@ -38,6 +56,7 @@ export const events = {
 	overlayClearSelection: makeEvent<OverlayClearSelection>("overlay-clear-selection"),
 	overlayLoad: makeEvent<OverlayLoad>("overlay-load"),
 	overlayShown: makeEvent<OverlayShown>("overlay-shown"),
+	settingsChanged: makeEvent<SettingsChanged>("settings-changed"),
 };
 
 /* Types */
@@ -143,6 +162,8 @@ export type SaveSettings = {
 	/**  Tokens: `{yyyy} {MM} {dd} {HH} {mm} {ss}`. */
 	filenameTemplate?: string,
 	format?: string,
+	/**  Offer a "Save" button on the capture notification when not auto-saved. */
+	notificationSaveButton?: boolean,
 };
 
 export type Settings = {
@@ -154,7 +175,11 @@ export type Settings = {
 	editor?: EditorSettings,
 	startup?: Startup,
 	history?: History,
+	tray?: TraySettings,
 };
+
+/**  Rust → all windows: settings changed (from any source), here's the new state. */
+export type SettingsChanged = Settings;
 
 export type Startup = {
 	launchOnLogin?: boolean,
@@ -167,7 +192,21 @@ export type TransferFormat =
 /**  Uncompressed 32bpp BMP → `createImageBitmap`. */
 "bmp";
 
+export type TraySettings = {
+	/**  Show "Save captures to file" (auto-save) as a checkbox in the tray menu. */
+	showAutoSaveToggle?: boolean,
+};
+
 /* Tauri Specta runtime */
+async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {
+    try {
+        return { status: "ok", data: await result };
+    } catch (e) {
+        if (e instanceof Error) throw e;
+        return { status: "error", error: e as any };
+    }
+}
+
 type EventEmit<T> = [T] extends [null] ? () => Promise<void> : (payload: T) => Promise<void>;
 
 function makeEvent<T>(name: string, serialize?: (payload: T) => unknown, deserialize?: (payload: any) => T) {

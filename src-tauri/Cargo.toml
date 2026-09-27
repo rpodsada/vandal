@@ -32,6 +32,7 @@ tauri-plugin-store = "2"
 arboard = "3.6.1"
 png = "0.18.1"
 tauri-winrt-notification = "0.8"
+tauri-plugin-dialog = "2"
 
 
 # Pixel loops (swizzle, BMP encode) are unusably slow at opt-level 0.

@@ -1,12 +1,22 @@
 //! User settings (PLAN §4.7): versioned JSON in `tauri-plugin-store`, with Rust
 //! as the source of truth. Every struct is `#[serde(default)]` so files written
 //! by older versions (missing fields) load with defaults filled in.
+//!
+//! Adding a field needs no version bump: `#[serde(default)]` fills it in.
+//! Bump [`CURRENT_VERSION`] and add a step to [`migrate`] only when renaming,
+//! moving or reinterpreting existing fields.
+//!
+//! Changes go through [`update`], which validates, saves, applies them live
+//! (hotkeys, tray, autostart...) and broadcasts [`SettingsChanged`].
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use specta::Type;
-use tauri::{AppHandle, Wry};
+use tauri::{AppHandle, Manager, Wry};
 use tauri_plugin_store::StoreExt;
+use tauri_specta::Event;
+
+use crate::state::AppState;
 
 pub const CURRENT_VERSION: u32 = 1;
 const STORE_FILE: &str = "settings.json";
@@ -23,6 +33,7 @@ pub struct Settings {
     pub editor: EditorSettings,
     pub startup: Startup,
     pub history: History,
+    pub tray: TraySettings,
 }
 
 impl Default for Settings {
@@ -36,6 +47,7 @@ impl Default for Settings {
             editor: EditorSettings::default(),
             startup: Startup::default(),
             history: History::default(),
+            tray: TraySettings::default(),
         }
     }
 }
@@ -55,10 +67,19 @@ impl Default for Hotkeys {
     fn default() -> Self {
         // PrintScreen is often claimed by Windows/OneDrive/other tools and many
         // compact keyboards lack it; Win+F12 combos are free on stock Windows.
+        // Dev builds (separate identity, see tauri.dev.conf.json) add Ctrl so
+        // they can run alongside an installed copy without hotkey clashes.
+        let key = |k: &str| {
+            Some(if cfg!(debug_assertions) {
+                format!("Ctrl+{k}")
+            } else {
+                k.to_string()
+            })
+        };
         Self {
-            region: Some("Win+F12".into()),
-            fullscreen: Some("Win+Shift+F12".into()),
-            window: Some("Win+Alt+F12".into()),
+            region: key("Win+F12"),
+            fullscreen: key("Win+Shift+F12"),
+            window: key("Win+Alt+F12"),
             repeat_last: None,
         }
     }
@@ -91,6 +112,8 @@ pub struct SaveSettings {
     /// Tokens: `{yyyy} {MM} {dd} {HH} {mm} {ss}`.
     pub filename_template: String,
     pub format: String,
+    /// Offer a "Save" button on the capture notification when not auto-saved.
+    pub notification_save_button: bool,
 }
 
 impl Default for SaveSettings {
@@ -99,6 +122,7 @@ impl Default for SaveSettings {
             directory: r"%USERPROFILE%\Pictures\Screenshots".into(),
             filename_template: "Screenshot {yyyy}-{MM}-{dd} {HH}-{mm}-{ss}".into(),
             format: "png".into(),
+            notification_save_button: true,
         }
     }
 }
@@ -167,6 +191,79 @@ impl Default for History {
             keep_frames_in_memory: 3,
         }
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Type)]
+#[serde(default, rename_all = "camelCase")]
+pub struct TraySettings {
+    /// Show "Save captures to file" (auto-save) as a checkbox in the tray menu.
+    pub show_auto_save_toggle: bool,
+}
+
+/// Rust → all windows: settings changed (from any source), here's the new state.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+pub struct SettingsChanged(pub Settings);
+
+/// Normalize values and reject ones that can't work. Returns the settings as
+/// they will be stored.
+pub fn validate(mut s: Settings) -> Result<Settings, String> {
+    s.version = CURRENT_VERSION;
+    s.save.directory = s.save.directory.trim().to_string();
+    if s.save.directory.is_empty() {
+        return Err("Choose a folder to save screenshots in.".into());
+    }
+    s.save.filename_template = s.save.filename_template.trim().to_string();
+    if s.save.filename_template.is_empty() {
+        return Err("The file name can't be empty.".into());
+    }
+    if !s.overlay.dim_opacity.is_finite() {
+        s.overlay.dim_opacity = OverlaySettings::default().dim_opacity;
+    }
+    s.overlay.dim_opacity = s.overlay.dim_opacity.clamp(0.0, 0.9);
+    s.history.keep_frames_in_memory = s.history.keep_frames_in_memory.clamp(1, 20);
+    Ok(s)
+}
+
+/// Validate, persist, apply live and broadcast. Returns the stored settings.
+pub fn update(app: &AppHandle<Wry>, new: Settings) -> Result<Settings, String> {
+    let new = validate(new)?;
+    let state = app.state::<AppState>();
+    let old = {
+        let mut current = state.settings.write().unwrap();
+        if *current == new {
+            return Ok(new);
+        }
+        std::mem::replace(&mut *current, new.clone())
+    };
+    save(app, &new)?;
+
+    if old.hotkeys != new.hotkeys {
+        crate::hotkeys::register(app, &new.hotkeys);
+    }
+    if old.startup.launch_on_login != new.startup.launch_on_login {
+        crate::tray::apply_autostart(app, new.startup.launch_on_login);
+    }
+    if old.history != new.history {
+        state
+            .frames
+            .lock()
+            .unwrap()
+            .set_capacity(new.history.keep_frames_in_memory as usize);
+    }
+    crate::tray::refresh(app, &new);
+
+    let _ = SettingsChanged(new.clone()).emit(app);
+    Ok(new)
+}
+
+/// Apply `change` to the current settings and [`update`].
+pub fn modify(
+    app: &AppHandle<Wry>,
+    change: impl FnOnce(&mut Settings),
+) -> Result<Settings, String> {
+    let mut s = app.state::<AppState>().settings.read().unwrap().clone();
+    change(&mut s);
+    update(app, s)
 }
 
 /// Bring stored JSON up to [`CURRENT_VERSION`]. Returns the settings and
@@ -345,10 +442,53 @@ mod tests {
     }
 
     #[test]
+    fn validate_normalizes() {
+        let mut s = Settings::default();
+        s.save.directory = "  C:/shots  ".into();
+        s.overlay.dim_opacity = 5.0;
+        s.history.keep_frames_in_memory = 0;
+        s.version = 0;
+        let v = validate(s).unwrap();
+        assert_eq!(v.save.directory, "C:/shots");
+        assert_eq!(v.overlay.dim_opacity, 0.9);
+        assert_eq!(v.history.keep_frames_in_memory, 1);
+        assert_eq!(v.version, CURRENT_VERSION);
+
+        let mut s = Settings::default();
+        s.overlay.dim_opacity = f64::NAN;
+        assert_eq!(validate(s).unwrap().overlay.dim_opacity, 0.4);
+    }
+
+    #[test]
+    fn validate_rejects_unusable_values() {
+        let mut s = Settings::default();
+        s.save.directory = "   ".into();
+        assert!(validate(s).is_err());
+        let mut s = Settings::default();
+        s.save.filename_template = "".into();
+        assert!(validate(s).is_err());
+    }
+
+    #[test]
+    fn older_files_get_new_fields_with_defaults() {
+        let (s, _) = migrate(Some(
+            json!({ "version": 1, "save": { "directory": "D:/x" } }),
+        ));
+        assert_eq!(s.save.directory, "D:/x");
+        assert!(s.save.notification_save_button);
+        assert!(!s.tray.show_auto_save_toggle);
+    }
+
+    #[test]
     fn default_shape_matches_plan() {
         let v = serde_json::to_value(Settings::default()).unwrap();
         assert_eq!(v["version"], 1);
-        assert_eq!(v["hotkeys"]["region"], "Win+F12");
+        let region = if cfg!(debug_assertions) {
+            "Ctrl+Win+F12"
+        } else {
+            "Win+F12"
+        };
+        assert_eq!(v["hotkeys"]["region"], region);
         assert_eq!(v["afterCapture"]["copyToClipboard"], true);
         assert_eq!(v["save"]["format"], "png");
         assert_eq!(v["history"]["keepFramesInMemory"], 3);

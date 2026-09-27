@@ -61,6 +61,14 @@ impl FrameStore {
         self.captures.len() != before
     }
 
+    /// Change how many captures are kept, evicting the oldest if needed.
+    pub fn set_capacity(&mut self, capacity: usize) {
+        self.capacity = capacity.max(1);
+        while self.captures.len() > self.capacity {
+            self.captures.pop_front();
+        }
+    }
+
     pub fn len(&self) -> usize {
         self.captures.len()
     }
@@ -127,6 +135,15 @@ mod tests {
         assert_eq!(store.len(), 0);
         // Outstanding readers (e.g. an in-flight protocol response) keep their Arc.
         assert_eq!(held.width, 2);
+    }
+
+    #[test]
+    fn shrinking_capacity_evicts_oldest() {
+        let mut store = FrameStore::new(3);
+        let ids: Vec<_> = (0..3).map(|_| store.insert(vec![]).id).collect();
+        store.set_capacity(1);
+        assert_eq!(store.len(), 1);
+        assert!(store.get(ids[2]).is_some());
     }
 
     #[test]

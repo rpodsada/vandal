@@ -14,6 +14,7 @@ mod overlay;
 mod protocol;
 mod session;
 mod settings;
+mod settings_window;
 mod state;
 mod tray;
 
@@ -36,11 +37,17 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::selection_started,
             commands::commit_selection,
             commands::cancel_capture,
+            commands::get_settings,
+            commands::update_settings,
+            commands::pick_folder,
+            commands::preview_filename,
+            commands::open_folder,
         ])
         .events(collect_events![
             session::OverlayLoad,
             session::OverlayShown,
             session::OverlayClearSelection,
+            settings::SettingsChanged,
         ])
         .typ::<geometry::MonitorInfo>()
         .typ::<geometry::PhysicalPoint>()
@@ -58,6 +65,15 @@ fn export_bindings() {
             path,
         )
         .expect("failed to export TS bindings");
+}
+
+/// User-facing app name (`productName`), e.g. "capture-app" or, for dev
+/// builds, "capture-app-dev".
+pub(crate) fn product_name(app: &tauri::AppHandle) -> String {
+    app.config()
+        .product_name
+        .clone()
+        .unwrap_or_else(|| app.package_info().name.clone())
 }
 
 /// Initial overlay transfer format; `CAPTURE_TRANSFER=bmp` to override.
@@ -79,12 +95,18 @@ pub fn run() {
     let mut builder = tauri::Builder::default();
     if !bench {
         // Must be the first plugin. A second launch triggers a capture instead.
-        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            session::start_region(app);
+        // `--settings` opens Settings; a plain second launch starts a capture.
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            if args.iter().any(|a| a == "--settings") {
+                settings_window::open(app);
+            } else {
+                session::start_region(app);
+            }
         }));
     }
     let app = builder
         .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(hotkeys::plugin())
         .register_asynchronous_uri_scheme_protocol(protocol::SCHEME, protocol::handle)
@@ -120,6 +142,7 @@ pub fn run() {
                 settings: RwLock::new(settings.clone()),
                 session: Mutex::new(None),
                 transfer_format: Mutex::new(transfer_format_from_env()),
+                recent_images: Mutex::new(output::RecentImages::new()),
                 perf_log: Mutex::new(Vec::new()),
             });
 
@@ -135,6 +158,9 @@ pub fn run() {
             // Dev builds leave the Run key alone unless toggled from the tray.
             #[cfg(not(debug_assertions))]
             tray::apply_autostart(app.handle(), settings.startup.launch_on_login);
+            if std::env::args().any(|a| a == "--settings") {
+                settings_window::open(app.handle());
+            }
             eprintln!("[startup] ready");
             Ok(())
         })
