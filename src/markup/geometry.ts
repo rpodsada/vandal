@@ -1,6 +1,6 @@
 // Pure geometry for the markup tools, in source-image pixels.
 
-import type { Annotation, Point, Rect } from "./model/types";
+import type { Annotation, ArrowHead, Point, Rect } from "./model/types";
 
 /** Rect spanned by a drag from `a` to `b`. With `square`, the shorter side grows to match. */
 export function rectFromDrag(a: Point, b: Point, square = false): Rect {
@@ -82,4 +82,60 @@ export function translateAnnotation<A extends Annotation>(a: A, dx: number, dy: 
       return { ...a, x: a.x + dx, y: a.y + dy };
   }
   return a;
+}
+
+/**
+ * `p` moved onto the nearest `stepDeg` direction from `anchor`, keeping its
+ * distance (Shift while drawing or dragging an endpoint).
+ */
+export function snapAngle(anchor: Point, p: Point, stepDeg = 45): Point {
+  const dx = p.x - anchor.x;
+  const dy = p.y - anchor.y;
+  const len = Math.hypot(dx, dy);
+  if (len === 0) return p;
+  const step = (stepDeg * Math.PI) / 180;
+  const angle = Math.round(Math.atan2(dy, dx) / step) * step;
+  return { x: anchor.x + len * Math.cos(angle), y: anchor.y + len * Math.sin(angle) };
+}
+
+/** Arrow head size for a line width: length along the shaft and half its width. */
+export function arrowHeadSize(width: number): { length: number; halfWidth: number } {
+  return { length: 6 + 3 * width, halfWidth: 4 + 1.25 * width };
+}
+
+export interface ArrowGeometry {
+  /** The line to stroke: [x1, y1, x2, y2]. */
+  shaft: [number, number, number, number];
+  /** Head outline [left, tip, right] (a filled triangle or an open chevron), or null. */
+  head: [Point, Point, Point] | null;
+}
+
+/**
+ * Where to draw an arrow. A filled head's shaft stops at the head's base so a
+ * round cap never pokes through the tip. Heads shrink on arrows shorter than
+ * them.
+ */
+export function arrowGeometry(
+  from: Point,
+  to: Point,
+  head: ArrowHead,
+  width: number,
+): ArrowGeometry {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const len = Math.hypot(dx, dy);
+  if (head === "none" || len === 0) {
+    return { shaft: [from.x, from.y, to.x, to.y], head: null };
+  }
+  const size = arrowHeadSize(width);
+  const k = Math.min(1, (len * 0.8) / size.length);
+  const hl = size.length * k;
+  const hw = size.halfWidth * k;
+  const ux = dx / len;
+  const uy = dy / len;
+  const base = { x: to.x - ux * hl, y: to.y - uy * hl };
+  const left = { x: base.x - uy * hw, y: base.y + ux * hw };
+  const right = { x: base.x + uy * hw, y: base.y - ux * hw };
+  const end = head === "filled" ? base : to;
+  return { shaft: [from.x, from.y, end.x, end.y], head: [left, { ...to }, right] };
 }

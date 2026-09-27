@@ -1,11 +1,27 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
-import { Ellipse, Group, Layer, Rect as KRect, Stage, Transformer } from "react-konva";
+import {
+  Circle,
+  Ellipse,
+  Group,
+  Layer,
+  Rect as KRect,
+  Shape,
+  Stage,
+  Transformer,
+} from "react-konva";
 import { registerAnnotationGroup } from "./export";
-import { rectFromDrag, rectsIntersect, annotationBounds, translateAnnotation } from "./geometry";
+import {
+  annotationBounds,
+  arrowGeometry,
+  rectFromDrag,
+  rectsIntersect,
+  snapAngle,
+  translateAnnotation,
+} from "./geometry";
 import { docStore, useDoc } from "./model/store";
-import type { Annotation, AnnotationId, Point, Rect, ShapeAnnotation } from "./model/types";
+import type { Annotation, AnnotationId, ArrowAnnotation, Point, Rect } from "./model/types";
 import { useToolStore } from "./toolStore";
 import styles from "./markup.module.css";
 
@@ -53,7 +69,13 @@ type Drag =
       began: boolean;
     }
   | { mode: "draw"; start: Point; id: AnnotationId }
+  | { mode: "endpoint"; id: AnnotationId; end: "from" | "to"; anchor: Point }
   | { mode: "marquee"; start: Point; base: AnnotationId[] };
+
+/** Line-like annotations get endpoint handles instead of the transformer. */
+function hasEndpoints(a: Annotation): a is ArrowAnnotation {
+  return a.kind === "arrow";
+}
 
 /**
  * The annotation layer (shared by quick edit and the editor): draws the
@@ -84,9 +106,10 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
     const tr = trRef.current;
     const stage = stageRef.current;
     if (!tr || !stage) return;
-    const nodes = selection
-      .map((id) => stage.findOne(`#${id}`))
-      .filter((n): n is Konva.Node => !!n);
+    const boxed = doc.annotations
+      .filter((a) => selection.includes(a.id) && !hasEndpoints(a))
+      .map((a) => a.id);
+    const nodes = boxed.map((id) => stage.findOne(`#${id}`)).filter((n): n is Konva.Node => !!n);
     tr.nodes(nodes);
     tr.forceUpdate();
     tr.getLayer()?.batchDraw();
@@ -115,7 +138,17 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
     const hit = e.target.name() === "annotation" ? e.target.id() : null;
     let drag: Drag;
 
-    if (hit) {
+    if (e.target.name() === "endpoint") {
+      const attrs = (e.target as Konva.Node).attrs as {
+        annotationId: AnnotationId;
+        end: "from" | "to";
+      };
+      const { annotationId: id, end } = attrs;
+      const a = store.doc.annotations.find((x) => x.id === id);
+      if (!a || !hasEndpoints(a)) return;
+      store.beginGesture();
+      drag = { mode: "endpoint", id, end, anchor: end === "from" ? a.to : a.from };
+    } else if (hit) {
       let sel = store.selection;
       if (ev.shiftKey) {
         sel = sel.includes(hit) ? sel.filter((id) => id !== hit) : [...sel, hit];
@@ -140,16 +173,19 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
       store.select(base);
       drag = { mode: "marquee", start: p, base };
     } else {
-      const { style, filled } = useToolStore.getState();
+      const { style, filled, arrowHead } = useToolStore.getState();
       store.select([]);
       store.beginGesture();
-      const id = store.add({
-        kind: tool,
-        rect: { x: p.x, y: p.y, width: 0, height: 0 },
-        rotation: 0,
-        filled,
-        style,
-      });
+      const id =
+        tool === "arrow"
+          ? store.add({ kind: "arrow", from: p, to: p, head: arrowHead, style })
+          : store.add({
+              kind: tool,
+              rect: { x: p.x, y: p.y, width: 0, height: 0 },
+              rotation: 0,
+              filled,
+              style,
+            });
       drag = { mode: "draw", start: p, id };
     }
 
@@ -172,10 +208,19 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
           break;
         }
         case "draw": {
-          const rect = rectFromDrag(drag.start, q, m.shiftKey);
-          s.update(drag.id, (a) =>
-            a.kind === "rect" || a.kind === "ellipse" ? { ...a, rect } : a,
-          );
+          const start = drag.start;
+          s.update(drag.id, (a) => {
+            if (a.kind === "arrow") return { ...a, to: m.shiftKey ? snapAngle(start, q) : q };
+            if (a.kind === "rect" || a.kind === "ellipse")
+              return { ...a, rect: rectFromDrag(start, q, m.shiftKey) };
+            return a;
+          });
+          break;
+        }
+        case "endpoint": {
+          const pt = m.shiftKey ? snapAngle(drag.anchor, q) : q;
+          const end = drag.end;
+          s.update(drag.id, (a) => (hasEndpoints(a) ? { ...a, [end]: pt } : a));
           break;
         }
         case "marquee":
@@ -193,16 +238,18 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
           if (drag.began) s.endGesture();
           break;
         case "draw": {
-          const a = s.doc.annotations.find((x) => x.id === drag.id) as ShapeAnnotation | undefined;
-          const px = view.current.scale;
-          if (!a || a.rect.width * px < MIN_DRAWN || a.rect.height * px < MIN_DRAWN) {
-            s.cancelGesture();
-          } else {
+          const a = s.doc.annotations.find((x) => x.id === drag.id);
+          if (a && drawnBigEnough(a, view.current.scale)) {
             s.endGesture();
             s.select([drag.id]);
+          } else {
+            s.cancelGesture();
           }
           break;
         }
+        case "endpoint":
+          s.endGesture();
+          break;
         case "marquee": {
           const box = rectFromDrag(drag.start, toSource(u.clientX, u.clientY));
           setMarquee(null);
@@ -226,8 +273,15 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
     if (!interactive || trRef.current?.isTransforming()) return;
     const container = stageRef.current?.container();
     if (!container || e.target.getParent() instanceof Konva.Transformer) return;
+    const name = e.target.name();
     container.style.cursor =
-      e.target.name() === "annotation" ? "move" : tool === "select" ? "default" : "crosshair";
+      name === "endpoint"
+        ? "crosshair"
+        : name === "annotation"
+          ? "move"
+          : tool === "select"
+            ? "default"
+            : "crosshair";
   };
 
   /** Turn the transformer's scale into real size, so strokes keep their width. */
@@ -312,6 +366,27 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
               docStore.getState().endGesture();
             }}
           />
+          {doc.annotations
+            .filter(hasEndpoints)
+            .flatMap((a) =>
+              selection.includes(a.id)
+                ? (["from", "to"] as const).map((end) => (
+                    <Circle
+                      key={`${a.id}-${end}`}
+                      name="endpoint"
+                      annotationId={a.id}
+                      end={end}
+                      x={offset.x + a[end].x * scale}
+                      y={offset.y + a[end].y * scale}
+                      radius={6}
+                      fill="#ffffff"
+                      stroke={CHROME}
+                      strokeWidth={1.5}
+                      hitStrokeWidth={8}
+                    />
+                  ))
+                : [],
+            )}
           {marquee && (
             <KRect
               x={offset.x + marquee.x * scale}
@@ -331,8 +406,18 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
   );
 }
 
-/** One annotation as a Konva node, positioned about its centre so rotation works. */
+/** A just-drawn annotation smaller than this on screen was a click: drop it. */
+function drawnBigEnough(a: Annotation, scale: number): boolean {
+  if (a.kind === "rect" || a.kind === "ellipse")
+    return a.rect.width * scale >= MIN_DRAWN && a.rect.height * scale >= MIN_DRAWN;
+  if (a.kind === "arrow")
+    return Math.hypot(a.to.x - a.from.x, a.to.y - a.from.y) * scale >= 2 * MIN_DRAWN;
+  return true;
+}
+
+/** One annotation as a Konva node. Shapes are positioned about their centre so rotation works. */
 function AnnotationShape({ a, hitSlop }: { a: Annotation; hitSlop: number }) {
+  if (a.kind === "arrow") return <ArrowShape a={a} hitSlop={hitSlop} />;
   if (a.kind !== "rect" && a.kind !== "ellipse") return null; // other kinds: later steps
   const { rect, style } = a;
   const common = {
@@ -358,5 +443,46 @@ function AnnotationShape({ a, hitSlop }: { a: Annotation; hitSlop: number }) {
     />
   ) : (
     <Ellipse {...common} radiusX={rect.width / 2} radiusY={rect.height / 2} />
+  );
+}
+
+/** Shaft plus head, drawn from {@link arrowGeometry} so export matches exactly. */
+function ArrowShape({ a, hitSlop }: { a: ArrowAnnotation; hitSlop: number }) {
+  const { color, width, opacity } = a.style;
+  return (
+    <Shape
+      id={a.id}
+      name="annotation"
+      stroke={color}
+      strokeWidth={width}
+      fill={a.head === "filled" ? color : undefined}
+      lineCap="round"
+      lineJoin="round"
+      opacity={opacity}
+      hitStrokeWidth={width + hitSlop}
+      perfectDrawEnabled={false}
+      sceneFunc={(ctx, shape) => {
+        const g = arrowGeometry(a.from, a.to, a.head, width);
+        ctx.beginPath();
+        ctx.moveTo(g.shaft[0], g.shaft[1]);
+        ctx.lineTo(g.shaft[2], g.shaft[3]);
+        if (g.head && a.head === "open") {
+          const [l, t, r] = g.head;
+          ctx.moveTo(l.x, l.y);
+          ctx.lineTo(t.x, t.y);
+          ctx.lineTo(r.x, r.y);
+        }
+        ctx.strokeShape(shape);
+        if (g.head && a.head === "filled") {
+          const [l, t, r] = g.head;
+          ctx.beginPath();
+          ctx.moveTo(l.x, l.y);
+          ctx.lineTo(t.x, t.y);
+          ctx.lineTo(r.x, r.y);
+          ctx.closePath();
+          ctx.fillShape(shape);
+        }
+      }}
+    />
   );
 }
