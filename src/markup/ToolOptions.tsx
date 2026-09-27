@@ -55,6 +55,7 @@ export function ToolOptions() {
   useToolStore((s) => s.widths);
   useToolStore((s) => s.filled);
   useToolStore((s) => s.arrowHead);
+  useToolStore((s) => s.arrowEnds);
   const config = useStyleConfig();
   const held = useHeldKeys();
   const hints = config.showShortcutHints;
@@ -151,6 +152,39 @@ export function ToolOptions() {
         <>
           <span className={styles.sep} />
           <HeadPicker head={values.head} />
+          <div className={styles.group}>
+            <button
+              type="button"
+              className={styles.toggle}
+              aria-pressed={values.ends !== "both"}
+              aria-label="Head on one end"
+              title={
+                values.ends === "both" ? "Head on one end" : "Head on one end (click again to flip)"
+              }
+              // Clicking it again moves the head to the other end.
+              onClick={() => applyStyle({ ends: values.ends === "end" ? "start" : "end" })}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden
+                style={values.ends === "start" ? { transform: "scaleX(-1)" } : undefined}
+              >
+                <path d="M4 12h15M14 7l5 5-5 5" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className={styles.toggle}
+              aria-pressed={values.ends === "both"}
+              aria-label="Heads on both ends"
+              title="Heads on both ends"
+              onClick={() => applyStyle({ ends: "both" })}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden>
+                <path d="M4 12h16M15 7l5 5-5 5M9 7l-5 5 5 5" />
+              </svg>
+            </button>
+          </div>
         </>
       )}
     </div>

@@ -4,7 +4,14 @@
 // becomes the tools' current style.
 
 import { docStore } from "./model/store";
-import type { Annotation, AnnotationId, AnnotationKind, ArrowHead, Doc } from "./model/types";
+import type {
+  Annotation,
+  AnnotationId,
+  AnnotationKind,
+  ArrowEnds,
+  ArrowHead,
+  Doc,
+} from "./model/types";
 import { rememberColor, rememberWidth, TOOL_FOR_KIND, toolColor, toolWidth } from "./styles";
 import { useToolStore, type ToolId } from "./toolStore";
 
@@ -41,6 +48,7 @@ export interface TargetValues {
   width: number | null;
   filled: boolean | null;
   head: ArrowHead | null;
+  ends: ArrowEnds | null;
 }
 
 /** What the controls show: the first object's style, or the tool's. */
@@ -54,6 +62,7 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
       width: t === "text" ? null : toolWidth(t),
       filled: t === "rect" || t === "ellipse" ? !!tools.filled[t] : null,
       head: t === "arrow" ? tools.arrowHead : null,
+      ends: t === "arrow" ? tools.arrowEnds : null,
     };
   }
   return {
@@ -61,6 +70,7 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
     width: a.kind === "text" ? null : a.style.width,
     filled: a.kind === "rect" || a.kind === "ellipse" ? a.filled : null,
     head: a.kind === "arrow" ? a.head : null,
+    ends: a.kind === "arrow" ? a.ends : null,
   };
 }
 
@@ -80,6 +90,7 @@ export interface StylePatch {
   width?: number;
   filled?: boolean;
   head?: ArrowHead;
+  ends?: ArrowEnds;
 }
 
 function patchAnnotation(a: Annotation, p: StylePatch): Annotation {
@@ -94,6 +105,7 @@ function patchAnnotation(a: Annotation, p: StylePatch): Annotation {
   if (p.filled !== undefined && (next.kind === "rect" || next.kind === "ellipse"))
     next = { ...next, filled: p.filled };
   if (p.head !== undefined && next.kind === "arrow") next = { ...next, head: p.head };
+  if (p.ends !== undefined && next.kind === "arrow") next = { ...next, ends: p.ends };
   return next;
 }
 
@@ -127,6 +139,8 @@ export function applyStyle(patch: StylePatch): void {
       useToolStore.setState((s) => ({ filled: { ...s.filled, [tool]: patch.filled } }));
     if (patch.head !== undefined && tool === "arrow")
       useToolStore.setState({ arrowHead: patch.head });
+    if (patch.ends !== undefined && tool === "arrow")
+      useToolStore.setState({ arrowEnds: patch.ends });
   }
 
   if (!target.ids.length) return;

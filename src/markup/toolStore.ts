@@ -3,7 +3,7 @@
 
 import { create } from "zustand";
 import { docStore } from "./model/store";
-import type { AnnotationId, ArrowHead } from "./model/types";
+import type { AnnotationId, ArrowEnds, ArrowHead } from "./model/types";
 
 /** Tools built so far; the list grows one tool per increment. */
 export const TOOLS = [
@@ -52,6 +52,7 @@ interface ToolState {
   /** Rectangle and ellipse: filled instead of outlined. */
   filled: Partial<Record<ToolId, boolean>>;
   arrowHead: ArrowHead;
+  arrowEnds: ArrowEnds;
   /** New text: font and size in pt. */
   font: { family: string; size: number };
   editing: TextEditing | null;
@@ -66,6 +67,7 @@ export const useToolStore = create<ToolState>((set) => ({
   widths: {},
   filled: {},
   arrowHead: "filled",
+  arrowEnds: "end",
   font: { family: "Segoe UI", size: 20 },
   editing: null,
   // Picking a drawing tool drops the selection, so the options show that tool.

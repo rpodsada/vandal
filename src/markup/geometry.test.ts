@@ -131,7 +131,8 @@ describe("arrowGeometry", () => {
   it("stops a filled head's shaft at the head's base", () => {
     const g = arrowGeometry(from, to, "filled", 4);
     expect(g.shaft).toEqual([0, 0, 100 - length, 0]);
-    const [left, tip, right] = g.head!;
+    expect(g.heads).toHaveLength(1);
+    const [left, tip, right] = g.heads[0];
     expect(tip).toEqual(to);
     expect(left).toEqual({ x: 100 - length, y: halfWidth });
     expect(right).toEqual({ x: 100 - length, y: -halfWidth });
@@ -142,13 +143,38 @@ describe("arrowGeometry", () => {
   });
 
   it("has no head for 'none' or a zero-length arrow", () => {
-    expect(arrowGeometry(from, to, "none", 4).head).toBeNull();
-    expect(arrowGeometry(from, from, "filled", 4).head).toBeNull();
+    expect(arrowGeometry(from, to, "none", 4).heads).toEqual([]);
+    expect(arrowGeometry(from, from, "filled", 4).heads).toEqual([]);
   });
 
   it("shrinks the head on short arrows", () => {
     const g = arrowGeometry(from, { x: 10, y: 0 }, "filled", 4);
     expect(g.shaft[2]).toBeCloseTo(2); // head is 80% of the length
+  });
+
+  it("puts a mirrored head on the tail of a two-ended arrow", () => {
+    const g = arrowGeometry(from, to, "filled", 4, "both");
+    expect(g.shaft).toEqual([length, 0, 100 - length, 0]);
+    expect(g.heads).toHaveLength(2);
+    const [left, tip, right] = g.heads[1];
+    expect(tip).toEqual(from);
+    expect(left.x).toBeCloseTo(length);
+    expect(right.x).toBeCloseTo(length);
+    // Open heads keep the full shaft.
+    expect(arrowGeometry(from, to, "open", 4, "both").shaft).toEqual([0, 0, 100, 0]);
+  });
+
+  it("puts the only head on the start with 'start'", () => {
+    const g = arrowGeometry(from, to, "filled", 4, "start");
+    expect(g.shaft).toEqual([length, 0, 100, 0]);
+    expect(g.heads).toHaveLength(1);
+    expect(g.heads[0][1]).toEqual(from);
+  });
+
+  it("shrinks both heads to share a short arrow", () => {
+    const g = arrowGeometry(from, { x: 10, y: 0 }, "filled", 4, "both");
+    expect(g.shaft[0]).toBeCloseTo(4); // each head is 40% of the length
+    expect(g.shaft[2]).toBeCloseTo(6);
   });
 });
 

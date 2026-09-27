@@ -55,12 +55,16 @@ export interface LineAnnotation extends Base {
 /** No-head arrows are lines: the line tool draws them. */
 export type ArrowHead = "filled" | "open";
 
+/** Where the heads go: `to` (where the drag ended), `from` (where it started) or both. */
+export type ArrowEnds = "end" | "start" | "both";
+
 export interface ArrowAnnotation extends Base {
   kind: "arrow";
   from: Point;
   /** The end with the head. */
   to: Point;
   head: ArrowHead;
+  ends: ArrowEnds;
   style: StrokeStyle;
 }
 

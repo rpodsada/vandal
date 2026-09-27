@@ -1,6 +1,6 @@
 // Pure geometry for the markup tools, in source-image pixels.
 
-import type { Annotation, ArrowHead, Point, Rect } from "./model/types";
+import type { Annotation, ArrowEnds, ArrowHead, Point, Rect } from "./model/types";
 
 /** Rect spanned by a drag from `a` to `b`. With `square`, the shorter side grows to match. */
 export function rectFromDrag(a: Point, b: Point, square = false): Rect {
@@ -132,38 +132,63 @@ export function arrowHeadSize(width: number): { length: number; halfWidth: numbe
 export interface ArrowGeometry {
   /** The line to stroke: [x1, y1, x2, y2]. */
   shaft: [number, number, number, number];
-  /** Head outline [left, tip, right] (a filled triangle or an open chevron), or null. */
-  head: [Point, Point, Point] | null;
+  /**
+   * Head outlines [left, tip, right] (filled triangles or open chevrons): the
+   * `to` end first, then the `from` end for a two-ended arrow.
+   */
+  heads: [Point, Point, Point][];
 }
 
 /**
  * Where to draw an arrow. A filled head's shaft stops at the head's base so a
- * round cap never pokes through the tip. Heads shrink on arrows shorter than
- * them.
+ * round cap never pokes through the tip. Heads shrink on arrows too short for
+ * them (to 80% of the length, or 40% each with two).
  */
 export function arrowGeometry(
   from: Point,
   to: Point,
   head: ArrowHead | "none",
   width: number,
+  ends: ArrowEnds = "end",
 ): ArrowGeometry {
+  // A head at the start is an arrow drawn the other way.
+  if (ends === "start") {
+    const g = arrowGeometry(to, from, head, width, "end");
+    const [x1, y1, x2, y2] = g.shaft;
+    return { shaft: [x2, y2, x1, y1], heads: g.heads };
+  }
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const len = Math.hypot(dx, dy);
   if (head === "none" || len === 0) {
-    return { shaft: [from.x, from.y, to.x, to.y], head: null };
+    return { shaft: [from.x, from.y, to.x, to.y], heads: [] };
   }
+  const both = ends === "both";
   const size = arrowHeadSize(width);
-  const k = Math.min(1, (len * 0.8) / size.length);
+  const k = Math.min(1, (len * (both ? 0.4 : 0.8)) / size.length);
   const hl = size.length * k;
   const hw = size.halfWidth * k;
   const ux = dx / len;
   const uy = dy / len;
-  const base = { x: to.x - ux * hl, y: to.y - uy * hl };
-  const left = { x: base.x - uy * hw, y: base.y + ux * hw };
-  const right = { x: base.x + uy * hw, y: base.y - ux * hw };
-  const end = head === "filled" ? base : to;
-  return { shaft: [from.x, from.y, end.x, end.y], head: [left, { ...to }, right] };
+  /** Head at `tip`, pointing along (vx, vy); returns it and its base. */
+  const at = (tip: Point, vx: number, vy: number) => {
+    const base = { x: tip.x - vx * hl, y: tip.y - vy * hl };
+    const outline: [Point, Point, Point] = [
+      { x: base.x - vy * hw, y: base.y + vx * hw },
+      { ...tip },
+      { x: base.x + vy * hw, y: base.y - vx * hw },
+    ];
+    return { outline, end: head === "filled" ? base : tip };
+  };
+  const front = at(to, ux, uy);
+  if (!both) {
+    return { shaft: [from.x, from.y, front.end.x, front.end.y], heads: [front.outline] };
+  }
+  const back = at(from, -ux, -uy);
+  return {
+    shaft: [back.end.x, back.end.y, front.end.x, front.end.y],
+    heads: [front.outline, back.outline],
+  };
 }
 
 /** Distance from `p` to the segment `a`–`b`. */

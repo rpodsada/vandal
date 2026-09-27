@@ -247,13 +247,13 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
       drag = { mode: "text", start: p, client: { x: ev.clientX, y: ev.clientY } };
     } else {
       const style = toolStroke(tool);
-      const { arrowHead } = useToolStore.getState();
+      const { arrowHead, arrowEnds } = useToolStore.getState();
       const filled = !!useToolStore.getState().filled[tool];
       store.select([]);
       store.beginGesture();
       const id =
         tool === "arrow"
-          ? store.add({ kind: "arrow", from: p, to: p, head: arrowHead, style })
+          ? store.add({ kind: "arrow", from: p, to: p, head: arrowHead, ends: arrowEnds, style })
           : tool === "line"
             ? store.add({ kind: "line", from: p, to: p, style })
             : store.add({
@@ -714,6 +714,7 @@ function AnnotationShape({
 function SegmentShape({ a, hitSlop }: { a: ArrowAnnotation | LineAnnotation; hitSlop: number }) {
   const { color, width, opacity } = a.style;
   const head = a.kind === "arrow" ? a.head : "none";
+  const ends = a.kind === "arrow" ? a.ends : "end";
   return (
     <Shape
       id={a.id}
@@ -727,24 +728,26 @@ function SegmentShape({ a, hitSlop }: { a: ArrowAnnotation | LineAnnotation; hit
       hitStrokeWidth={width + hitSlop}
       perfectDrawEnabled={false}
       sceneFunc={(ctx, shape) => {
-        const g = arrowGeometry(a.from, a.to, head, width);
+        const g = arrowGeometry(a.from, a.to, head, width, ends);
         ctx.beginPath();
         ctx.moveTo(g.shaft[0], g.shaft[1]);
         ctx.lineTo(g.shaft[2], g.shaft[3]);
-        if (g.head && head === "open") {
-          const [l, t, r] = g.head;
-          ctx.moveTo(l.x, l.y);
-          ctx.lineTo(t.x, t.y);
-          ctx.lineTo(r.x, r.y);
+        if (head === "open") {
+          for (const [l, t, r] of g.heads) {
+            ctx.moveTo(l.x, l.y);
+            ctx.lineTo(t.x, t.y);
+            ctx.lineTo(r.x, r.y);
+          }
         }
         ctx.strokeShape(shape);
-        if (g.head && head === "filled") {
-          const [l, t, r] = g.head;
+        if (head === "filled" && g.heads.length) {
           ctx.beginPath();
-          ctx.moveTo(l.x, l.y);
-          ctx.lineTo(t.x, t.y);
-          ctx.lineTo(r.x, r.y);
-          ctx.closePath();
+          for (const [l, t, r] of g.heads) {
+            ctx.moveTo(l.x, l.y);
+            ctx.lineTo(t.x, t.y);
+            ctx.lineTo(r.x, r.y);
+            ctx.closePath();
+          }
           ctx.fillShape(shape);
         }
       }}
