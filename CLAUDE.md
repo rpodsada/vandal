@@ -1,7 +1,9 @@
 # capture-app
 
 Tray-resident Windows screen capture + markup tool. Tauri 2 (Rust) + React/TS (Vite).
-**Read `docs/PLAN.md` before starting work.** Work only on the current phase unless asked.
+**Read `docs/PLAN.md` before starting work** (its Status section says where we are). Work only on the
+current phase unless asked. Current phase: **2 (editor)**. Start with the UI mockup, then build one
+feature per increment, confirmed by Richard and committed before the next one.
 
 ## Non-negotiables (PLAN §1)
 
