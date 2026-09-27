@@ -7,9 +7,11 @@
 //! image's pixels. For captures the base is the whole monitor (or monitors)
 //! under the selection, so the crop can later grow back out (PLAN §4.6).
 //!
-//! Export (PLAN §4.6): the page renders only the annotation layer and POSTs it
-//! as raw RGBA to `/editor/{id}/layer`; [`export`] crops the base, composites
-//! the layer over it and copies or saves in Rust.
+//! Export (PLAN §4.6): the page renders only the annotations and POSTs them as
+//! raw RGBA: highlighter strokes to `/editor/{id}/highlights` and everything
+//! else to `/editor/{id}/layer`. [`export`] crops the base, multiplies the
+//! highlights into it, composites the layer over that, and copies or saves in
+//! Rust.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -57,6 +59,17 @@ pub struct Editor {
     pub maximized: bool,
     /// The last annotation layer the page uploaded: straight-alpha RGBA.
     pub layer: Option<Vec<u8>>,
+    /// The last highlight layer (multiplied into the image): straight-alpha RGBA.
+    pub highlights: Option<Vec<u8>>,
+}
+
+/// Which uploaded layer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LayerKind {
+    /// Everything but highlights, composited on top.
+    Annotations,
+    /// Highlighter strokes, multiplied into the image underneath the rest.
+    Highlights,
 }
 
 #[derive(Default)]
@@ -76,12 +89,15 @@ impl Editors {
         self.open.get(&id).map(|e| e.image.clone())
     }
 
-    /// Keep an uploaded annotation layer for the next export. `false` if the
-    /// editor is gone.
-    pub fn set_layer(&mut self, id: EditorId, layer: Vec<u8>) -> bool {
+    /// Keep an uploaded layer for the next export. `false` if the editor is
+    /// gone.
+    pub fn set_layer(&mut self, id: EditorId, kind: LayerKind, layer: Vec<u8>) -> bool {
         match self.open.get_mut(&id) {
             Some(e) => {
-                e.layer = Some(layer);
+                match kind {
+                    LayerKind::Annotations => e.layer = Some(layer),
+                    LayerKind::Highlights => e.highlights = Some(layer),
+                }
                 true
             }
             None => false,
@@ -103,6 +119,8 @@ pub struct EditorInit {
     pub url: String,
     /// Where to POST the annotation layer before an export.
     pub layer_url: String,
+    /// Where to POST the highlight layer before an export.
+    pub highlights_url: String,
 }
 
 /// What to do with the finished image.
@@ -191,6 +209,7 @@ fn open(app: &AppHandle, image: Arc<RgbaImage>, crop: PhysicalRect) {
         crop,
         maximized: remembered.maximized,
         layer: None,
+        highlights: None,
     });
 
     let monitors = state.monitors.read().unwrap().clone();
@@ -267,31 +286,43 @@ pub fn init(app: &AppHandle, window_label: &str) -> Option<EditorInit> {
         height: e.image.height,
         crop: e.crop,
         url: protocol::editor_url(id),
-        layer_url: protocol::editor_layer_url(id),
+        layer_url: protocol::editor_layer_url(id, LayerKind::Annotations),
+        highlights_url: protocol::editor_layer_url(id, LayerKind::Highlights),
     })
 }
 
-/// Crop the base to `crop`, composite the uploaded layer if `with_layer`, and
-/// copy or save. Runs dialogs and encoding, so call off the main thread.
+/// Crop the base to `crop`, multiply in the uploaded highlights if
+/// `with_highlights`, composite the uploaded layer if `with_layer`, and copy or
+/// save. Runs dialogs and encoding, so call off the main thread.
 pub fn export(
     app: &AppHandle,
     window: &WebviewWindow,
     crop: PhysicalRect,
     with_layer: bool,
+    with_highlights: bool,
     action: ExportAction,
     layer_ms: Option<f64>,
 ) -> Result<ExportOutcome, String> {
     let started = Instant::now();
     let id = id_from_label(window.label()).ok_or("not an editor window")?;
-    let (base, layer) = {
+    let (base, layer, highlights) = {
         let state = app.state::<AppState>();
         let mut editors = state.editors.lock().unwrap();
         let e = editors.open.get_mut(&id).ok_or("this editor is closed")?;
-        // Take the layer: each upload is used by exactly one export.
+        // Take the layers: each upload is used by exactly one export.
         let layer = if with_layer { e.layer.take() } else { None };
-        (e.image.clone(), layer)
+        let highlights = if with_highlights {
+            e.highlights.take()
+        } else {
+            None
+        };
+        (e.image.clone(), layer, highlights)
     };
     let mut image = compose::crop_rgba(&base, crop).ok_or("the crop is empty")?;
+    if with_highlights {
+        let highlights = highlights.ok_or("the highlights didn't arrive")?;
+        compose::blend_multiply(&mut image, &highlights)?;
+    }
     if with_layer {
         let layer = layer.ok_or("the annotation layer didn't arrive")?;
         compose::blend_over(&mut image, &layer)?;

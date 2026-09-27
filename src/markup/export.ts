@@ -1,24 +1,33 @@
-// The annotation layer for export (PLAN §4.6): straight-alpha RGBA the size of
+// The annotation layers for export (PLAN §4.6): straight-alpha RGBA the size of
 // `doc.crop`, drawn at 1:1 source pixels whatever the view zoom. Rust
-// composites it over the base image.
+// multiplies the highlights into the base image, then composites the rest over
+// it, the same way the surface shows them.
 
 import Konva from "konva";
-import type { Doc } from "./model/types";
+import type { Annotation, Doc } from "./model/types";
 
-/** The live annotation group of the markup surface (source-px coordinates). */
-let source: Konva.Group | null = null;
+export type LayerName = "annotations" | "highlights";
 
-export function registerAnnotationGroup(group: Konva.Group | null): void {
-  source = group;
+/** The live groups of the markup surface (source-px coordinates). */
+const groups: Record<LayerName, Konva.Group | null> = { annotations: null, highlights: null };
+
+export function registerAnnotationGroup(name: LayerName, group: Konva.Group | null): void {
+  groups[name] = group;
+}
+
+/** Which layer an annotation draws in: highlights sit under everything else. */
+export function layerOf(a: Annotation): LayerName {
+  return a.kind === "highlighter" ? "highlights" : "annotations";
 }
 
 /**
- * Render the annotations over the crop at 1:1, or null when there's nothing
- * on top. A clone goes into an offscreen stage exactly the crop's size, so the
- * result has exact dimensions and never includes selection handles.
+ * Render one layer over the crop at 1:1, or null when it has nothing in it. A
+ * clone goes into an offscreen stage exactly the crop's size, so the result
+ * has exact dimensions and never includes selection handles.
  */
-export function renderLayer(doc: Doc): Uint8ClampedArray<ArrayBuffer> | null {
-  if (doc.annotations.length === 0) return null;
+export function renderLayer(doc: Doc, name: LayerName): Uint8ClampedArray<ArrayBuffer> | null {
+  if (!doc.annotations.some((a) => layerOf(a) === name)) return null;
+  const source = groups[name];
   if (!source) throw new Error("The annotations aren't ready to export yet.");
   const { crop } = doc;
   const stage = new Konva.Stage({

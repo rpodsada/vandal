@@ -3,8 +3,9 @@
 //!
 //! - `GET /frame/{capture_id}/{monitor_index}?fmt=rgba|bmp`: a monitor frame (overlay)
 //! - `GET /editor/{editor_id}`: an editor's base image, raw RGBA
-//! - `POST /editor/{editor_id}/layer`: the editor's annotation layer for the
-//!   next export, raw straight-alpha RGBA of the crop's size
+//! - `POST /editor/{editor_id}/layer`, `…/highlights`: the editor's annotation
+//!   and highlight layers for the next export, raw straight-alpha RGBA of the
+//!   crop's size
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -12,7 +13,7 @@ use tauri::http::{header, Method, Request, Response, StatusCode};
 use tauri::{Manager, Runtime, UriSchemeContext, UriSchemeResponder};
 
 use crate::capture::MonitorFrame;
-use crate::editor::EditorId;
+use crate::editor::{EditorId, LayerKind};
 use crate::state::AppState;
 
 pub const SCHEME: &str = "capture";
@@ -47,8 +48,12 @@ pub fn editor_url(editor_id: EditorId) -> String {
     format!("http://{SCHEME}.localhost/editor/{editor_id}")
 }
 
-pub fn editor_layer_url(editor_id: EditorId) -> String {
-    format!("http://{SCHEME}.localhost/editor/{editor_id}/layer")
+pub fn editor_layer_url(editor_id: EditorId, kind: LayerKind) -> String {
+    let name = match kind {
+        LayerKind::Annotations => "layer",
+        LayerKind::Highlights => "highlights",
+    };
+    format!("http://{SCHEME}.localhost/editor/{editor_id}/{name}")
 }
 
 #[derive(Debug, PartialEq)]
@@ -59,7 +64,7 @@ enum Route {
         format: TransferFormat,
     },
     Editor(EditorId),
-    EditorLayer(EditorId),
+    EditorLayer(EditorId, LayerKind),
 }
 
 pub fn handle<R: Runtime>(
@@ -83,7 +88,7 @@ pub fn handle<R: Runtime>(
     }
     let route = parse(request.uri());
     let is_post = request.method() == Method::POST;
-    if is_post != matches!(route, Some(Route::EditorLayer(_))) {
+    if is_post != matches!(route, Some(Route::EditorLayer(..))) {
         responder.respond(error(StatusCode::METHOD_NOT_ALLOWED));
         return;
     }
@@ -120,11 +125,14 @@ pub fn handle<R: Runtime>(
                 responder.respond(ok(image.rgba.clone(), "application/octet-stream"));
             });
         }
-        Some(Route::EditorLayer(id)) => {
+        Some(Route::EditorLayer(id, kind)) => {
             let bytes = request.into_body();
             let n = bytes.len();
-            if state.editors.lock().unwrap().set_layer(id, bytes) {
-                eprintln!("[editor] #{id}: layer received ({:.1} MB)", n as f64 / 1e6);
+            if state.editors.lock().unwrap().set_layer(id, kind, bytes) {
+                eprintln!(
+                    "[editor] #{id}: {kind:?} received ({:.1} MB)",
+                    n as f64 / 1e6
+                );
                 responder.respond(ok(Vec::new(), "text/plain"));
             } else {
                 responder.respond(error(StatusCode::NOT_FOUND));
@@ -168,7 +176,10 @@ fn parse(uri: &tauri::http::Uri) -> Option<Route> {
         }
         ["editor", id] if uri.query().is_none() => Some(Route::Editor(id.parse().ok()?)),
         ["editor", id, "layer"] if uri.query().is_none() => {
-            Some(Route::EditorLayer(id.parse().ok()?))
+            Some(Route::EditorLayer(id.parse().ok()?, LayerKind::Annotations))
+        }
+        ["editor", id, "highlights"] if uri.query().is_none() => {
+            Some(Route::EditorLayer(id.parse().ok()?, LayerKind::Highlights))
         }
         _ => None,
     }
@@ -270,8 +281,10 @@ mod tests {
         assert_eq!(parse(&uri), frame(1, 0, TransferFormat::Rgba));
         let uri: tauri::http::Uri = editor_url(4).parse().unwrap();
         assert_eq!(parse(&uri), Some(Route::Editor(4)));
-        let uri: tauri::http::Uri = editor_layer_url(4).parse().unwrap();
-        assert_eq!(parse(&uri), Some(Route::EditorLayer(4)));
+        for kind in [LayerKind::Annotations, LayerKind::Highlights] {
+            let uri: tauri::http::Uri = editor_layer_url(4, kind).parse().unwrap();
+            assert_eq!(parse(&uri), Some(Route::EditorLayer(4, kind)));
+        }
         for bad in [
             "http://capture.localhost/editor",
             "http://capture.localhost/editor/x",

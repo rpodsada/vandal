@@ -1,4 +1,4 @@
-// Copy / save from the editor: render the annotation layer, send it through
+// Copy / save from the editor: render the annotation layers, send them through
 // the capture protocol, then let Rust crop, composite and output.
 
 import { renderLayer } from "../markup/export";
@@ -18,10 +18,20 @@ const lastOutput: { copied: Doc | null; saved: Doc | null } = { copied: null, sa
 export async function exportImage(init: EditorInit, action: ExportAction): Promise<ExportOutcome> {
   const doc = docStore.getState().doc;
   const t0 = performance.now();
-  const layer = renderLayer(doc);
-  if (layer) await uploadPixels(init.layerUrl, layer);
-  const layerMs = layer ? performance.now() - t0 : null;
-  const result = await commands.editorExport(doc.crop, layer !== null, action, layerMs);
+  const layer = renderLayer(doc, "annotations");
+  const highlights = renderLayer(doc, "highlights");
+  await Promise.all([
+    layer && uploadPixels(init.layerUrl, layer),
+    highlights && uploadPixels(init.highlightsUrl, highlights),
+  ]);
+  const layerMs = layer || highlights ? performance.now() - t0 : null;
+  const result = await commands.editorExport(
+    doc.crop,
+    layer !== null,
+    highlights !== null,
+    action,
+    layerMs,
+  );
   if (result.status === "error") throw new Error(result.error);
   const outcome = result.data;
   if (outcome.kind === "copied") lastOutput.copied = doc;

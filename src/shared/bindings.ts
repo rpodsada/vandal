@@ -61,15 +61,18 @@ export const commands = {
 	url: string,
 	/**  Where to POST the annotation layer before an export. */
 	layerUrl: string,
+	/**  Where to POST the highlight layer before an export. */
+	highlightsUrl: string,
 } | null>("editor_init"),
 	/**  Editor page painted its image; show the window. */
 	editorReady: () => __TAURI_INVOKE<void>("editor_ready"),
 	/**
-	 *  Copy or save `crop` of the base image. With `withLayer`, the annotation
-	 *  layer POSTed to `layerUrl` just before is composited on top. `layerMs`
+	 *  Copy or save `crop` of the base image. With `withHighlights`, the layer
+	 *  POSTed to `highlightsUrl` just before is multiplied in; with `withLayer`, the
+	 *  annotation layer POSTed to `layerUrl` is composited on top. `layerMs`
 	 *  (render + upload time in the page) is only for the perf log.
 	 */
-	editorExport: (crop: PhysicalRect, withLayer: boolean, action: ExportAction, layerMs: number | null) => typedError<ExportOutcome, string>(__TAURI_INVOKE("editor_export", { crop, withLayer, action, layerMs })),
+	editorExport: (crop: PhysicalRect, withLayer: boolean, withHighlights: boolean, action: ExportAction, layerMs: number | null) => typedError<ExportOutcome, string>(__TAURI_INVOKE("editor_export", { crop, withLayer, withHighlights, action, layerMs })),
 	/**  Ask whether to save unsaved changes before the editor closes. */
 	editorConfirmClose: () => __TAURI_INVOKE<CloseChoice>("editor_confirm_close"),
 	/**  Start a new region capture from the editor. */
@@ -117,6 +120,8 @@ export type EditorInit = {
 	url: string,
 	/**  Where to POST the annotation layer before an export. */
 	layerUrl: string,
+	/**  Where to POST the highlight layer before an export. */
+	highlightsUrl: string,
 };
 
 export type EditorOnClose = {

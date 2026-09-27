@@ -16,6 +16,17 @@ const TOOL_BUTTONS: { id: ToolId; label: string; key: string; icon: ReactNode }[
       </>
     ),
   },
+  {
+    id: "highlighter",
+    label: "Highlighter",
+    key: "H",
+    icon: (
+      <>
+        <path d="M9 15l-2 5h5l1-2" />
+        <path d="M9 15l8-11 4 3-8 11z" />
+      </>
+    ),
+  },
   { id: "line", label: "Line", key: "L", icon: <path d="M5 19L19 5" /> },
   {
     id: "arrow",

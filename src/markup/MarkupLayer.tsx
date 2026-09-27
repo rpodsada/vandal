@@ -12,7 +12,7 @@ import {
   Stage,
   Transformer,
 } from "react-konva";
-import { registerAnnotationGroup } from "./export";
+import { layerOf, registerAnnotationGroup } from "./export";
 import {
   annotationBounds,
   arrowGeometry,
@@ -27,6 +27,7 @@ import type {
   Annotation,
   AnnotationId,
   ArrowAnnotation,
+  HighlighterAnnotation,
   LineAnnotation,
   PenAnnotation,
   Point,
@@ -84,12 +85,17 @@ type Drag =
     }
   | { mode: "draw"; start: Point; id: AnnotationId }
   | { mode: "endpoint"; id: AnnotationId; end: "from" | "to"; anchor: Point }
-  | { mode: "stroke"; id: AnnotationId; last: Point }
+  | { mode: "stroke"; id: AnnotationId; start: Point; last: Point }
   | { mode: "marquee"; start: Point; base: AnnotationId[] };
 
 /** Line-like annotations get endpoint handles instead of the transformer. */
 function hasEndpoints(a: Annotation): a is ArrowAnnotation | LineAnnotation {
   return a.kind === "arrow" || a.kind === "line";
+}
+
+/** Freehand strokes: movable, not reshapeable. */
+function isStroke(a: Annotation): a is PenAnnotation | HighlighterAnnotation {
+  return a.kind === "pen" || a.kind === "highlighter";
 }
 
 /** Rects and ellipses get the resize/rotate transformer. */
@@ -108,6 +114,8 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
   const tool = useToolStore((s) => s.tool);
   const stageRef = useRef<Konva.Stage>(null);
   const groupRef = useRef<Konva.Group>(null);
+  const highlightsRef = useRef<Konva.Group>(null);
+  const highlightLayerRef = useRef<Konva.Layer>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const [marquee, setMarquee] = useState<Rect | null>(null);
   // Latest view for window-level drag handlers.
@@ -117,8 +125,16 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
   });
 
   useEffect(() => {
-    registerAnnotationGroup(groupRef.current);
-    return () => registerAnnotationGroup(null);
+    registerAnnotationGroup("annotations", groupRef.current);
+    registerAnnotationGroup("highlights", highlightsRef.current);
+    // Highlights multiply with the image under them, like a real highlighter
+    // (Rust does the same on export).
+    const canvas = highlightLayerRef.current?.getNativeCanvasElement();
+    if (canvas) canvas.style.mixBlendMode = "multiply";
+    return () => {
+      registerAnnotationGroup("annotations", null);
+      registerAnnotationGroup("highlights", null);
+    };
   }, []);
 
   // Keep the transformer on the selected shapes (and in step with zoom/pan).
@@ -158,13 +174,14 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
     const hit = e.target.name() === "annotation" ? e.target.id() : null;
     let drag: Drag;
 
-    if (tool === "pen") {
-      // The pen always draws, even over other annotations.
-      const { style } = useToolStore.getState();
+    if (tool === "pen" || tool === "highlighter") {
+      // Freehand tools always draw, even over other annotations.
+      const tools = useToolStore.getState();
+      const style = tool === "highlighter" ? tools.highlighterStyle : tools.style;
       store.select([]);
       store.beginGesture();
-      const id = store.add({ kind: "pen", points: [p.x, p.y], style });
-      drag = { mode: "stroke", id, last: { x: ev.clientX, y: ev.clientY } };
+      const id = store.add({ kind: tool, points: [p.x, p.y], style });
+      drag = { mode: "stroke", id, start: p, last: { x: ev.clientX, y: ev.clientY } };
     } else if (e.target.name() === "endpoint") {
       const attrs = (e.target as Konva.Node).attrs as {
         annotationId: AnnotationId;
@@ -253,6 +270,14 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
           break;
         }
         case "stroke": {
+          if (m.shiftKey) {
+            // Shift: a straight stroke from where it started (45° steps).
+            const end = snapAngle(drag.start, q);
+            const points = [drag.start.x, drag.start.y, end.x, end.y];
+            drag.last = { x: m.clientX, y: m.clientY };
+            s.update(drag.id, (a) => (isStroke(a) ? { ...a, points } : a));
+            break;
+          }
           // Coalesced events keep fast strokes smooth.
           const added: number[] = [];
           for (const c of m.getCoalescedEvents?.() ?? [m]) {
@@ -262,9 +287,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
             added.push(pt.x, pt.y);
           }
           if (added.length)
-            s.update(drag.id, (a) =>
-              a.kind === "pen" ? { ...a, points: [...a.points, ...added] } : a,
-            );
+            s.update(drag.id, (a) => (isStroke(a) ? { ...a, points: [...a.points, ...added] } : a));
           break;
         }
         case "marquee":
@@ -298,7 +321,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
           // A click leaves a dot; strokes lose the points that add nothing.
           const tolerance = PEN_TOLERANCE / view.current.scale;
           s.update(drag.id, (a) => {
-            if (a.kind !== "pen") return a;
+            if (!isStroke(a)) return a;
             const points =
               a.points.length === 2
                 ? [...a.points, ...a.points]
@@ -333,7 +356,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
     if (!container || e.target.getParent() instanceof Konva.Transformer) return;
     const name = e.target.name();
     container.style.cursor =
-      tool === "pen" || name === "endpoint"
+      tool === "pen" || tool === "highlighter" || name === "endpoint"
         ? "crosshair"
         : name === "annotation"
           ? "move"
@@ -364,6 +387,16 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
   };
 
   const { crop } = doc;
+  const groupProps = {
+    x: offset.x,
+    y: offset.y,
+    scaleX: scale,
+    scaleY: scale,
+    clipX: crop.x,
+    clipY: crop.y,
+    clipWidth: crop.width,
+    clipHeight: crop.height,
+  };
   return (
     <div className={styles.surface}>
       <Stage
@@ -374,21 +407,22 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
       >
+        <Layer ref={highlightLayerRef}>
+          <Group ref={highlightsRef} {...groupProps}>
+            {doc.annotations
+              .filter((a) => layerOf(a) === "highlights")
+              .map((a) => (
+                <AnnotationShape key={a.id} a={a} hitSlop={HIT_SLOP / scale} />
+              ))}
+          </Group>
+        </Layer>
         <Layer>
-          <Group
-            ref={groupRef}
-            x={offset.x}
-            y={offset.y}
-            scaleX={scale}
-            scaleY={scale}
-            clipX={crop.x}
-            clipY={crop.y}
-            clipWidth={crop.width}
-            clipHeight={crop.height}
-          >
-            {doc.annotations.map((a) => (
-              <AnnotationShape key={a.id} a={a} hitSlop={HIT_SLOP / scale} />
-            ))}
+          <Group ref={groupRef} {...groupProps}>
+            {doc.annotations
+              .filter((a) => layerOf(a) === "annotations")
+              .map((a) => (
+                <AnnotationShape key={a.id} a={a} hitSlop={HIT_SLOP / scale} />
+              ))}
           </Group>
         </Layer>
         <Layer>
@@ -446,7 +480,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
                 : [],
             )}
           {doc.annotations.map((a) =>
-            a.kind === "pen" && selection.includes(a.id) ? (
+            isStroke(a) && selection.includes(a.id) ? (
               <SelectionBounds key={`${a.id}-bounds`} a={a} scale={scale} offset={offset} />
             ) : null,
           )}
@@ -481,8 +515,10 @@ function drawnBigEnough(a: Annotation, scale: number): boolean {
 /** One annotation as a Konva node. Shapes are positioned about their centre so rotation works. */
 function AnnotationShape({ a, hitSlop }: { a: Annotation; hitSlop: number }) {
   if (hasEndpoints(a)) return <SegmentShape a={a} hitSlop={hitSlop} />;
-  if (a.kind === "pen") {
+  if (isStroke(a)) {
     const { color, width, opacity } = a.style;
+    // Within the highlight layer, overlapping highlights darken like ink.
+    const blend = a.kind === "highlighter" ? "multiply" : undefined;
     const b = annotationBounds(a);
     if (b.width === 0 && b.height === 0) {
       // A click: canvas doesn't reliably draw a zero-length line, so draw the dot.
@@ -495,6 +531,7 @@ function AnnotationShape({ a, hitSlop }: { a: Annotation; hitSlop: number }) {
           radius={width / 2}
           fill={color}
           opacity={opacity}
+          globalCompositeOperation={blend}
           perfectDrawEnabled={false}
           // The same grab margin as strokes get.
           hitFunc={(ctx, shape) => {
@@ -514,6 +551,7 @@ function AnnotationShape({ a, hitSlop }: { a: Annotation; hitSlop: number }) {
         stroke={color}
         strokeWidth={width}
         opacity={opacity}
+        globalCompositeOperation={blend}
         tension={PEN_TENSION}
         lineCap="round"
         lineJoin="round"
@@ -593,7 +631,15 @@ function SegmentShape({ a, hitSlop }: { a: ArrowAnnotation | LineAnnotation; hit
 }
 
 /** A dashed box around a selected stroke, which can move but not be reshaped. */
-function SelectionBounds({ a, scale, offset }: { a: PenAnnotation; scale: number; offset: Point }) {
+function SelectionBounds({
+  a,
+  scale,
+  offset,
+}: {
+  a: PenAnnotation | HighlighterAnnotation;
+  scale: number;
+  offset: Point;
+}) {
   const b = annotationBounds(a);
   const pad = a.style.width / 2;
   return (

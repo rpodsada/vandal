@@ -71,9 +71,7 @@ pub fn crop_rgba(image: &RgbaImage, rect: PhysicalRect) -> Option<RgbaImage> {
     })
 }
 
-/// Composite straight-alpha RGBA `layer` over `base` in place ("source over").
-/// `layer` must be the same size as `base`.
-pub fn blend_over(base: &mut RgbaImage, layer: &[u8]) -> Result<(), String> {
+fn check_size(base: &RgbaImage, layer: &[u8]) -> Result<(), String> {
     if layer.len() != base.rgba.len() {
         return Err(format!(
             "layer is {} bytes, expected {} for {}×{}",
@@ -83,24 +81,59 @@ pub fn blend_over(base: &mut RgbaImage, layer: &[u8]) -> Result<(), String> {
             base.height
         ));
     }
+    Ok(())
+}
+
+/// Straight-alpha source-over of one pixel, `l` onto `b`.
+fn over(b: &mut [u8], l: [u8; 4]) {
+    let la = u32::from(l[3]);
+    if la == 0 {
+        return;
+    }
+    if la == 255 {
+        b.copy_from_slice(&l);
+        return;
+    }
+    let ba = u32::from(b[3]);
+    // out_a = la + ba·(1 − la), all in 0..=255 fixed point (×255).
+    let ba_rest = ba * (255 - la); // ×255²
+    let out_a = la * 255 + ba_rest; // ×255²
+    for c in 0..3 {
+        let num = u32::from(l[c]) * la * 255 + u32::from(b[c]) * ba_rest;
+        b[c] = ((num + out_a / 2) / out_a) as u8;
+    }
+    b[3] = ((out_a + 127) / 255) as u8;
+}
+
+/// Composite straight-alpha RGBA `layer` over `base` in place ("source over").
+/// `layer` must be the same size as `base`.
+pub fn blend_over(base: &mut RgbaImage, layer: &[u8]) -> Result<(), String> {
+    check_size(base, layer)?;
     for (b, l) in base.rgba.chunks_exact_mut(4).zip(layer.chunks_exact(4)) {
-        let la = u32::from(l[3]);
-        if la == 0 {
+        over(b, [l[0], l[1], l[2], l[3]]);
+    }
+    Ok(())
+}
+
+/// Composite straight-alpha RGBA `layer` onto `base` with the "multiply" blend
+/// mode (W3C compositing, as CSS `mix-blend-mode: multiply` shows it on
+/// screen): dark detail under a highlight stays dark. Over transparent base
+/// pixels it falls back to plain source-over. Same size as `base`.
+pub fn blend_multiply(base: &mut RgbaImage, layer: &[u8]) -> Result<(), String> {
+    check_size(base, layer)?;
+    for (b, l) in base.rgba.chunks_exact_mut(4).zip(layer.chunks_exact(4)) {
+        if l[3] == 0 {
             continue;
         }
-        if la == 255 {
-            b.copy_from_slice(l);
-            continue;
-        }
+        // Mixed color: (1 − ba)·Cs + ba·Cb·Cs, then composited source-over.
         let ba = u32::from(b[3]);
-        // out_a = la + ba·(1 − la), all in 0..=255 fixed point (×255).
-        let ba_rest = ba * (255 - la); // ×255²
-        let out_a = la * 255 + ba_rest; // ×255²
+        let mut mixed = [0, 0, 0, l[3]];
         for c in 0..3 {
-            let num = u32::from(l[c]) * la * 255 + u32::from(b[c]) * ba_rest;
-            b[c] = ((num + out_a / 2) / out_a) as u8;
+            let cs = u32::from(l[c]);
+            let num = cs * (255 - ba) * 255 + ba * u32::from(b[c]) * cs; // ×255²
+            mixed[c] = ((num + 65025 / 2) / 65025) as u8;
         }
-        b[3] = ((out_a + 127) / 255) as u8;
+        over(b, mixed);
     }
     Ok(())
 }
@@ -151,9 +184,39 @@ mod tests {
     }
 
     #[test]
+    fn blend_multiply_darkens_and_keeps_white_neutral() {
+        let mut base = image(3, 1, [200, 100, 0, 255]);
+        let layer = [
+            [255, 255, 255, 255], // white: no change
+            [255, 235, 59, 255],  // highlighter yellow: base × yellow
+            [0, 0, 0, 0],         // transparent: no change
+        ]
+        .concat();
+        blend_multiply(&mut base, &layer).unwrap();
+        assert_eq!(&base.rgba[0..4], &[200, 100, 0, 255]);
+        assert_eq!(&base.rgba[4..8], &[200, 92, 0, 255]);
+        assert_eq!(&base.rgba[8..12], &[200, 100, 0, 255]);
+    }
+
+    #[test]
+    fn blend_multiply_half_alpha_goes_halfway() {
+        let mut base = image(1, 1, [255, 255, 255, 255]);
+        blend_multiply(&mut base, &[0, 0, 0, 128]).unwrap();
+        assert_eq!(base.rgba, vec![127, 127, 127, 255]);
+    }
+
+    #[test]
+    fn blend_multiply_transparent_base_is_source_over() {
+        let mut base = image(1, 1, [0, 0, 0, 0]);
+        blend_multiply(&mut base, &[255, 235, 59, 255]).unwrap();
+        assert_eq!(base.rgba, vec![255, 235, 59, 255]);
+    }
+
+    #[test]
     fn blend_over_rejects_wrong_size() {
         let mut base = image(2, 2, [0, 0, 0, 255]);
         assert!(blend_over(&mut base, &[0; 4]).is_err());
+        assert!(blend_multiply(&mut base, &[0; 4]).is_err());
     }
 
     /// A frame whose pixel at local (x, y) is BGRA = (x, y, index, 0).
