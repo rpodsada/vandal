@@ -75,6 +75,8 @@ export function EditorApp() {
       });
     };
     void commands.getSettings().then((s) => apply(s as Settings));
+    // The font picker's list (DirectWrite, cached in Rust).
+    void commands.listFonts().then((fonts) => useStyleConfig.setState({ fonts }));
     const unlisten = events.settingsChanged.listen(({ payload }) => apply(payload as Settings));
     return () => void unlisten.then((f) => f());
   }, []);

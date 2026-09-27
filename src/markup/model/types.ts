@@ -98,10 +98,15 @@ export interface TextAnnotation extends Base {
   fontFamily: string;
   /** Font size in pt at 100% (source px at 96 dpi). */
   fontSize: number;
+  /** For the whole text (no rich text in Phase 2). */
+  bold: boolean;
+  italic: boolean;
   color: string;
   align: TextAlign;
   /** Draw a filled box behind the text. */
   background: boolean;
+  /** The box's color. */
+  backgroundColor: string;
 }
 
 export type Annotation =

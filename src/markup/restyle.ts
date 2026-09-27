@@ -12,13 +12,18 @@ import type {
   ArrowHead,
   Doc,
   ShapeFill,
+  TextAlign,
 } from "./model/types";
+import { textPx } from "./geometry";
+import { measureTextWidth } from "./textMeasure";
 import {
   rememberColor,
   rememberWidth,
+  DEFAULT_TEXT_BACKGROUND,
   TOOL_FOR_KIND,
   toolColor,
   toolFill,
+  toolFont,
   toolWidth,
 } from "./styles";
 import { useToolStore, type ToolId } from "./toolStore";
@@ -59,6 +64,16 @@ export interface TargetValues {
   fillColor: string | null;
   head: ArrowHead | null;
   ends: ArrowEnds | null;
+  /** Text only. */
+  text: {
+    fontFamily: string;
+    fontSize: number;
+    bold: boolean;
+    italic: boolean;
+    align: TextAlign;
+    background: boolean;
+    backgroundColor: string;
+  } | null;
 }
 
 /** What the controls show: the first object's style, or the tool's. */
@@ -74,6 +89,18 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
       fillColor: t === "rect" || t === "ellipse" ? (toolFill(t).color ?? toolColor(t)) : null,
       head: t === "arrow" ? tools.arrowHead : null,
       ends: t === "arrow" ? tools.arrowEnds : null,
+      text:
+        t === "text"
+          ? {
+              fontFamily: toolFont().family,
+              fontSize: toolFont().size,
+              bold: tools.textBold,
+              italic: tools.textItalic,
+              align: tools.textAlign,
+              background: tools.textBackground,
+              backgroundColor: tools.textBackgroundColor ?? DEFAULT_TEXT_BACKGROUND,
+            }
+          : null,
     };
   }
   return {
@@ -83,6 +110,18 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
     fillColor: a.kind === "rect" || a.kind === "ellipse" ? a.fillColor : null,
     head: a.kind === "arrow" ? a.head : null,
     ends: a.kind === "arrow" ? a.ends : null,
+    text:
+      a.kind === "text"
+        ? {
+            fontFamily: a.fontFamily,
+            fontSize: a.fontSize,
+            bold: a.bold,
+            italic: a.italic,
+            align: a.align,
+            background: a.background,
+            backgroundColor: a.backgroundColor,
+          }
+        : null,
   };
 }
 
@@ -94,6 +133,7 @@ export function targetSections(target: StyleTarget) {
     width: target.kinds.some((k) => k !== "text"),
     fill: all((k) => k === "rect" || k === "ellipse"),
     head: all((k) => k === "arrow"),
+    text: all((k) => k === "text"),
   };
 }
 
@@ -104,10 +144,38 @@ export interface StylePatch {
   fillColor?: string;
   head?: ArrowHead;
   ends?: ArrowEnds;
+  fontFamily?: string;
+  fontSize?: number;
+  bold?: boolean;
+  italic?: boolean;
+  align?: TextAlign;
+  background?: boolean;
+  backgroundColor?: string;
 }
 
 function patchAnnotation(a: Annotation, p: StylePatch): Annotation {
-  if (a.kind === "text") return p.color ? { ...a, color: p.color } : a;
+  if (a.kind === "text") {
+    const t = {
+      ...a,
+      color: p.color ?? a.color,
+      fontFamily: p.fontFamily ?? a.fontFamily,
+      fontSize: p.fontSize ?? a.fontSize,
+      bold: p.bold ?? a.bold,
+      italic: p.italic ?? a.italic,
+      align: p.align ?? a.align,
+      background: p.background ?? a.background,
+      backgroundColor: p.backgroundColor ?? a.backgroundColor,
+    };
+    // A growing box follows its new font.
+    const fontChanged =
+      t.fontFamily !== a.fontFamily ||
+      t.fontSize !== a.fontSize ||
+      t.bold !== a.bold ||
+      t.italic !== a.italic;
+    if (t.autoWidth && fontChanged)
+      t.width = measureTextWidth(t.text, textPx(t.fontSize), t.fontFamily, t.bold, t.italic);
+    return t;
+  }
   let next: Annotation = a;
   if (p.color !== undefined || p.width !== undefined) {
     next = {
@@ -167,6 +235,18 @@ export function applyStyle(patch: StylePatch): void {
         useToolStore.setState((s) => ({
           fillColors: { ...s.fillColors, [tool]: patch.fillColor },
         }));
+    }
+    if (tool === "text") {
+      const t = useToolStore.getState();
+      useToolStore.setState({
+        fontFamily: patch.fontFamily ?? t.fontFamily,
+        fontSize: patch.fontSize ?? t.fontSize,
+        textBold: patch.bold ?? t.textBold,
+        textItalic: patch.italic ?? t.textItalic,
+        textAlign: patch.align ?? t.textAlign,
+        textBackground: patch.background ?? t.textBackground,
+        textBackgroundColor: patch.backgroundColor ?? t.textBackgroundColor,
+      });
     }
     if (patch.head !== undefined && tool === "arrow")
       useToolStore.setState({ arrowHead: patch.head });

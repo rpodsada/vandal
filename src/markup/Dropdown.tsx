@@ -8,12 +8,25 @@ interface Props {
   button: ReactNode;
   /** The menu rows; call `close` after a pick. */
   children: (close: () => void) => ReactNode;
+  /** Extra class for the menu (e.g. a scrolling list). */
+  menuClassName?: string;
+  /** After the menu closes, however it closed. */
+  onClose?: () => void;
 }
 
 /** A button that opens a menu under it. Esc or a click elsewhere closes it. */
-export function Dropdown({ className, title, button, children }: Props) {
+export function Dropdown({ className, title, button, children, menuClassName, onClose }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !open) onCloseRef.current?.();
+    wasOpen.current = open;
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -51,7 +64,7 @@ export function Dropdown({ className, title, button, children }: Props) {
         </svg>
       </button>
       {open && (
-        <div className={styles.menu} role="menu">
+        <div className={`${styles.menu} ${menuClassName ?? ""}`} role="menu">
           {children(() => setOpen(false))}
         </div>
       )}

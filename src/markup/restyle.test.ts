@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { docStore } from "./model/store";
-import { emptyDoc, type ShapeAnnotation } from "./model/types";
+import { emptyDoc, type ShapeAnnotation, type TextAnnotation } from "./model/types";
 import { applyStyle } from "./restyle";
 import { useToolStore } from "./toolStore";
 
@@ -59,5 +59,57 @@ describe("applyStyle on shapes", () => {
     expect(rect(id).fillColor).toBe("#ffffff");
     // The tool remembers the fill for its next shape.
     expect(useToolStore.getState().fillColors.rect).toBe("#ffffff");
+  });
+});
+
+describe("applyStyle on text", () => {
+  beforeEach(() => {
+    docStore.getState().load(emptyDoc({ width: 100, height: 100 }));
+    useToolStore.setState({ tool: "select", fontSize: null, textBackground: false });
+  });
+
+  it("restyles font size, box and alignment, and the text tool remembers them", () => {
+    const store = docStore.getState();
+    const id = store.add({
+      kind: "text",
+      x: 0,
+      y: 0,
+      width: 100,
+      autoWidth: false,
+      rotation: 0,
+      text: "hi",
+      fontFamily: "Segoe UI",
+      fontSize: 20,
+      bold: false,
+      italic: false,
+      color: "#000000",
+      align: "left",
+      background: false,
+      backgroundColor: "#ffffff",
+    });
+    store.select([id]);
+    applyStyle({
+      fontSize: 36,
+      bold: true,
+      background: true,
+      backgroundColor: "#ffeb3b",
+      align: "center",
+    });
+    const t = docStore.getState().doc.annotations.find((a) => a.id === id) as TextAnnotation;
+    expect(t).toMatchObject({
+      fontSize: 36,
+      bold: true,
+      italic: false,
+      background: true,
+      backgroundColor: "#ffeb3b",
+      align: "center",
+      width: 100, // a wrapping box keeps its width
+    });
+    const tools = useToolStore.getState();
+    expect(tools.fontSize).toBe(36);
+    expect(tools.textBold).toBe(true);
+    expect(tools.textBackground).toBe(true);
+    expect(tools.textBackgroundColor).toBe("#ffeb3b");
+    expect(tools.textAlign).toBe("center");
   });
 });

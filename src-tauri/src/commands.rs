@@ -191,3 +191,13 @@ pub fn open_folder(path: String) -> Result<(), String> {
         .map(drop)
         .map_err(|e| e.to_string())
 }
+
+/// Installed font families for the text tool's font picker (cached after the
+/// first call).
+#[tauri::command]
+#[specta::specta]
+pub async fn list_fonts() -> Vec<String> {
+    tauri::async_runtime::spawn_blocking(crate::fonts::list)
+        .await
+        .unwrap_or_default()
+}

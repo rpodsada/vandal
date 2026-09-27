@@ -3,6 +3,7 @@ mod capture;
 mod commands;
 mod compose;
 mod editor;
+mod fonts;
 // Some of these APIs are first used by the editor (Phase 2) and window snap (Phase 4).
 #[allow(dead_code)]
 mod frames;
@@ -50,6 +51,7 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::editor_confirm_close,
             commands::editor_new_capture,
             commands::reveal_file,
+            commands::list_fonts,
         ])
         .events(collect_events![
             session::OverlayLoad,

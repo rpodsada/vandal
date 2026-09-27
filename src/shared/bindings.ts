@@ -79,6 +79,11 @@ export const commands = {
 	editorNewCapture: () => __TAURI_INVOKE<void>("editor_new_capture"),
 	/**  Show a file selected in Explorer. */
 	revealFile: (path: string) => __TAURI_INVOKE<void>("reveal_file", { path }),
+	/**
+	 *  Installed font families for the text tool's font picker (cached after the
+	 *  first call).
+	 */
+	listFonts: () => __TAURI_INVOKE<string[]>("list_fonts"),
 };
 
 /** Events */
@@ -168,6 +173,14 @@ export type ExportAction = "copy" |
 export type ExportOutcome = { kind: "copied" } | { kind: "saved"; path: string } | 
 /**  Save As was dismissed. */
 { kind: "cancelled" };
+
+/**  How the font picker shows its fonts. */
+export type FontControl = "dropdown" | 
+/**  A stepped slider with the name under it (custom lists of up to 10). */
+"stepped";
+
+/**  Every installed font, or the user's own list in their order. */
+export type FontPicker = { source: "system"; control: FontControl } | { source: "custom"; fonts: string[]; control: FontControl };
 
 export type History = {
 	keepFramesInMemory?: number,
@@ -288,6 +301,10 @@ export type Styles = {
 	palette?: string[],
 	/**  Line width in source px. */
 	width?: NumberPicker,
+	/**  The text tool's font. */
+	font?: FontPicker,
+	/**  The text tool's size in pt. */
+	fontSize?: NumberPicker,
 	/**  Per-tool overrides, keyed by tool id (`"highlighter"`, ...). */
 	tools?: { [key in string]: ToolStyles },
 };

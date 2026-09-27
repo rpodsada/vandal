@@ -79,9 +79,12 @@ describe("annotationBounds and translateAnnotation", () => {
       text: "one\ntwo",
       fontFamily: "Segoe UI",
       fontSize: 15,
+      bold: false,
+      italic: false,
       color: "#000",
       align: "left",
       background: false,
+      backgroundColor: "#ffffff",
     },
   ];
 

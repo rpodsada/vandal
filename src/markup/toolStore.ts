@@ -3,7 +3,7 @@
 
 import { create } from "zustand";
 import { docStore } from "./model/store";
-import type { AnnotationId, ArrowEnds, ArrowHead, ShapeFill } from "./model/types";
+import type { AnnotationId, ArrowEnds, ArrowHead, ShapeFill, TextAlign } from "./model/types";
 
 /** Tools built so far; the list grows one tool per increment. */
 export const TOOLS = [
@@ -57,8 +57,15 @@ interface ToolState {
   colorSlot: "border" | "fill";
   arrowHead: ArrowHead;
   arrowEnds: ArrowEnds;
-  /** New text: font and size in pt. */
-  font: { family: string; size: number };
+  /** Text: font family and size in pt, once picked. */
+  fontFamily: string | null;
+  fontSize: number | null;
+  textAlign: TextAlign;
+  textBold: boolean;
+  textItalic: boolean;
+  /** Text: draw a box behind it, in this color (null: white until picked). */
+  textBackground: boolean;
+  textBackgroundColor: string | null;
   editing: TextEditing | null;
   setTool: (tool: ToolId) => void;
   setEditing: (editing: TextEditing | null) => void;
@@ -74,7 +81,13 @@ export const useToolStore = create<ToolState>((set) => ({
   colorSlot: "border",
   arrowHead: "filled",
   arrowEnds: "end",
-  font: { family: "Segoe UI", size: 20 },
+  fontFamily: null,
+  fontSize: null,
+  textAlign: "left",
+  textBold: false,
+  textItalic: false,
+  textBackground: false,
+  textBackgroundColor: null,
   editing: null,
   // Picking a drawing tool drops the selection, so the options show that tool.
   setTool: (tool) => {

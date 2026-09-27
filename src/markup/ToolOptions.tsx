@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { Dropdown } from "./Dropdown";
 import { useDoc } from "./model/store";
-import type { ArrowHead, ShapeFill } from "./model/types";
+import { FontPickerControl } from "./FontPickerControl";
+import type { ArrowHead, ShapeFill, TextAlign } from "./model/types";
 import { NumberPickerControl } from "./NumberPickerControl";
 import { slotKey } from "./pickers";
 import {
@@ -12,7 +13,7 @@ import {
   targetSections,
   targetValues,
 } from "./restyle";
-import { paletteFor, useStyleConfig, widthPickerFor } from "./styles";
+import { fontChoices, paletteFor, useStyleConfig, widthPickerFor } from "./styles";
 import { useToolStore } from "./toolStore";
 import { useHeldKeys } from "./useHeldKeys";
 import styles from "./options.module.css";
@@ -38,6 +39,12 @@ const HEADS: { id: ArrowHead; label: string; icon: ReactNode }[] = [
       </>
     ),
   },
+];
+
+const ALIGNS: { id: TextAlign; label: string; path: string }[] = [
+  { id: "left", label: "Align left", path: "M4 6h16M4 10h10M4 14h16M4 18h10" },
+  { id: "center", label: "Align center", path: "M4 6h16M7 10h10M4 14h16M7 18h10" },
+  { id: "right", label: "Align right", path: "M4 6h16M10 10h10M4 14h16M10 18h10" },
 ];
 
 const FILLS: { id: ShapeFill; label: string; icon: ReactNode }[] = [
@@ -77,6 +84,13 @@ export function ToolOptions() {
   const colorSlot = useToolStore((s) => s.colorSlot);
   useToolStore((s) => s.arrowHead);
   useToolStore((s) => s.arrowEnds);
+  useToolStore((s) => s.fontFamily);
+  useToolStore((s) => s.fontSize);
+  useToolStore((s) => s.textAlign);
+  useToolStore((s) => s.textBold);
+  useToolStore((s) => s.textItalic);
+  useToolStore((s) => s.textBackground);
+  useToolStore((s) => s.textBackgroundColor);
   const config = useStyleConfig();
   const held = useHeldKeys();
   const hints = config.showShortcutHints;
@@ -96,18 +110,57 @@ export function ToolOptions() {
   const show = targetSections(target);
   const palette = paletteFor(target.tool, config);
   const widthPicker = widthPickerFor(target.tool, config);
-  // With border + fill, the chip picks which color the swatches set.
-  const twoColors = show.fill && values.fill === "both";
+  const text = values.text;
+  // With border + fill, or text on a box, the chip picks which color the
+  // swatches set.
+  const twoColors = (show.fill && values.fill === "both") || (show.text && !!text?.background);
+  const secondColor = (show.text ? text?.backgroundColor : values.fillColor) ?? values.color;
   const editingFill = twoColors && colorSlot === "fill";
-  const current = (editingFill ? values.fillColor! : values.color).toLowerCase();
-  const pickColor = (c: string, toFill: boolean) =>
-    applyStyle(toFill && twoColors ? { fillColor: c } : { color: c });
+  const current = (editingFill ? secondColor : values.color).toLowerCase();
+  const pickColor = (c: string, toSecond: boolean) =>
+    applyStyle(
+      !(toSecond && twoColors)
+        ? { color: c }
+        : show.text
+          ? { backgroundColor: c }
+          : { fillColor: c },
+    );
+  const labels = show.text ? ["Text color", "Box color"] : ["Border color", "Fill color"];
   const setSlot = (slot: "border" | "fill") => useToolStore.setState({ colorSlot: slot });
 
   return (
     // Clicks here must not take focus: text being typed keeps it, and Space
     // keeps panning instead of pressing a button.
-    <div className={styles.options} onMouseDown={(e) => e.preventDefault()}>
+    <div
+      className={styles.options}
+      onMouseDown={(e) => {
+        if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
+      }}
+    >
+      {show.text && text && (
+        <>
+          <FontPickerControl
+            picker={config.styles.font}
+            fonts={fontChoices(config)}
+            value={text.fontFamily}
+            showKeys={hints && held.alt}
+            hints={hints}
+            onPick={(fontFamily) => applyStyle({ fontFamily })}
+          />
+          <NumberPickerControl
+            picker={config.styles.fontSize}
+            value={text.fontSize}
+            unit="pt"
+            label="Size"
+            showKeys={hints && held.digit}
+            hints={hints}
+            onPick={(fontSize) => applyStyle({ fontSize })}
+            onDragStart={beginStyleDrag}
+            onDragEnd={endStyleDrag}
+          />
+          <span className={styles.sep} />
+        </>
+      )}
       <div className={styles.swatches}>
         {twoColors && (
           <div className={styles.chip}>
@@ -116,17 +169,17 @@ export function ToolOptions() {
               className={styles.chipBorder}
               style={{ borderColor: values.color }}
               aria-pressed={!editingFill}
-              aria-label="Border color"
-              title={`Border color${hints ? " (Ctrl+1…0)" : ""}`}
+              aria-label={labels[0]}
+              title={`${labels[0]}${hints ? " (Ctrl+1…0)" : ""}`}
               onClick={() => setSlot("border")}
             />
             <button
               type="button"
               className={styles.chipFill}
-              style={{ background: values.fillColor! }}
+              style={{ background: secondColor }}
               aria-pressed={editingFill}
-              aria-label="Fill color"
-              title={`Fill color${hints ? " (Shift+click a color, Ctrl+Shift+1…0)" : ""}`}
+              aria-label={labels[1]}
+              title={`${labels[1]}${hints ? " (Shift+click a color, Ctrl+Shift+1…0)" : ""}`}
               onClick={() => setSlot("fill")}
             />
           </div>
@@ -182,6 +235,65 @@ export function ToolOptions() {
               >
                 <svg viewBox="0 0 24 24" aria-hidden>
                   {f.icon}
+                </svg>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {show.text && text && (
+        <>
+          <span className={styles.sep} />
+          <div className={styles.group}>
+            <button
+              type="button"
+              className={`${styles.toggle} ${styles.letter}`}
+              aria-pressed={text.bold}
+              aria-label="Bold"
+              title={`Bold${hints ? " (Ctrl+B)" : ""}`}
+              onClick={() => applyStyle({ bold: !text.bold })}
+            >
+              <b>B</b>
+            </button>
+            <button
+              type="button"
+              className={`${styles.toggle} ${styles.letter}`}
+              aria-pressed={text.italic}
+              aria-label="Italic"
+              title={`Italic${hints ? " (Ctrl+I)" : ""}`}
+              onClick={() => applyStyle({ italic: !text.italic })}
+            >
+              <i>I</i>
+            </button>
+          </div>
+          <span className={styles.sep} />
+          <div className={styles.group}>
+            <button
+              type="button"
+              className={styles.toggle}
+              aria-pressed={text.background}
+              aria-label="Background box"
+              title="Background box"
+              onClick={() => applyStyle({ background: !text.background })}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden>
+                <rect x="3" y="5" width="18" height="14" rx="2" className={styles.tint} />
+                <path d="M8 16l4-9 4 9M9.5 13h5" />
+              </svg>
+            </button>
+            {ALIGNS.map((al) => (
+              <button
+                key={al.id}
+                type="button"
+                className={styles.toggle}
+                aria-pressed={text.align === al.id}
+                aria-label={al.label}
+                title={al.label}
+                onClick={() => applyStyle({ align: al.id })}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden>
+                  <path d={al.path} />
                 </svg>
               </button>
             ))}

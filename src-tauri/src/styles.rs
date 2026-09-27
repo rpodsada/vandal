@@ -47,6 +47,54 @@ impl NumberPicker {
     }
 }
 
+/// How the font picker shows its fonts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum FontControl {
+    Dropdown,
+    /// A stepped slider with the name under it (custom lists of up to 10).
+    Stepped,
+}
+
+/// Every installed font, or the user's own list in their order.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(tag = "source", rename_all = "camelCase")]
+pub enum FontPicker {
+    System {
+        control: FontControl,
+    },
+    Custom {
+        fonts: Vec<String>,
+        control: FontControl,
+    },
+}
+
+impl FontPicker {
+    fn normalized(self) -> Option<Self> {
+        match self {
+            // The whole system list is too long for a slider.
+            Self::System { .. } => Some(Self::System {
+                control: FontControl::Dropdown,
+            }),
+            Self::Custom { fonts, control } => {
+                let mut out: Vec<String> = Vec::new();
+                for f in fonts.iter().map(|f| f.trim()).filter(|f| !f.is_empty()) {
+                    if !out.iter().any(|o| o.eq_ignore_ascii_case(f)) {
+                        out.push(f.to_string());
+                    }
+                }
+                if control == FontControl::Stepped {
+                    out.truncate(MAX_PRESETS);
+                }
+                (!out.is_empty()).then_some(Self::Custom {
+                    fonts: out,
+                    control,
+                })
+            }
+        }
+    }
+}
+
 /// A tool's own palette and/or width picker, used instead of the global ones.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Type)]
 #[serde(default, rename_all = "camelCase")]
@@ -62,6 +110,10 @@ pub struct Styles {
     pub palette: Vec<String>,
     /// Line width in source px.
     pub width: NumberPicker,
+    /// The text tool's font.
+    pub font: FontPicker,
+    /// The text tool's size in pt.
+    pub font_size: NumberPicker,
     /// Per-tool overrides, keyed by tool id (`"highlighter"`, ...).
     pub tools: BTreeMap<String, ToolStyles>,
 }
@@ -76,6 +128,12 @@ impl Default for Styles {
             ]),
             width: NumberPicker::Buttons {
                 values: vec![2.0, 4.0, 6.0, 10.0],
+            },
+            font: FontPicker::System {
+                control: FontControl::Dropdown,
+            },
+            font_size: NumberPicker::Dropdown {
+                values: vec![8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 36.0, 48.0, 72.0],
             },
             tools: BTreeMap::from([(
                 "highlighter".to_string(),
@@ -132,6 +190,8 @@ impl Styles {
         Self {
             palette: normalize_palette(self.palette).unwrap_or(defaults.palette),
             width: self.width.normalized().unwrap_or(defaults.width),
+            font: self.font.normalized().unwrap_or(defaults.font),
+            font_size: self.font_size.normalized().unwrap_or(defaults.font_size),
             tools: self
                 .tools
                 .into_iter()
@@ -195,6 +255,46 @@ mod tests {
     }
 
     #[test]
+    fn font_pickers_are_normalized() {
+        let system_slider = FontPicker::System {
+            control: FontControl::Stepped,
+        };
+        assert_eq!(
+            system_slider.normalized(),
+            Some(FontPicker::System {
+                control: FontControl::Dropdown
+            })
+        );
+        let custom = FontPicker::Custom {
+            fonts: vec![
+                " Arial ".into(),
+                "arial".into(),
+                "".into(),
+                "Georgia".into(),
+            ],
+            control: FontControl::Dropdown,
+        };
+        assert_eq!(
+            custom.normalized(),
+            Some(FontPicker::Custom {
+                fonts: vec!["Arial".into(), "Georgia".into()],
+                control: FontControl::Dropdown
+            })
+        );
+        let empty = FontPicker::Custom {
+            fonts: vec![],
+            control: FontControl::Stepped,
+        };
+        assert!(empty.normalized().is_none());
+        let v = serde_json::to_value(Styles::default()).unwrap();
+        assert_eq!(
+            v["font"],
+            json!({ "source": "system", "control": "dropdown" })
+        );
+        assert_eq!(v["fontSize"]["values"][6], 20.0);
+    }
+
+    #[test]
     fn colors_are_normalized() {
         assert_eq!(normalize_color("#ABC").as_deref(), Some("#aabbcc"));
         assert_eq!(normalize_color(" #1E88E5 ").as_deref(), Some("#1e88e5"));
@@ -216,6 +316,7 @@ mod tests {
                     width: None,
                 },
             )]),
+            ..Styles::default()
         }
         .normalized();
         let d = Styles::default();

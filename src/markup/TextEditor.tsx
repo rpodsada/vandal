@@ -3,16 +3,17 @@ import { TEXT_LINE_HEIGHT, textPx } from "./geometry";
 import { docStore } from "./model/store";
 import type { Point, TextAnnotation } from "./model/types";
 import { finishTextEdit } from "./textEditing";
+import { measureTextWidth, textBoxPadding } from "./textMeasure";
 import styles from "./markup.module.css";
 
-let measureCtx: CanvasRenderingContext2D | null = null;
+/** Elements that can take focus without ending the typing session (the font filter). */
+export const KEEPS_TEXT_EDITING = "data-keeps-text-editing";
 
-/** Width in px of the longest line, measured the way Konva's canvas text does. */
-function measureWidth(text: string, px: number, family: string): number {
-  measureCtx ??= document.createElement("canvas").getContext("2d");
-  if (!measureCtx) return 0;
-  measureCtx.font = `${px}px "${family}"`;
-  return Math.max(0, ...text.split("\n").map((line) => measureCtx!.measureText(line).width));
+let current: HTMLTextAreaElement | null = null;
+
+/** Put the caret back in the text being typed (after the font filter had focus). */
+export function refocusTextEditor(): void {
+  current?.focus();
 }
 
 interface Props {
@@ -25,8 +26,9 @@ interface Props {
 
 /**
  * A real textarea over the stage while typing (PLAN §4.6), matching the
- * canvas text's font, size, wrapping and rotation. Every keystroke updates
- * the document; the session is one undo step (see textEditing.ts).
+ * canvas text's font, size, wrapping, rotation and background box. Every
+ * keystroke updates the document; the session is one undo step (see
+ * textEditing.ts).
  */
 export function TextEditor({ a, scale, offset }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -35,8 +37,12 @@ export function TextEditor({ a, scale, offset }: Props) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    current = el;
     el.focus();
     el.setSelectionRange(el.value.length, el.value.length);
+    return () => {
+      if (current === el) current = null;
+    };
   }, []);
 
   // Grow to fit the text.
@@ -48,13 +54,17 @@ export function TextEditor({ a, scale, offset }: Props) {
   });
 
   const onChange = (text: string) => {
-    docStore
-      .getState()
-      .update(a.id, (t) =>
-        t.kind === "text"
-          ? { ...t, text, width: t.autoWidth ? measureWidth(text, px, t.fontFamily) : t.width }
-          : t,
-      );
+    docStore.getState().update(a.id, (t) =>
+      t.kind === "text"
+        ? {
+            ...t,
+            text,
+            width: t.autoWidth
+              ? measureTextWidth(text, textPx(t.fontSize), t.fontFamily, t.bold, t.italic)
+              : t.width,
+          }
+        : t,
+    );
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -65,8 +75,18 @@ export function TextEditor({ a, scale, offset }: Props) {
     }
   };
 
+  const onBlur = (e: React.FocusEvent) => {
+    // Switching to another app keeps the session, and so does the font filter;
+    // clicking elsewhere here ends it.
+    if (!document.hasFocus()) return;
+    const to = e.relatedTarget as Element | null;
+    if (to?.closest(`[${KEEPS_TEXT_EDITING}]`)) return;
+    finishTextEdit();
+  };
+
   // Room for the caret after the last character of a growing box.
   const width = a.autoWidth ? a.width + px * 0.6 : a.width;
+  const pad = textBoxPadding(px) * scale;
   return (
     <textarea
       ref={ref}
@@ -75,10 +95,7 @@ export function TextEditor({ a, scale, offset }: Props) {
       spellCheck={false}
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={onKeyDown}
-      // Switching to another app keeps the session; clicking elsewhere here ends it.
-      onBlur={() => {
-        if (document.hasFocus()) finishTextEdit();
-      }}
+      onBlur={onBlur}
       style={{
         left: offset.x + a.x * scale,
         top: offset.y + a.y * scale,
@@ -86,10 +103,21 @@ export function TextEditor({ a, scale, offset }: Props) {
         transform: a.rotation ? `rotate(${a.rotation}deg)` : undefined,
         fontFamily: `"${a.fontFamily}"`,
         fontSize: px * scale,
+        fontWeight: a.bold ? "bold" : "normal",
+        fontStyle: a.italic ? "italic" : "normal",
         lineHeight: TEXT_LINE_HEIGHT,
         color: a.color,
         textAlign: a.align,
         whiteSpace: a.autoWidth ? "pre" : "pre-wrap",
+        // The box as the canvas draws it, without moving the text.
+        ...(a.background && {
+          background: a.backgroundColor,
+          boxShadow: `0 0 0 ${pad}px ${a.backgroundColor}`,
+          // A spread shadow's corners are this radius plus the spread: the
+          // canvas box's radius is the padding.
+          borderRadius: 1,
+          outlineOffset: pad + 3,
+        }),
       }}
     />
   );

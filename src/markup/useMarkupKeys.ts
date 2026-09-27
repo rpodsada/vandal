@@ -9,7 +9,7 @@ import { translateAnnotation } from "./geometry";
 import { docStore } from "./model/store";
 import { digitSlot, pickByDigit, slotIndex } from "./pickers";
 import { applyStyle, styleTarget, targetSections, targetValues } from "./restyle";
-import { paletteFor, widthPickerFor } from "./styles";
+import { fontChoices, paletteFor, useStyleConfig, widthPickerFor } from "./styles";
 import { editText } from "./textEditing";
 import type { Annotation, NewAnnotation } from "./model/types";
 import { TOOL_KEYS, useToolStore } from "./toolStore";
@@ -20,9 +20,16 @@ const DUPLICATE_OFFSET = 10;
 export function useMarkupKeys(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // Ctrl+digit still recolors text while typing into it (PLAN Phase 2).
-      if (isTyping(e.target) && !(e.ctrlKey && digitSlot(e.code))) return;
-      if (e.altKey) return;
+      const slot = digitSlot(e.code);
+      // Exactly one of Ctrl and Alt: Ctrl+Alt is AltGr, which types characters.
+      const styleDigit = slot !== null && e.ctrlKey !== e.altKey;
+      const boldItalic = e.ctrlKey && !e.altKey && (e.code === "KeyB" || e.code === "KeyI");
+      // Ctrl/Alt+digit and Ctrl+B/I still restyle text while typing into it (PLAN Phase 2).
+      if (isTyping(e.target) && !styleDigit && !boldItalic) return;
+      if (e.altKey) {
+        if (styleDigit && !e.shiftKey && pickFont(slot)) e.preventDefault();
+        return;
+      }
       if (e.ctrlKey ? handleCtrl(e) : handlePlain(e)) e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
@@ -30,24 +37,57 @@ export function useMarkupKeys(): void {
   }, []);
 }
 
-/** Returns true when the key was handled. */
-/** Digit: line width of the tool or selection (by the width picker's slots). */
+/** Digit: line width of the tool or selection, or the size of text (by the pickers' slots). */
 function pickWidth(slot: number): boolean {
   const target = styleTarget();
-  if (!target || !targetSections(target).width) return false;
+  if (!target) return false;
+  const sections = targetSections(target);
+  if (sections.text) {
+    const fontSize = pickByDigit(useStyleConfig.getState().styles.fontSize, slot);
+    if (fontSize !== null) applyStyle({ fontSize });
+    return true;
+  }
+  if (!sections.width) return false;
   const width = pickByDigit(widthPickerFor(target.tool), slot);
   if (width !== null) applyStyle({ width });
   return true;
 }
 
-/** Ctrl+digit: color preset slot; with Shift, the fill of a shape with border and fill. */
-function pickColor(slot: number, toFill: boolean): boolean {
+/** Alt+digit: font slot (tenths of the way along a long list). */
+function pickFont(slot: number): boolean {
+  const target = styleTarget();
+  if (!target || !targetSections(target).text) return false;
+  const fonts = fontChoices();
+  const i = slotIndex(fonts.length, slot);
+  if (i !== null) applyStyle({ fontFamily: fonts[i] });
+  return true;
+}
+
+/** Ctrl+B / Ctrl+I: bold / italic for the text being typed, the selected text or the text tool. */
+function toggleTextStyle(code: string): boolean {
+  const target = styleTarget();
+  if (!target || !targetSections(target).text) return false;
+  const text = targetValues(target, docStore.getState().doc).text;
+  if (!text) return false;
+  applyStyle(code === "KeyB" ? { bold: !text.bold } : { italic: !text.italic });
+  return true;
+}
+
+/**
+ * Ctrl+digit: color preset slot. With Shift, the second color: the fill of a
+ * shape with border and fill, or the box behind text.
+ */
+function pickColor(slot: number, second: boolean): boolean {
   const target = styleTarget();
   if (!target) return false;
-  if (toFill && targetValues(target, docStore.getState().doc).fill !== "both") return false;
+  const values = targetValues(target, docStore.getState().doc);
+  const hasSecond = values.fill === "both" || !!values.text?.background;
+  if (second && !hasSecond) return false;
   const palette = paletteFor(target.tool);
   const i = slotIndex(palette.length, slot);
-  if (i !== null) applyStyle(toFill ? { fillColor: palette[i] } : { color: palette[i] });
+  if (i === null) return true;
+  const c = palette[i];
+  applyStyle(!second ? { color: c } : values.text ? { backgroundColor: c } : { fillColor: c });
   return true;
 }
 
@@ -103,6 +143,7 @@ function handleCtrl(e: KeyboardEvent): boolean {
   const store = docStore.getState();
   const slot = digitSlot(e.code);
   if (slot !== null) return pickColor(slot, e.shiftKey);
+  if ((e.code === "KeyB" || e.code === "KeyI") && !e.shiftKey) return toggleTextStyle(e.code);
   switch (e.code) {
     case "KeyZ":
       if (e.shiftKey) store.redo();

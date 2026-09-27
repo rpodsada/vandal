@@ -38,7 +38,15 @@ import type {
   Rect,
   TextAnnotation,
 } from "./model/types";
-import { toolColor, toolFill, toolStroke, useStyleConfig } from "./styles";
+import {
+  DEFAULT_TEXT_BACKGROUND,
+  toolColor,
+  toolFill,
+  toolFont,
+  toolStroke,
+  useStyleConfig,
+} from "./styles";
+import { textBoxPadding, textFontStyle } from "./textMeasure";
 import { TextEditor } from "./TextEditor";
 import { createText, editText, finishTextEdit } from "./textEditing";
 import { useToolStore } from "./toolStore";
@@ -428,7 +436,9 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
           setMarquee(null);
           const q = toSource(u.clientX, u.clientY);
           const dragged = Math.abs(u.clientX - drag.client.x) >= 2 * DRAG_THRESHOLD;
-          const { font } = useToolStore.getState();
+          const font = toolFont();
+          const { textAlign, textBold, textItalic, textBackground, textBackgroundColor } =
+            useToolStore.getState();
           createText({
             kind: "text",
             x: dragged ? Math.min(drag.start.x, q.x) : drag.start.x,
@@ -440,9 +450,12 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
             text: "",
             fontFamily: font.family,
             fontSize: font.size,
+            bold: textBold,
+            italic: textItalic,
             color: toolColor("text"),
-            align: "left",
-            background: false,
+            align: textAlign,
+            background: textBackground,
+            backgroundColor: textBackgroundColor ?? DEFAULT_TEXT_BACKGROUND,
           });
           break;
         }
@@ -678,6 +691,7 @@ function AnnotationShape({
         text={a.text}
         fontFamily={a.fontFamily}
         fontSize={textPx(a.fontSize)}
+        fontStyle={textFontStyle(a.bold, a.italic)}
         lineHeight={TEXT_LINE_HEIGHT}
         fill={a.color}
         align={a.align}
@@ -685,6 +699,22 @@ function AnnotationShape({
         wrap={a.autoWidth ? "none" : "word"}
         visible={!hidden}
         perfectDrawEnabled={false}
+        sceneFunc={(ctx, shape) => {
+          // The background box first, then Konva's own text drawing.
+          const t = shape as Konva.Text;
+          if (a.background) {
+            const pad = textBoxPadding(textPx(a.fontSize));
+            ctx.save();
+            ctx.translate(-pad, -pad);
+            ctx.beginPath();
+            Konva.Util.drawRoundedRectPath(ctx, t.width() + 2 * pad, t.height() + 2 * pad, pad);
+            ctx.closePath();
+            ctx.setAttr("fillStyle", a.backgroundColor);
+            ctx.fill();
+            ctx.restore();
+          }
+          t._sceneFunc(ctx as Parameters<Konva.Text["_sceneFunc"]>[0]);
+        }}
       />
     );
   }

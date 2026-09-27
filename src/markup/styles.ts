@@ -16,6 +16,8 @@ export interface StyleConfig {
   showShortcutHints: boolean;
   /** Drawing tools select an object pressed on (else they draw over it); Ctrl flips it. */
   drawingToolsSelect: boolean;
+  /** Installed font families (from the host), for the system font picker. */
+  fonts: string[];
 }
 
 /** The Rust defaults (`styles.rs`), used until the host passes the real settings. */
@@ -32,6 +34,8 @@ export const DEFAULT_STYLE_CONFIG: StyleConfig = {
       "#ffffff",
     ],
     width: { control: "buttons", values: [2, 4, 6, 10] },
+    font: { source: "system", control: "dropdown" },
+    fontSize: { control: "dropdown", values: [8, 10, 12, 14, 16, 18, 20, 36, 48, 72] },
     tools: {
       highlighter: {
         palette: ["#ffeb3b", "#76ff03", "#ff4081", "#40c4ff", "#ffab40"],
@@ -42,6 +46,7 @@ export const DEFAULT_STYLE_CONFIG: StyleConfig = {
   shareColor: true,
   showShortcutHints: true,
   drawingToolsSelect: true,
+  fonts: [],
 };
 
 /** Set by the host from settings (and kept in step with `SettingsChanged`). */
@@ -90,6 +95,29 @@ export function toolColor(tool: ToolId): string {
 export function toolWidth(tool: ToolId): number {
   const picked = useToolStore.getState().widths[tool];
   return picked ?? nearestValue(widthPickerFor(tool), PREFERRED_WIDTH[tool] ?? DEFAULT_WIDTH);
+}
+
+/** The fonts the font picker offers: the custom list, or every installed font. */
+export function fontChoices(cfg = useStyleConfig.getState()): string[] {
+  const picker = cfg.styles.font;
+  if (picker.source === "custom") return picker.fonts;
+  return cfg.fonts.length ? cfg.fonts : [DEFAULT_FONT];
+}
+
+const DEFAULT_FONT = "Segoe UI";
+const DEFAULT_FONT_SIZE = 20;
+/** The default box color behind text. */
+export const DEFAULT_TEXT_BACKGROUND = "#ffffff";
+
+/** The text tool's font family and size (pt). */
+export function toolFont(): { family: string; size: number } {
+  const cfg = useStyleConfig.getState();
+  const t = useToolStore.getState();
+  const custom = cfg.styles.font.source === "custom" ? cfg.styles.font.fonts : null;
+  return {
+    family: t.fontFamily ?? custom?.[0] ?? DEFAULT_FONT,
+    size: t.fontSize ?? nearestValue(cfg.styles.fontSize, DEFAULT_FONT_SIZE),
+  };
 }
 
 /** A shape tool's fill mode, and its fill color for "both" (null: not picked yet). */
