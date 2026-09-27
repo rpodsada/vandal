@@ -46,10 +46,115 @@ pub fn compose(frames: &[&MonitorFrame], rect: PhysicalRect) -> Option<RgbaImage
     })
 }
 
+/// Copy `rect` (in `image` pixels) out of `image`. Parts outside are
+/// transparent. `None` if `rect` is empty.
+pub fn crop_rgba(image: &RgbaImage, rect: PhysicalRect) -> Option<RgbaImage> {
+    if rect.is_empty() {
+        return None;
+    }
+    let (w, h) = (rect.width as usize, rect.height as usize);
+    let mut rgba = vec![0u8; w * h * 4];
+    let bounds = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
+    if let Some(overlap) = rect.intersect(&bounds) {
+        let dst = overlap.relative_to(rect.origin());
+        let row_bytes = overlap.width as usize * 4;
+        for row in 0..overlap.height as usize {
+            let s = ((overlap.y as usize + row) * image.width as usize + overlap.x as usize) * 4;
+            let d = ((dst.y as usize + row) * w + dst.x as usize) * 4;
+            rgba[d..d + row_bytes].copy_from_slice(&image.rgba[s..s + row_bytes]);
+        }
+    }
+    Some(RgbaImage {
+        width: w as u32,
+        height: h as u32,
+        rgba,
+    })
+}
+
+/// Composite straight-alpha RGBA `layer` over `base` in place ("source over").
+/// `layer` must be the same size as `base`.
+pub fn blend_over(base: &mut RgbaImage, layer: &[u8]) -> Result<(), String> {
+    if layer.len() != base.rgba.len() {
+        return Err(format!(
+            "layer is {} bytes, expected {} for {}×{}",
+            layer.len(),
+            base.rgba.len(),
+            base.width,
+            base.height
+        ));
+    }
+    for (b, l) in base.rgba.chunks_exact_mut(4).zip(layer.chunks_exact(4)) {
+        let la = u32::from(l[3]);
+        if la == 0 {
+            continue;
+        }
+        if la == 255 {
+            b.copy_from_slice(l);
+            continue;
+        }
+        let ba = u32::from(b[3]);
+        // out_a = la + ba·(1 − la), all in 0..=255 fixed point (×255).
+        let ba_rest = ba * (255 - la); // ×255²
+        let out_a = la * 255 + ba_rest; // ×255²
+        for c in 0..3 {
+            let num = u32::from(l[c]) * la * 255 + u32::from(b[c]) * ba_rest;
+            b[c] = ((num + out_a / 2) / out_a) as u8;
+        }
+        b[3] = ((out_a + 127) / 255) as u8;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::geometry::{virtual_bounds, MonitorInfo};
+
+    fn image(w: u32, h: u32, px: [u8; 4]) -> RgbaImage {
+        RgbaImage {
+            width: w,
+            height: h,
+            rgba: px.repeat((w * h) as usize),
+        }
+    }
+
+    #[test]
+    fn crop_rgba_copies_and_pads() {
+        let mut img = image(3, 2, [0, 0, 0, 255]);
+        img.rgba[(3 + 2) * 4] = 9; // pixel (2,1): (y·w + x)·4
+        let c = crop_rgba(&img, PhysicalRect::new(2, 1, 2, 1)).unwrap();
+        assert_eq!(c.rgba, vec![9, 0, 0, 255, 0, 0, 0, 0]);
+        assert!(crop_rgba(&img, PhysicalRect::new(0, 0, 0, 1)).is_none());
+    }
+
+    #[test]
+    fn blend_over_opaque_base() {
+        let mut base = image(3, 1, [200, 100, 0, 255]);
+        let layer = [
+            [0, 0, 0, 0],         // transparent: base shows
+            [10, 20, 30, 255],    // opaque: layer wins
+            [255, 255, 255, 128], // half white over base
+        ]
+        .concat();
+        blend_over(&mut base, &layer).unwrap();
+        assert_eq!(&base.rgba[0..4], &[200, 100, 0, 255]);
+        assert_eq!(&base.rgba[4..8], &[10, 20, 30, 255]);
+        assert_eq!(&base.rgba[8..12], &[228, 178, 128, 255]);
+    }
+
+    #[test]
+    fn blend_over_transparent_base_keeps_layer_color() {
+        // Over a gap between monitors the result is the layer itself.
+        let mut base = image(1, 1, [0, 0, 0, 0]);
+        blend_over(&mut base, &[255, 0, 0, 100]).unwrap();
+        assert_eq!(base.rgba, vec![255, 0, 0, 100]);
+    }
+
+    #[test]
+    fn blend_over_rejects_wrong_size() {
+        let mut base = image(2, 2, [0, 0, 0, 255]);
+        assert!(blend_over(&mut base, &[0; 4]).is_err());
+    }
 
     /// A frame whose pixel at local (x, y) is BGRA = (x, y, index, 0).
     fn frame(index: u32, bounds: PhysicalRect) -> MonitorFrame {

@@ -1,7 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "editor",
-  "description": "Editor windows: close themselves (Ctrl+W). Pixels come from the capture protocol; showing, copying and saving happen in Rust. No filesystem access.",
+  "description": "Editor windows: close themselves (Ctrl+W) and run their on-close actions first (close-requested listener + destroy). Pixels come from the capture protocol; showing, copying and saving happen in Rust. No filesystem access.",
   "windows": ["editor-*"],
-  "permissions": ["core:window:allow-close"]
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:window:allow-close",
+    "core:window:allow-destroy"
+  ]
 }

@@ -3,10 +3,12 @@
 //!
 //! - `GET /frame/{capture_id}/{monitor_index}?fmt=rgba|bmp`: a monitor frame (overlay)
 //! - `GET /editor/{editor_id}`: an editor's base image, raw RGBA
+//! - `POST /editor/{editor_id}/layer`: the editor's annotation layer for the
+//!   next export, raw straight-alpha RGBA of the crop's size
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use tauri::http::{header, Request, Response, StatusCode};
+use tauri::http::{header, Method, Request, Response, StatusCode};
 use tauri::{Manager, Runtime, UriSchemeContext, UriSchemeResponder};
 
 use crate::capture::MonitorFrame;
@@ -45,6 +47,10 @@ pub fn editor_url(editor_id: EditorId) -> String {
     format!("http://{SCHEME}.localhost/editor/{editor_id}")
 }
 
+pub fn editor_layer_url(editor_id: EditorId) -> String {
+    format!("http://{SCHEME}.localhost/editor/{editor_id}/layer")
+}
+
 #[derive(Debug, PartialEq)]
 enum Route {
     Frame {
@@ -53,6 +59,7 @@ enum Route {
         format: TransferFormat,
     },
     Editor(EditorId),
+    EditorLayer(EditorId),
 }
 
 pub fn handle<R: Runtime>(
@@ -61,7 +68,26 @@ pub fn handle<R: Runtime>(
     responder: UriSchemeResponder,
 ) {
     let state = ctx.app_handle().state::<AppState>();
-    match parse(request.uri()) {
+    // The webview's origin differs from ours, so POSTs are preflighted.
+    if request.method() == Method::OPTIONS {
+        responder.respond(
+            Response::builder()
+                .status(StatusCode::NO_CONTENT)
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .header(header::ACCESS_CONTROL_ALLOW_METHODS, "GET, POST")
+                .header(header::ACCESS_CONTROL_ALLOW_HEADERS, "content-type")
+                .body(Vec::new())
+                .unwrap(),
+        );
+        return;
+    }
+    let route = parse(request.uri());
+    let is_post = request.method() == Method::POST;
+    if is_post != matches!(route, Some(Route::EditorLayer(_))) {
+        responder.respond(error(StatusCode::METHOD_NOT_ALLOWED));
+        return;
+    }
+    match route {
         Some(Route::Frame {
             capture_id,
             monitor_index,
@@ -93,6 +119,16 @@ pub fn handle<R: Runtime>(
             std::thread::spawn(move || {
                 responder.respond(ok(image.rgba.clone(), "application/octet-stream"));
             });
+        }
+        Some(Route::EditorLayer(id)) => {
+            let bytes = request.into_body();
+            let n = bytes.len();
+            if state.editors.lock().unwrap().set_layer(id, bytes) {
+                eprintln!("[editor] #{id}: layer received ({:.1} MB)", n as f64 / 1e6);
+                responder.respond(ok(Vec::new(), "text/plain"));
+            } else {
+                responder.respond(error(StatusCode::NOT_FOUND));
+            }
         }
         None => responder.respond(error(StatusCode::BAD_REQUEST)),
     }
@@ -131,6 +167,9 @@ fn parse(uri: &tauri::http::Uri) -> Option<Route> {
             })
         }
         ["editor", id] if uri.query().is_none() => Some(Route::Editor(id.parse().ok()?)),
+        ["editor", id, "layer"] if uri.query().is_none() => {
+            Some(Route::EditorLayer(id.parse().ok()?))
+        }
         _ => None,
     }
 }
@@ -231,10 +270,13 @@ mod tests {
         assert_eq!(parse(&uri), frame(1, 0, TransferFormat::Rgba));
         let uri: tauri::http::Uri = editor_url(4).parse().unwrap();
         assert_eq!(parse(&uri), Some(Route::Editor(4)));
+        let uri: tauri::http::Uri = editor_layer_url(4).parse().unwrap();
+        assert_eq!(parse(&uri), Some(Route::EditorLayer(4)));
         for bad in [
             "http://capture.localhost/editor",
             "http://capture.localhost/editor/x",
             "http://capture.localhost/editor/1/2",
+            "http://capture.localhost/editor/1/layer/x",
             "http://capture.localhost/editor/1?fmt=bmp",
             "http://capture.localhost/frame/1",
             "http://capture.localhost/frame/x/0",

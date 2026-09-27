@@ -40,6 +40,15 @@ export function SaveIcon() {
   );
 }
 
+export function EditorIcon() {
+  return (
+    <svg {...props}>
+      <path d="M3 13l2.6-.6 7-7-2-2-7 7z" />
+      <path d="M9.6 4.4l2 2" />
+    </svg>
+  );
+}
+
 export function AboutIcon() {
   return (
     <svg {...props}>

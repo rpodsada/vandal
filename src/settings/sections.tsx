@@ -1,7 +1,7 @@
 // Every setting in the settings window, declared as data. See schema.ts.
 import pkg from "../../package.json";
 import { commands } from "../shared/ipc";
-import { AboutIcon, CaptureIcon, GeneralIcon, SaveIcon } from "./icons";
+import { AboutIcon, CaptureIcon, EditorIcon, GeneralIcon, SaveIcon } from "./icons";
 import type { Section } from "./schema";
 
 export const sections: Section[] = [
@@ -160,6 +160,35 @@ export const sections: Section[] = [
             label: "Auto-save switch in the tray menu",
             description: "Turn automatic saving on or off from the tray icon's menu.",
             keywords: ["tray", "menu", "auto-save", "autosave"],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "editor",
+    title: "Editor",
+    icon: EditorIcon,
+    groups: [
+      {
+        title: "When you close the editor",
+        description: "Skipped if you already copied or saved since your last change.",
+        items: [
+          {
+            id: "editor-close-copy",
+            kind: "toggle",
+            path: "editor.onClose.copy",
+            label: "Copy to clipboard",
+            keywords: ["close", "exit", "paste"],
+          },
+          {
+            id: "editor-close-save",
+            kind: "toggle",
+            path: "editor.onClose.save",
+            label: "Save to a file",
+            description:
+              "Uses the folder and file name from Saving. With neither option on, you're asked before unsaved changes are lost.",
+            keywords: ["close", "exit", "auto-save", "autosave"],
           },
         ],
       },

@@ -3,10 +3,24 @@ import { zoomLabel } from "./view";
 import { useViewStore } from "./viewStore";
 import styles from "./EditorApp.module.css";
 
+/** A short-lived message in the status bar (result of copy/save, errors). */
+export interface Notice {
+  text: string;
+  /** A saved file, offered as "Show in folder". */
+  path?: string;
+  error?: boolean;
+}
+
 /** Zoom levels offered in the menu. */
 const MENU_ZOOMS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 8];
 
-export function StatusBar() {
+export function StatusBar({
+  notice,
+  onReveal,
+}: {
+  notice: Notice | null;
+  onReveal: (path: string) => void;
+}) {
   const image = useViewStore((s) => s.image);
   const zoom = useViewStore((s) => s.view.zoom);
   const fitted = useViewStore((s) => s.fitted);
@@ -14,11 +28,28 @@ export function StatusBar() {
 
   return (
     <footer className={styles.status}>
-      {image && (
-        <>
+      {notice ? (
+        <span className={notice.error ? styles.noticeError : styles.notice} role="status">
+          {notice.text}
+          {notice.path && (
+            <button
+              type="button"
+              className={styles.linkButton}
+              onClick={() => onReveal(notice.path!)}
+            >
+              Show in folder
+            </button>
+          )}
+        </span>
+      ) : (
+        image && (
           <span>
             {image.width} × {image.height} px
           </span>
+        )
+      )}
+      {image && (
+        <>
           <span className={styles.spacer} />
           <button
             type="button"

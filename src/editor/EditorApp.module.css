@@ -126,6 +126,7 @@
   z-index: 10;
   display: flex;
   flex-direction: column;
+  width: max-content;
   min-width: 140px;
   padding: 4px;
   border-radius: 8px;
@@ -136,8 +137,12 @@
 }
 
 .menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   height: 28px;
   padding: 0 10px;
+  white-space: nowrap;
   border: 0;
   border-radius: 4px;
   background: transparent;
@@ -154,4 +159,141 @@
 .menu button[aria-current] {
   background: var(--selected);
   font-weight: 600;
+}
+
+.notice,
+.noticeError {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+
+.noticeError {
+  color: #c42b1c;
+}
+
+@media (prefers-color-scheme: dark) {
+  .noticeError {
+    color: #ff99a4;
+  }
+}
+
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+}
+
+/* ---- command bar ---- */
+
+.commandBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 48px;
+  flex-shrink: 0;
+  padding: 0 8px;
+}
+
+.commandBar svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.button {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--button-bg);
+  box-shadow: inset 0 0 0 1px var(--control-border);
+  color: var(--text);
+  font: inherit;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--button-bg-hover);
+}
+
+.button:active:not(:disabled) {
+  background: var(--button-bg-active);
+}
+
+.split {
+  position: relative;
+  display: flex;
+  height: 34px;
+  border-radius: 6px;
+  background: var(--accent);
+}
+
+.splitMain,
+.splitMore {
+  display: flex;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--on-accent);
+  font: inherit;
+}
+
+.splitMain {
+  gap: 8px;
+  padding: 0 12px 0 10px;
+  border-radius: 6px 0 0 6px;
+}
+
+.splitMore {
+  justify-content: center;
+  width: 30px;
+  padding: 0;
+  border-left: 1px solid rgb(255 255 255 / 0.3);
+  border-radius: 0 6px 6px 0;
+}
+
+.splitMore svg {
+  width: 14px;
+  height: 14px;
+}
+
+.splitMain:hover:not(:disabled),
+.splitMore:hover:not(:disabled) {
+  background: rgb(255 255 255 / 0.1);
+}
+
+.button:disabled,
+.splitMain:disabled,
+.splitMore:disabled {
+  opacity: 0.6;
+}
+
+.menuBelow {
+  top: calc(100% + 6px);
+  bottom: auto;
+}
+
+.shortcut {
+  margin-left: 16px;
+  color: var(--text-2);
+  font-size: 12px;
 }

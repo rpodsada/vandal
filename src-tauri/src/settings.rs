@@ -157,6 +157,25 @@ pub struct EditorSettings {
     /// Show an "Edit" button on capture notifications. Clicking the
     /// notification itself opens the editor either way.
     pub notification_edit_button: bool,
+    /// What closing the editor does with the image (unless already done since
+    /// the last change).
+    pub on_close: EditorOnClose,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(default, rename_all = "camelCase")]
+pub struct EditorOnClose {
+    pub copy: bool,
+    pub save: bool,
+}
+
+impl Default for EditorOnClose {
+    fn default() -> Self {
+        Self {
+            copy: true,
+            save: false,
+        }
+    }
 }
 
 impl Default for EditorSettings {
@@ -166,6 +185,7 @@ impl Default for EditorSettings {
             default_tool: "arrow".into(),
             theme: "system".into(),
             notification_edit_button: true,
+            on_close: EditorOnClose::default(),
         }
     }
 }
@@ -516,6 +536,8 @@ mod tests {
         assert_eq!(v["hotkeys"]["region"], region);
         assert_eq!(v["afterCapture"]["copyToClipboard"], true);
         assert_eq!(v["afterCapture"]["openEditor"], false);
+        assert_eq!(v["editor"]["onClose"]["copy"], true);
+        assert_eq!(v["editor"]["onClose"]["save"], false);
         assert_eq!(v["save"]["format"], "png");
         assert_eq!(v["history"]["keepFramesInMemory"], 3);
     }

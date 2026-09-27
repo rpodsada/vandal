@@ -6,10 +6,14 @@
 //! window is destroyed frees it. The document's `crop` is a rect in that
 //! image's pixels. For captures the base is the whole monitor (or monitors)
 //! under the selection, so the crop can later grow back out (PLAN §4.6).
+//!
+//! Export (PLAN §4.6): the page renders only the annotation layer and POSTs it
+//! as raw RGBA to `/editor/{id}/layer`; [`export`] crops the base, composites
+//! the layer over it and copies or saves in Rust.
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -17,6 +21,9 @@ use specta::Type;
 use tauri::{
     AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder, Window,
+};
+use tauri_plugin_dialog::{
+    DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult,
 };
 use tauri_plugin_store::StoreExt;
 use windows::Win32::Foundation::HWND;
@@ -27,7 +34,7 @@ use crate::compose::{self, RgbaImage};
 use crate::frames::Capture;
 use crate::geometry::{monitor_at, virtual_bounds, MonitorInfo, PhysicalRect};
 use crate::state::AppState;
-use crate::{output, overlay, protocol};
+use crate::{output, overlay, protocol, session};
 
 pub type EditorId = u32;
 
@@ -48,6 +55,8 @@ pub struct Editor {
     /// In `image` pixels.
     pub crop: PhysicalRect,
     pub maximized: bool,
+    /// The last annotation layer the page uploaded: straight-alpha RGBA.
+    pub layer: Option<Vec<u8>>,
 }
 
 #[derive(Default)]
@@ -66,6 +75,18 @@ impl Editors {
     pub fn image(&self, id: EditorId) -> Option<Arc<RgbaImage>> {
         self.open.get(&id).map(|e| e.image.clone())
     }
+
+    /// Keep an uploaded annotation layer for the next export. `false` if the
+    /// editor is gone.
+    pub fn set_layer(&mut self, id: EditorId, layer: Vec<u8>) -> bool {
+        match self.open.get_mut(&id) {
+            Some(e) => {
+                e.layer = Some(layer);
+                true
+            }
+            None => false,
+        }
+    }
 }
 
 /// Editor page → Rust on mount: what to show.
@@ -80,6 +101,39 @@ pub struct EditorInit {
     pub crop: PhysicalRect,
     /// Raw RGBA bytes of the base image.
     pub url: String,
+    /// Where to POST the annotation layer before an export.
+    pub layer_url: String,
+}
+
+/// What to do with the finished image.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ExportAction {
+    Copy,
+    /// Save with the file-name template into the save folder.
+    Save,
+    /// Ask where to save.
+    SaveAs,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum ExportOutcome {
+    Copied,
+    Saved {
+        path: String,
+    },
+    /// Save As was dismissed.
+    Cancelled,
+}
+
+/// The answer to "save before closing?".
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum CloseChoice {
+    Save,
+    Discard,
+    Cancel,
 }
 
 pub fn label(id: EditorId) -> String {
@@ -136,6 +190,7 @@ fn open(app: &AppHandle, image: Arc<RgbaImage>, crop: PhysicalRect) {
         image,
         crop,
         maximized: remembered.maximized,
+        layer: None,
     });
 
     let monitors = state.monitors.read().unwrap().clone();
@@ -212,7 +267,143 @@ pub fn init(app: &AppHandle, window_label: &str) -> Option<EditorInit> {
         height: e.image.height,
         crop: e.crop,
         url: protocol::editor_url(id),
+        layer_url: protocol::editor_layer_url(id),
     })
+}
+
+/// Crop the base to `crop`, composite the uploaded layer if `with_layer`, and
+/// copy or save. Runs dialogs and encoding, so call off the main thread.
+pub fn export(
+    app: &AppHandle,
+    window: &WebviewWindow,
+    crop: PhysicalRect,
+    with_layer: bool,
+    action: ExportAction,
+) -> Result<ExportOutcome, String> {
+    let started = Instant::now();
+    let id = id_from_label(window.label()).ok_or("not an editor window")?;
+    let (base, layer) = {
+        let state = app.state::<AppState>();
+        let mut editors = state.editors.lock().unwrap();
+        let e = editors.open.get_mut(&id).ok_or("this editor is closed")?;
+        // Take the layer: each upload is used by exactly one export.
+        let layer = if with_layer { e.layer.take() } else { None };
+        (e.image.clone(), layer)
+    };
+    let mut image = compose::crop_rgba(&base, crop).ok_or("the crop is empty")?;
+    if with_layer {
+        let layer = layer.ok_or("the annotation layer didn't arrive")?;
+        compose::blend_over(&mut image, &layer)?;
+    }
+    let composed = started.elapsed();
+
+    let outcome = match action {
+        ExportAction::Copy => {
+            output::copy_to_clipboard(&image)?;
+            ExportOutcome::Copied
+        }
+        ExportAction::Save => {
+            let save = app
+                .state::<AppState>()
+                .settings
+                .read()
+                .unwrap()
+                .save
+                .clone();
+            let path = output::save_with_template(&save, &image)?;
+            ExportOutcome::Saved {
+                path: path.to_string_lossy().into_owned(),
+            }
+        }
+        ExportAction::SaveAs => match ask_save_path(app, window) {
+            Some(path) => {
+                output::write_png(&image, &path)?;
+                ExportOutcome::Saved {
+                    path: path.to_string_lossy().into_owned(),
+                }
+            }
+            None => ExportOutcome::Cancelled,
+        },
+    };
+    eprintln!(
+        "[perf] editor export {action:?} {}×{}{}: compose {:.1}ms, total {:.1}ms",
+        image.width,
+        image.height,
+        if with_layer { " +layer" } else { "" },
+        composed.as_secs_f64() * 1000.0,
+        started.elapsed().as_secs_f64() * 1000.0
+    );
+    Ok(outcome)
+}
+
+/// Save As dialog, modal to the editor, starting in the save folder with the
+/// template's name. Always returns a `.png` path.
+fn ask_save_path(app: &AppHandle, window: &WebviewWindow) -> Option<std::path::PathBuf> {
+    let save = app
+        .state::<AppState>()
+        .settings
+        .read()
+        .unwrap()
+        .save
+        .clone();
+    let dir = output::resolve_dir(&save.directory);
+    let name = format!(
+        "{}.png",
+        output::render_template(&save.filename_template, &output::Timestamp::now_local())
+    );
+    let mut dialog = window
+        .dialog()
+        .file()
+        .set_title("Save screenshot as")
+        .set_parent(window)
+        .set_file_name(&name)
+        .add_filter("PNG image", &["png"]);
+    if dir.is_dir() {
+        dialog = dialog.set_directory(&dir);
+    }
+    let mut path = dialog.blocking_save_file()?.into_path().ok()?;
+    if !path
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("png"))
+    {
+        path.set_extension("png");
+    }
+    Some(path)
+}
+
+/// "Save changes before closing?", modal to the editor.
+pub fn confirm_close(window: &WebviewWindow) -> CloseChoice {
+    let result = window
+        .dialog()
+        .message("This screenshot has changes that haven't been copied or saved.")
+        .title("Save before closing?")
+        .kind(MessageDialogKind::Warning)
+        .parent(window)
+        .buttons(MessageDialogButtons::YesNoCancelCustom(
+            "Save".into(),
+            "Don't save".into(),
+            "Cancel".into(),
+        ))
+        .blocking_show_with_result();
+    match result {
+        MessageDialogResult::Yes => CloseChoice::Save,
+        MessageDialogResult::No => CloseChoice::Discard,
+        MessageDialogResult::Custom(label) if label == "Save" => CloseChoice::Save,
+        MessageDialogResult::Custom(label) if label == "Don't save" => CloseChoice::Discard,
+        _ => CloseChoice::Cancel,
+    }
+}
+
+/// Start a region capture from an editor: get the editor out of the way first
+/// so it isn't in the shot.
+pub fn new_capture(app: &AppHandle, window: &WebviewWindow) {
+    let _ = window.minimize();
+    let app = app.clone();
+    std::thread::spawn(move || {
+        // Let the minimize animation finish before grabbing the screen.
+        std::thread::sleep(Duration::from_millis(300));
+        session::start_region(&app);
+    });
 }
 
 /// Editor page → Rust: the image is painted, show the window.

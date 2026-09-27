@@ -57,7 +57,8 @@ export interface DocState {
   redo: () => void;
 
   select: (ids: readonly AnnotationId[]) => void;
-  markOutput: () => void;
+  /** `doc` (default: the current one) was just copied or saved. */
+  markOutput: (doc?: Doc) => void;
 }
 
 export function canUndo(s: DocState): boolean {
@@ -162,7 +163,7 @@ export function createDocStore(initial: Doc = emptyDoc({ width: 1, height: 1 }))
       },
 
       select: (ids) => set({ selection: [...new Set(ids)] }),
-      markOutput: () => set({ baseline: get().doc }),
+      markOutput: (doc) => set({ baseline: doc ?? get().doc }),
     };
 
     function pruneSelection() {

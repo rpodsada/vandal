@@ -59,9 +59,22 @@ export const commands = {
 	crop: PhysicalRect,
 	/**  Raw RGBA bytes of the base image. */
 	url: string,
+	/**  Where to POST the annotation layer before an export. */
+	layerUrl: string,
 } | null>("editor_init"),
 	/**  Editor page painted its image; show the window. */
 	editorReady: () => __TAURI_INVOKE<void>("editor_ready"),
+	/**
+	 *  Copy or save `crop` of the base image. With `withLayer`, the annotation
+	 *  layer POSTed to `layerUrl` just before is composited on top.
+	 */
+	editorExport: (crop: PhysicalRect, withLayer: boolean, action: ExportAction) => typedError<ExportOutcome, string>(__TAURI_INVOKE("editor_export", { crop, withLayer, action })),
+	/**  Ask whether to save unsaved changes before the editor closes. */
+	editorConfirmClose: () => __TAURI_INVOKE<CloseChoice>("editor_confirm_close"),
+	/**  Start a new region capture from the editor. */
+	editorNewCapture: () => __TAURI_INVOKE<void>("editor_new_capture"),
+	/**  Show a file selected in Explorer. */
+	revealFile: (path: string) => __TAURI_INVOKE<void>("reveal_file", { path }),
 };
 
 /** Events */
@@ -88,6 +101,9 @@ export type CaptureTarget =
 /**  Virtual-desktop physical pixels. */
 { kind: "region"; rect: PhysicalRect } | { kind: "monitorUnderCursor" } | { kind: "allMonitors" };
 
+/**  The answer to "save before closing?". */
+export type CloseChoice = "save" | "discard" | "cancel";
+
 /**  Editor page → Rust on mount: what to show. */
 export type EditorInit = {
 	editorId: number,
@@ -98,6 +114,13 @@ export type EditorInit = {
 	crop: PhysicalRect,
 	/**  Raw RGBA bytes of the base image. */
 	url: string,
+	/**  Where to POST the annotation layer before an export. */
+	layerUrl: string,
+};
+
+export type EditorOnClose = {
+	copy?: boolean,
+	save?: boolean,
 };
 
 export type EditorSettings = {
@@ -110,7 +133,23 @@ export type EditorSettings = {
 	 *  notification itself opens the editor either way.
 	 */
 	notificationEditButton?: boolean,
+	/**
+	 *  What closing the editor does with the image (unless already done since
+	 *  the last change).
+	 */
+	onClose?: EditorOnClose,
 };
+
+/**  What to do with the finished image. */
+export type ExportAction = "copy" | 
+/**  Save with the file-name template into the save folder. */
+"save" | 
+/**  Ask where to save. */
+"saveAs";
+
+export type ExportOutcome = { kind: "copied" } | { kind: "saved"; path: string } | 
+/**  Save As was dismissed. */
+{ kind: "cancelled" };
 
 export type History = {
 	keepFramesInMemory?: number,

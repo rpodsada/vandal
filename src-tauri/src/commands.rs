@@ -4,8 +4,9 @@
 use tauri::{AppHandle, Manager, WebviewWindow};
 use tauri_plugin_dialog::DialogExt;
 
-use crate::editor::{self, EditorInit};
+use crate::editor::{self, CloseChoice, EditorInit, ExportAction, ExportOutcome};
 use crate::frames::CaptureId;
+use crate::geometry::PhysicalRect;
 use crate::output;
 use crate::session::{self, CaptureTarget, OverlayLoad, OverlayReport};
 use crate::settings::{self, Settings};
@@ -67,6 +68,47 @@ pub fn editor_init(app: AppHandle, window: WebviewWindow) -> Option<EditorInit> 
 #[specta::specta]
 pub fn editor_ready(app: AppHandle, window: WebviewWindow) {
     editor::ready(&app, &window);
+}
+
+/// Copy or save `crop` of the base image. With `withLayer`, the annotation
+/// layer POSTed to `layerUrl` just before is composited on top.
+#[tauri::command]
+#[specta::specta]
+pub async fn editor_export(
+    app: AppHandle,
+    window: WebviewWindow,
+    crop: PhysicalRect,
+    with_layer: bool,
+    action: ExportAction,
+) -> Result<ExportOutcome, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        editor::export(&app, &window, crop, with_layer, action)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Ask whether to save unsaved changes before the editor closes.
+#[tauri::command]
+#[specta::specta]
+pub async fn editor_confirm_close(window: WebviewWindow) -> CloseChoice {
+    tauri::async_runtime::spawn_blocking(move || editor::confirm_close(&window))
+        .await
+        .unwrap_or(CloseChoice::Cancel)
+}
+
+/// Start a new region capture from the editor.
+#[tauri::command]
+#[specta::specta]
+pub fn editor_new_capture(app: AppHandle, window: WebviewWindow) {
+    editor::new_capture(&app, &window);
+}
+
+/// Show a file selected in Explorer.
+#[tauri::command]
+#[specta::specta]
+pub fn reveal_file(path: String) {
+    output::reveal_in_explorer(std::path::Path::new(&path));
 }
 
 // ---------- settings window ----------

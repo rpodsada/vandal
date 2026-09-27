@@ -45,6 +45,10 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::open_folder,
             commands::editor_init,
             commands::editor_ready,
+            commands::editor_export,
+            commands::editor_confirm_close,
+            commands::editor_new_capture,
+            commands::reveal_file,
         ])
         .events(collect_events![
             session::OverlayLoad,

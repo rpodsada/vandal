@@ -20,3 +20,20 @@ type Complete<T> = T extends readonly unknown[]
 type NumberNotNull<T> = [T] extends [number | null] ? (null extends T ? number : T) : T;
 
 export type Settings = Complete<SettingsWire>;
+
+/**
+ * Send raw pixels to Rust through the capture protocol (not JSON IPC, PLAN §1):
+ * the editor's annotation layer, POSTed to `EditorInit.layerUrl` right before
+ * `commands.editorExport`.
+ */
+export async function uploadPixels(
+  url: string,
+  rgba: Uint8ClampedArray<ArrayBuffer>,
+): Promise<void> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/octet-stream" },
+    body: rgba,
+  });
+  if (!res.ok) throw new Error(`Couldn't send the annotations (HTTP ${res.status}).`);
+}

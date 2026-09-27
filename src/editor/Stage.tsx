@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type Ref } from "react";
 import { displaySize, snapToDevice, wheelZoomFactor } from "./view";
 import { useViewStore } from "./viewStore";
+import { isTyping } from "../shared/dom";
 import styles from "./EditorApp.module.css";
 
 interface Props {
@@ -131,12 +132,4 @@ function useSpaceHeld(): boolean {
     };
   }, []);
   return held;
-}
-
-function isTyping(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    (target instanceof HTMLElement && target.isContentEditable)
-  );
 }
