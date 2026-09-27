@@ -56,6 +56,38 @@ export const sections: Section[] = [
         ],
       },
       {
+        title: "Quick edit",
+        items: [
+          {
+            id: "quick-edit",
+            kind: "toggle",
+            path: "quickEdit.enabled",
+            label: "Show a toolbar on the selection",
+            description:
+              "Copy, save or mark up the area right away. When it's off, Enter captures the selection.",
+            keywords: ["quick edit", "toolbar", "markup", "annotate"],
+          },
+          {
+            id: "quick-edit-close-copy",
+            kind: "toggle",
+            path: "quickEdit.closeOnCopy",
+            label: "Close after copying",
+            description: "Copy (Ctrl+C) also finishes the capture.",
+            keywords: ["quick edit", "clipboard"],
+            disabled: (s) => !s.quickEdit.enabled,
+          },
+          {
+            id: "quick-edit-close-save",
+            kind: "toggle",
+            path: "quickEdit.closeOnSave",
+            label: "Close after saving",
+            description: "Save (Ctrl+S) also finishes the capture.",
+            keywords: ["quick edit", "file"],
+            disabled: (s) => !s.quickEdit.enabled,
+          },
+        ],
+      },
+      {
         title: "Keyboard shortcuts",
         description: "Changing shortcuts is coming in a later update.",
         items: [

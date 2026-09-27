@@ -54,7 +54,14 @@ impl RecentImages {
 
 /// Hand a finished capture to the configured actions. Returns immediately; the
 /// work runs on a background thread so the overlay can disappear at once.
-pub fn deliver(app: &AppHandle, image: RgbaImage, started: Instant) {
+/// What quick edit already did with this image, so delivering doesn't repeat it.
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct Already {
+    pub copied: bool,
+    pub saved: Option<PathBuf>,
+}
+
+pub fn deliver(app: &AppHandle, image: RgbaImage, started: Instant, already: Already) {
     let settings: Settings = app.state::<AppState>().settings.read().unwrap().clone();
     let app = app.clone();
     std::thread::spawn(move || {
@@ -66,7 +73,8 @@ pub fn deliver(app: &AppHandle, image: RgbaImage, started: Instant) {
             .unwrap()
             .push(image.clone());
 
-        let copied = settings.after_capture.copy_to_clipboard
+        let copying = settings.after_capture.copy_to_clipboard && !already.copied;
+        let copied = copying
             && match copy_to_clipboard(&image) {
                 Ok(()) => true,
                 Err(e) => {
@@ -83,7 +91,10 @@ pub fn deliver(app: &AppHandle, image: RgbaImage, started: Instant) {
             );
         }
 
-        let saved = if settings.after_capture.auto_save {
+        let copied = copied || already.copied;
+        let saved = if already.saved.is_some() {
+            already.saved
+        } else if settings.after_capture.auto_save {
             match save_with_template(&settings.save, &image) {
                 Ok(p) => Some(p),
                 Err(e) => {

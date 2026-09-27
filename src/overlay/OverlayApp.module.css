@@ -173,3 +173,121 @@
     transform: translate(-50%, -4px);
   }
 }
+
+/* ---- quick edit toolbar (PLAN 2B.1, mockup "Main") ---- */
+
+.quickBar {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 12px 32px rgb(0 0 0 / 0.35);
+  color: var(--text);
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  cursor: default;
+  animation: hint-in 120ms ease-out;
+}
+
+.quickRow {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  box-sizing: border-box;
+}
+
+.quickBar svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.quickButton {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--button-bg);
+  box-shadow: inset 0 0 0 1px var(--control-border);
+  color: var(--text);
+  font: inherit;
+}
+
+.quickButton:hover:not(:disabled) {
+  background: var(--button-bg-hover);
+}
+
+.quickAccent {
+  background: var(--accent);
+  box-shadow: none;
+  color: var(--on-accent);
+}
+
+.quickAccent:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+
+.quickButton:disabled {
+  opacity: 0.6;
+}
+
+.quickIcon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+}
+
+.quickIcon:hover {
+  background: var(--hover);
+}
+
+.quickDivider {
+  width: 1px;
+  height: 24px;
+  margin: 0 4px;
+  background: var(--border);
+}
+
+.quickNotice,
+.quickNoticeError {
+  /* As wide as the buttons, never wider. */
+  width: 0;
+  min-width: 100%;
+  box-sizing: border-box;
+  padding: 0 12px 10px;
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.quickNoticeError {
+  color: #c42b1c;
+}
+
+@media (prefers-color-scheme: dark) {
+  .quickNoticeError {
+    color: #ff99a4;
+  }
+}

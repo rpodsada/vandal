@@ -31,6 +31,7 @@ pub struct Settings {
     pub after_capture: AfterCapture,
     pub save: SaveSettings,
     pub overlay: OverlaySettings,
+    pub quick_edit: QuickEditSettings,
     pub editor: EditorSettings,
     /// Style pickers for the markup tools.
     pub styles: Styles,
@@ -47,6 +48,7 @@ impl Default for Settings {
             after_capture: AfterCapture::default(),
             save: SaveSettings::default(),
             overlay: OverlaySettings::default(),
+            quick_edit: QuickEditSettings::default(),
             editor: EditorSettings::default(),
             styles: Styles::default(),
             startup: Startup::default(),
@@ -146,6 +148,29 @@ impl Default for OverlaySettings {
             dim_opacity: 0.4,
             show_loupe: true,
             show_dimensions: true,
+        }
+    }
+}
+
+/// Quick edit (PLAN Phase 2): a toolbar on the selection screen to copy, save
+/// or mark up a region capture before it's delivered.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(default, rename_all = "camelCase")]
+pub struct QuickEditSettings {
+    /// Off: the selection screen works as in Phase 1 (Enter captures).
+    pub enabled: bool,
+    /// Ctrl+C / Copy also closes quick edit (and runs the actions still pending).
+    pub close_on_copy: bool,
+    /// Ctrl+S / Save also closes quick edit.
+    pub close_on_save: bool,
+}
+
+impl Default for QuickEditSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            close_on_copy: true,
+            close_on_save: true,
         }
     }
 }

@@ -41,6 +41,7 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::selection_started,
             commands::commit_selection,
             commands::cancel_capture,
+            commands::quick_output,
             commands::get_settings,
             commands::update_settings,
             commands::open_settings,

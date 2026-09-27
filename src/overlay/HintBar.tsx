@@ -2,14 +2,24 @@ import styles from "./OverlayApp.module.css";
 
 interface Props {
   hasSelection: boolean;
+  /** Quick edit: the selection has a toolbar and Enter means Done. */
+  quick: boolean;
   /** Move out of the way when the selection is near the top. */
   atBottom: boolean;
 }
 
-export function HintBar({ hasSelection, atBottom }: Props) {
+export function HintBar({ hasSelection, quick, atBottom }: Props) {
   return (
     <div className={`${styles.hint} ${atBottom ? styles.hintBottom : ""}`}>
-      {hasSelection ? (
+      {hasSelection && quick ? (
+        <>
+          <Hint keys={["Enter"]} label="done" />
+          <Hint keys={["Ctrl", "C"]} label="copy" />
+          <Hint keys={["Ctrl", "S"]} label="save" />
+          <Hint keys={["Drag"]} label="adjust" />
+          <Hint keys={["Esc"]} label="exit" />
+        </>
+      ) : hasSelection ? (
         <>
           <Hint keys={["Enter"]} label="capture" />
           <Hint keys={["Drag"]} label="adjust" />

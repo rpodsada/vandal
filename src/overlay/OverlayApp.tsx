@@ -1,9 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent,
+} from "react";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { commands, events, type OverlayLoad } from "../shared/ipc";
 import { cssToLocalPhysical } from "../shared/geometry";
 import { drawFrame } from "./frame";
 import { HintBar } from "./HintBar";
+import { QuickBar } from "./QuickBar";
+import { toolbarPlacement, type Size } from "./toolbarPlacement";
 import {
   arrowDelta,
   clampPoint,
@@ -23,6 +33,8 @@ const monitorIndex = Number(getCurrentWebviewWindow().label.replace("overlay-", 
 
 /** CSS px a pointer must travel before a press becomes a drag. */
 const DRAG_THRESHOLD = 3;
+/** How long the quick-edit toolbar's message stays up. */
+const NOTICE_MS = 4000;
 /** CSS px around the selection border that grab a resize handle. */
 const HANDLE_TOLERANCE = 6;
 
@@ -38,6 +50,10 @@ export function OverlayApp() {
   const [drag, setDrag] = useState<Drag | null>(null);
   const [pointer, setPointer] = useState<Point | null>(null);
   const [focused, setFocused] = useState(() => document.hasFocus());
+  const barRef = useRef<HTMLDivElement>(null);
+  const [barSize, setBarSize] = useState<Size | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
 
   const scale = load?.scaleFactor ?? window.devicePixelRatio;
   const size = useMemo(() => (load ? { width: load.width, height: load.height } : null), [load]);
@@ -55,6 +71,8 @@ export function OverlayApp() {
       setSelection(null);
       setDrag(null);
       setPointer(null);
+      setNotice(null);
+      setBusy(false);
       try {
         const report = await drawFrame(canvas, payload);
         await commands.overlayReady(payload.captureId, report);
@@ -115,6 +133,37 @@ export function OverlayApp() {
     if (load) void commands.cancelCapture(load.captureId);
   }, [load]);
 
+  // Quick edit: the toolbar on the selection (PLAN 2B.1).
+  const quickEdit = !!load?.quickEdit;
+  const quickOutput = useCallback(
+    async (action: "copy" | "save") => {
+      if (!load || !selection || busy) return;
+      const { x, y } = load.physicalBounds;
+      setBusy(true);
+      try {
+        const r = await commands.quickOutput(
+          load.captureId,
+          { ...selection, x: selection.x + x, y: selection.y + y },
+          action,
+        );
+        if (r.status === "error") setNotice({ text: r.error, error: true });
+        else if (!r.data.closed)
+          setNotice({
+            text: r.data.path ? `Saved ${r.data.path.split(/[\\/]/).pop()}` : "Copied",
+          });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [load, selection, busy],
+  );
+
+  useEffect(() => {
+    if (!notice) return;
+    const id = setTimeout(() => setNotice(null), notice.error ? 2 * NOTICE_MS : NOTICE_MS);
+    return () => clearTimeout(id);
+  }, [notice]);
+
   // ---- keyboard ----
 
   useEffect(() => {
@@ -122,11 +171,21 @@ export function OverlayApp() {
       if (!load) return;
       if (e.key === "Escape") return cancel();
       if (e.key === "Enter") return commitSelection();
-      if (e.key === "f" || e.key === "F") {
+      if (quickEdit && selection && e.ctrlKey && !e.altKey && !e.shiftKey) {
+        if (e.code === "KeyC" || e.code === "KeyS") {
+          e.preventDefault();
+          if (!e.repeat) void quickOutput(e.code === "KeyC" ? "copy" : "save");
+          return;
+        }
+      }
+      // With quick edit, F and A work only before there's a selection (A
+      // becomes the arrow tool once the tools arrive).
+      const wholeScreens = !(quickEdit && selection);
+      if (wholeScreens && (e.key === "f" || e.key === "F")) {
         void commands.commitSelection(load.captureId, { kind: "monitorUnderCursor" });
         return;
       }
-      if (e.key === "a" || e.key === "A") {
+      if (wholeScreens && (e.key === "a" || e.key === "A")) {
         void commands.commitSelection(load.captureId, { kind: "allMonitors" });
         return;
       }
@@ -151,7 +210,7 @@ export function OverlayApp() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("contextmenu", onContextMenu);
     };
-  }, [load, selection, size, drag, cancel, commitSelection]);
+  }, [load, selection, size, drag, cancel, commitSelection, quickEdit, quickOutput]);
 
   // ---- pointer ----
 
@@ -218,6 +277,18 @@ export function OverlayApp() {
     }
   };
 
+  // The toolbar's size, for its placement.
+  const barShown = quickEdit && !!selection && drag?.mode !== "create";
+  useLayoutEffect(() => {
+    const el = barRef.current;
+    if (!barShown || !el) return;
+    const measure = () => setBarSize({ width: el.offsetWidth, height: el.offsetHeight });
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [barShown]);
+
   // ---- render ----
 
   const css = (v: number) => v / scale;
@@ -228,6 +299,20 @@ export function OverlayApp() {
     cursor = cursorFor(hitTest(selection, pointer, HANDLE_TOLERANCE * scale));
 
   const creating = drag?.mode === "create";
+  const showBar = quickEdit && !!selection && !creating;
+  const placement =
+    showBar && size && barSize
+      ? toolbarPlacement(
+          {
+            x: css(selection.x),
+            y: css(selection.y),
+            width: css(selection.width),
+            height: css(selection.height),
+          },
+          barSize,
+          { width: css(size.width), height: css(size.height) },
+        )
+      : null;
   const showGuides = load && !selection && !drag && pointer;
   const showDimensions = load?.showDimensions ?? true;
 
@@ -271,8 +356,26 @@ export function OverlayApp() {
         </div>
       )}
 
+      {showBar && (
+        <QuickBar
+          ref={barRef}
+          // Off screen until measured, so it never flashes in the wrong place.
+          x={placement?.x ?? -10000}
+          y={placement?.y ?? -10000}
+          busy={busy}
+          notice={notice}
+          onCopy={() => void quickOutput("copy")}
+          onSave={() => void quickOutput("save")}
+          onExit={cancel}
+        />
+      )}
+
       {load && focused && !drag && (
-        <HintBar hasSelection={!!selection} atBottom={!!selection && css(selection.y) < 72} />
+        <HintBar
+          hasSelection={!!selection}
+          quick={quickEdit}
+          atBottom={!!selection && css(selection.y) < 72}
+        />
       )}
     </div>
   );

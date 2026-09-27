@@ -20,6 +20,8 @@ export const commands = {
 	url: string,
 	dimOpacity: number | null,
 	showDimensions: boolean,
+	/**  Show the quick-edit toolbar on a region selection (`quickEdit.enabled`). */
+	quickEdit: boolean,
 } | null>("overlay_pending_load", { monitorIndex }),
 	/**  Overlay finished drawing its frame. */
 	overlayReady: (captureId: number, report: OverlayReport) => __TAURI_INVOKE<void>("overlay_ready", { captureId, report }),
@@ -31,6 +33,8 @@ export const commands = {
 	commitSelection: (captureId: number, target: CaptureTarget) => __TAURI_INVOKE<void>("commit_selection", { captureId, target }),
 	/**  Esc / right-click on an overlay. */
 	cancelCapture: (captureId: number) => __TAURI_INVOKE<void>("cancel_capture", { captureId }),
+	/**  Quick edit's Copy / Save on the selection; may close quick edit. */
+	quickOutput: (captureId: number, rect: PhysicalRect, action: QuickAction) => typedError<QuickOutcome, string>(__TAURI_INVOKE("quick_output", { captureId, rect, action })),
 	getSettings: () => __TAURI_INVOKE<Settings>("get_settings"),
 	/**
 	 *  Validate, save and apply. Returns the settings as stored (values may be
@@ -255,6 +259,8 @@ export type OverlayLoad = {
 	url: string,
 	dimOpacity: number | null,
 	showDimensions: boolean,
+	/**  Show the quick-edit toolbar on a region selection (`quickEdit.enabled`). */
+	quickEdit: boolean,
 };
 
 /**  Overlay → Rust: frame drawn, with the overlay-side timing. */
@@ -289,6 +295,30 @@ export type PhysicalRect = {
 	height: number,
 };
 
+/**  A quick-edit toolbar action that doesn't have to end the capture. */
+export type QuickAction = "copy" | "save";
+
+/**
+ *  Quick edit (PLAN Phase 2): a toolbar on the selection screen to copy, save
+ *  or mark up a region capture before it's delivered.
+ */
+export type QuickEditSettings = {
+	/**  Off: the selection screen works as in Phase 1 (Enter captures). */
+	enabled?: boolean,
+	/**  Ctrl+C / Copy also closes quick edit (and runs the actions still pending). */
+	closeOnCopy?: boolean,
+	/**  Ctrl+S / Save also closes quick edit. */
+	closeOnSave?: boolean,
+};
+
+/**  What a quick-edit action did. */
+export type QuickOutcome = {
+	/**  Quick edit closed (per `quickEdit.closeOnCopy` / `closeOnSave`). */
+	closed: boolean,
+	/**  A saved file, for the toolbar's message. */
+	path: string | null,
+};
+
 export type SaveSettings = {
 	/**  May contain `%ENV%` variables. */
 	directory?: string,
@@ -305,6 +335,7 @@ export type Settings = {
 	afterCapture?: AfterCapture,
 	save?: SaveSettings,
 	overlay?: OverlaySettings,
+	quickEdit?: QuickEditSettings,
 	editor?: EditorSettings,
 	/**  Style pickers for the markup tools. */
 	styles?: Styles,

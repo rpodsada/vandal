@@ -8,7 +8,7 @@ use crate::editor::{self, CloseChoice, EditorInit, ExportAction, ExportOutcome};
 use crate::frames::CaptureId;
 use crate::geometry::PhysicalRect;
 use crate::output;
-use crate::session::{self, CaptureTarget, OverlayLoad, OverlayReport};
+use crate::session::{self, CaptureTarget, OverlayLoad, OverlayReport, QuickAction, QuickOutcome};
 use crate::settings::{self, Settings};
 use crate::state::AppState;
 
@@ -45,6 +45,18 @@ pub fn selection_started(app: AppHandle, capture_id: CaptureId, monitor_index: u
 #[specta::specta]
 pub fn commit_selection(app: AppHandle, capture_id: CaptureId, target: CaptureTarget) {
     session::commit(&app, capture_id, target);
+}
+
+/// Quick edit's Copy / Save on the selection; may close quick edit.
+#[tauri::command]
+#[specta::specta]
+pub async fn quick_output(
+    app: AppHandle,
+    capture_id: CaptureId,
+    rect: PhysicalRect,
+    action: QuickAction,
+) -> Result<QuickOutcome, String> {
+    session::quick_output(&app, capture_id, rect, action)
 }
 
 /// Esc / right-click on an overlay.

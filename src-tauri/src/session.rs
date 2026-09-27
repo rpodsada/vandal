@@ -2,6 +2,7 @@
 //! (PLAN §4.2), with timing for the perf log.
 
 use std::collections::HashSet;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
@@ -36,6 +37,8 @@ pub struct OverlayLoad {
     pub url: String,
     pub dim_opacity: f64,
     pub show_dimensions: bool,
+    /// Show the quick-edit toolbar on a region selection (`quickEdit.enabled`).
+    pub quick_edit: bool,
 }
 
 /// Rust → overlays: you're now shown; reply with `overlay_visible` once painted.
@@ -91,6 +94,47 @@ pub struct Session {
     pub shown: Option<Duration>,
     pub shown_by_timeout: bool,
     pub visible: Option<Duration>,
+    /// What quick edit already did, so closing doesn't do it again.
+    done: QuickDone,
+}
+
+/// Quick edit's copies and saves so far, each with the region it was of: the
+/// after-capture actions skip them only while the region is still the same.
+#[derive(Debug, Default, Clone)]
+struct QuickDone {
+    copied: Option<PhysicalRect>,
+    saved: Option<(PhysicalRect, PathBuf)>,
+}
+
+impl QuickDone {
+    fn for_rect(&self, rect: PhysicalRect) -> output::Already {
+        output::Already {
+            copied: self.copied == Some(rect),
+            saved: self
+                .saved
+                .as_ref()
+                .filter(|(r, _)| *r == rect)
+                .map(|(_, p)| p.clone()),
+        }
+    }
+}
+
+/// A quick-edit toolbar action that doesn't have to end the capture.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum QuickAction {
+    Copy,
+    Save,
+}
+
+/// What a quick-edit action did.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickOutcome {
+    /// Quick edit closed (per `quickEdit.closeOnCopy` / `closeOnSave`).
+    pub closed: bool,
+    /// A saved file, for the toolbar's message.
+    pub path: Option<String>,
 }
 
 /// A finished session's numbers.
@@ -148,7 +192,10 @@ pub fn start_region(app: &AppHandle) {
     let captured = started.elapsed();
     let capture = state.frames.lock().unwrap().insert(frames);
     let format = *state.transfer_format.lock().unwrap();
-    let overlay_settings = state.settings.read().unwrap().overlay.clone();
+    let (overlay_settings, quick_edit) = {
+        let s = state.settings.read().unwrap();
+        (s.overlay.clone(), s.quick_edit.enabled)
+    };
     let loads: Vec<OverlayLoad> = capture
         .frames
         .iter()
@@ -163,6 +210,7 @@ pub fn start_region(app: &AppHandle) {
             url: protocol::frame_url(capture.id, frame.monitor.index, format),
             dim_opacity: overlay_settings.dim_opacity,
             show_dimensions: overlay_settings.show_dimensions,
+            quick_edit,
         })
         .collect();
     *session = Some(Session {
@@ -179,6 +227,7 @@ pub fn start_region(app: &AppHandle) {
         shown: None,
         shown_by_timeout: false,
         visible: None,
+        done: QuickDone::default(),
     });
     drop(session);
 
@@ -229,7 +278,13 @@ pub fn capture_fullscreen(app: &AppHandle) {
         return;
     };
     let capture = state.frames.lock().unwrap().insert(frames);
-    finish(app, &capture, virtual_bounds(&monitors), started);
+    finish(
+        app,
+        &capture,
+        virtual_bounds(&monitors),
+        started,
+        output::Already::default(),
+    );
     if layout_changed {
         *state.monitors.write().unwrap() = monitors.clone();
         let app = app.clone();
@@ -392,9 +447,9 @@ pub fn cancel(app: &AppHandle, capture_id: CaptureId) {
 
 pub fn commit(app: &AppHandle, capture_id: CaptureId, target: CaptureTarget) {
     let started = Instant::now();
-    if end(app, capture_id).is_none() {
+    let Some(session) = end(app, capture_id) else {
         return;
-    }
+    };
     let state = app.state::<AppState>();
     let Some(capture) = state.frames.lock().unwrap().get(capture_id) else {
         return;
@@ -410,13 +465,71 @@ pub fn commit(app: &AppHandle, capture_id: CaptureId, target: CaptureTarget) {
             .unwrap_or_default(),
         CaptureTarget::AllMonitors => virtual_bounds(&monitors),
     };
-    finish(app, &capture, rect, started);
+    finish(app, &capture, rect, started, session.done.for_rect(rect));
+}
+
+/// Quick edit's Copy or Save of `rect` (virtual-desktop physical px). The
+/// capture stays on screen unless `quickEdit.closeOnCopy` / `closeOnSave`
+/// says to close, which then delivers like Done, minus what was just done.
+pub fn quick_output(
+    app: &AppHandle,
+    capture_id: CaptureId,
+    rect: PhysicalRect,
+    action: QuickAction,
+) -> Result<QuickOutcome, String> {
+    let state = app.state::<AppState>();
+    let is_current = matches!(
+        state.session.lock().unwrap().as_ref(),
+        Some(s) if s.capture_id == capture_id
+    );
+    if !is_current {
+        return Err("This capture has already closed.".into());
+    }
+    let capture = state
+        .frames
+        .lock()
+        .unwrap()
+        .get(capture_id)
+        .ok_or("This capture is no longer in memory.")?;
+    let frames: Vec<&MonitorFrame> = capture.frames.iter().map(|f| f.as_ref()).collect();
+    let image = compose::compose(&frames, rect).ok_or("The selection is empty.")?;
+    let settings = state.settings.read().unwrap().clone();
+
+    let (path, close) = match action {
+        QuickAction::Copy => {
+            output::copy_to_clipboard(&image)?;
+            (None, settings.quick_edit.close_on_copy)
+        }
+        QuickAction::Save => {
+            let path = output::save_with_template(&settings.save, &image)?;
+            (Some(path), settings.quick_edit.close_on_save)
+        }
+    };
+    if let Some(s) = state.session.lock().unwrap().as_mut() {
+        match &path {
+            None => s.done.copied = Some(rect),
+            Some(p) => s.done.saved = Some((rect, p.clone())),
+        }
+    }
+    if close {
+        commit(app, capture_id, CaptureTarget::Region { rect });
+    }
+    Ok(QuickOutcome {
+        closed: close,
+        path: path.map(|p| p.display().to_string()),
+    })
 }
 
 /// Hand `rect` of a capture to the editor or the after-capture actions. When
 /// the editor opens, the actions are held back: the editor's own copy/save
 /// (and on-close actions) finish the job (PLAN Phase 2).
-fn finish(app: &AppHandle, capture: &Capture, rect: PhysicalRect, started: Instant) {
+fn finish(
+    app: &AppHandle,
+    capture: &Capture,
+    rect: PhysicalRect,
+    started: Instant,
+    already: output::Already,
+) {
     let open_editor = app
         .state::<AppState>()
         .settings
@@ -430,7 +543,7 @@ fn finish(app: &AppHandle, capture: &Capture, rect: PhysicalRect, started: Insta
     }
     let frames: Vec<&MonitorFrame> = capture.frames.iter().map(|f| f.as_ref()).collect();
     match compose::compose(&frames, rect) {
-        Some(image) => output::deliver(app, image, started),
+        Some(image) => output::deliver(app, image, started, already),
         None => eprintln!("[capture] #{}: empty selection {rect:?}", capture.id),
     }
 }
