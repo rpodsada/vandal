@@ -169,6 +169,9 @@ pub struct EditorSettings {
     pub share_color: bool,
     /// Slot-number badges and shortcut tooltips on the style pickers.
     pub show_shortcut_hints: bool,
+    /// With a drawing tool, pressing on an object selects it (off: drawing
+    /// tools always draw). Ctrl flips this for one press.
+    pub drawing_tools_select: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -197,6 +200,7 @@ impl Default for EditorSettings {
             on_close: EditorOnClose::default(),
             share_color: true,
             show_shortcut_hints: true,
+            drawing_tools_select: true,
         }
     }
 }
@@ -557,6 +561,7 @@ mod tests {
         assert_eq!(v["history"]["keepFramesInMemory"], 3);
         assert_eq!(v["editor"]["shareColor"], true);
         assert_eq!(v["editor"]["showShortcutHints"], true);
+        assert_eq!(v["editor"]["drawingToolsSelect"], true);
         assert_eq!(v["styles"]["width"]["control"], "buttons");
     }
 

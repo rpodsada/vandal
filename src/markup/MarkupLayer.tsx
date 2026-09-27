@@ -38,7 +38,7 @@ import type {
   Rect,
   TextAnnotation,
 } from "./model/types";
-import { toolColor, toolStroke } from "./styles";
+import { toolColor, toolStroke, useStyleConfig } from "./styles";
 import { TextEditor } from "./TextEditor";
 import { createText, editText, finishTextEdit } from "./textEditing";
 import { useToolStore } from "./toolStore";
@@ -114,6 +114,11 @@ function hasEndpoints(a: Annotation): a is ArrowAnnotation | LineAnnotation {
   return a.kind === "arrow" || a.kind === "line";
 }
 
+/** The pen and highlighter always draw, whatever is under the pointer. */
+function isFreehand(tool: string): boolean {
+  return tool === "pen" || tool === "highlighter";
+}
+
 /** Freehand strokes: movable, not reshapeable. */
 function isStroke(a: Annotation): a is PenAnnotation | HighlighterAnnotation {
   return a.kind === "pen" || a.kind === "highlighter";
@@ -134,6 +139,10 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
   const selection = useDoc((s) => s.selection);
   const tool = useToolStore((s) => s.tool);
   const editing = useToolStore((s) => s.editing);
+  const drawingToolsSelect = useStyleConfig((s) => s.drawingToolsSelect);
+  const [ctrlHeld, setCtrlHeld] = useState(false);
+  /** What the pointer last hovered, so the cursor can follow Ctrl without a move. */
+  const hovered = useRef("");
   const stageRef = useRef<Konva.Stage>(null);
   const groupRef = useRef<Konva.Group>(null);
   const highlightsRef = useRef<Konva.Group>(null);
@@ -179,6 +188,55 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
     if (container && !interactive) container.style.cursor = "";
   }, [interactive]);
 
+  /**
+   * Does pressing on an object pick it? Always with Select; with a shape, line
+   * or text tool per `editor.drawingToolsSelect`, and Ctrl flips that. The pen
+   * and highlighter always draw.
+   */
+  const picksObjects = (ctrl: boolean) =>
+    tool === "select" || (!isFreehand(tool) && drawingToolsSelect !== ctrl);
+  // Ctrl+drag to draw ignores the selection's handles too, so a line can start
+  // right on a box's corner.
+  const handlesLive = !(tool !== "select" && !isFreehand(tool) && drawingToolsSelect && ctrlHeld);
+
+  const setCursor = (name: string, ctrl: boolean) => {
+    const container = stageRef.current?.container();
+    if (!container) return;
+    const picks = picksObjects(ctrl);
+    container.style.cursor =
+      isFreehand(tool) || (name === "endpoint" && picks)
+        ? "crosshair"
+        : name === "annotation" && picks
+          ? "move"
+          : tool === "select"
+            ? "default"
+            : tool === "text"
+              ? "text"
+              : "crosshair";
+  };
+
+  // Track Ctrl for the handles and the cursor.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Control") setCtrlHeld(e.type === "keydown");
+    };
+    const reset = () => setCtrlHeld(false);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("keyup", onKey);
+    window.addEventListener("blur", reset);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keyup", onKey);
+      window.removeEventListener("blur", reset);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (interactive && !trRef.current?.isTransforming()) setCursor(hovered.current, ctrlHeld);
+    // setCursor reads the current tool and setting; rerun when those change too.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctrlHeld, tool, drawingToolsSelect, interactive]);
+
   const toSource = (clientX: number, clientY: number): Point => {
     const r = stageRef.current!.container().getBoundingClientRect();
     const { scale: s, offset: o } = view.current;
@@ -198,7 +256,8 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
 
     const store = docStore.getState();
     const p = toSource(ev.clientX, ev.clientY);
-    const hit = e.target.name() === "annotation" ? e.target.id() : null;
+    const picks = picksObjects(ev.ctrlKey);
+    const hit = picks && e.target.name() === "annotation" ? e.target.id() : null;
     let drag: Drag;
 
     if (tool === "pen" || tool === "highlighter") {
@@ -208,7 +267,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
       store.beginGesture();
       const id = store.add({ kind: tool, points: [p.x, p.y], style });
       drag = { mode: "stroke", id, start: p, last: { x: ev.clientX, y: ev.clientY } };
-    } else if (e.target.name() === "endpoint") {
+    } else if (picks && e.target.name() === "endpoint") {
       const attrs = (e.target as Konva.Node).attrs as {
         annotationId: AnnotationId;
         end: "from" | "to";
@@ -407,19 +466,9 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
   // Hover cursor: move over shapes, crosshair for drawing tools.
   const onPointerMove = (e: KonvaEventObject<PointerEvent>) => {
     if (!interactive || trRef.current?.isTransforming()) return;
-    const container = stageRef.current?.container();
-    if (!container || e.target.getParent() instanceof Konva.Transformer) return;
-    const name = e.target.name();
-    container.style.cursor =
-      tool === "pen" || tool === "highlighter" || name === "endpoint"
-        ? "crosshair"
-        : name === "annotation"
-          ? "move"
-          : tool === "select"
-            ? "default"
-            : tool === "text"
-              ? "text"
-              : "crosshair";
+    if (e.target.getParent() instanceof Konva.Transformer) return;
+    hovered.current = e.target.name();
+    setCursor(hovered.current, e.evt.ctrlKey);
   };
 
   const onDblClick = (e: KonvaEventObject<MouseEvent>) => {
@@ -518,6 +567,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
         <Layer>
           <Transformer
             ref={trRef}
+            listening={handlesLive}
             ignoreStroke
             flipEnabled={false}
             // Corners resize freely; Shift keeps the proportions.
@@ -557,6 +607,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
                     <Circle
                       key={`${a.id}-${end}`}
                       name="endpoint"
+                      listening={handlesLive}
                       annotationId={a.id}
                       end={end}
                       x={offset.x + a[end].x * scale}

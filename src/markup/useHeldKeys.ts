@@ -1,6 +1,7 @@
 // Which shortcut badges to show on the pickers: slot numbers appear while a
 // digit key is held (width/size), or Ctrl or Alt is held on its own for a
-// moment (color / font), so Ctrl+Z and friends don't flash them.
+// moment (color / font), so Ctrl+Z and friends don't flash them. A mouse press
+// hides them too: Ctrl+drag draws over objects.
 
 import { useEffect, useState } from "react";
 import { isTyping } from "../shared/dom";
@@ -21,12 +22,13 @@ export function useHeldKeys(): HeldKeys {
 
   useEffect(() => {
     let timer: number | undefined;
+    let pressing = false;
     const digits = new Set<string>();
     const set = (patch: Partial<HeldKeys>) => setHeld((h) => ({ ...h, ...patch }));
 
     const down = (e: KeyboardEvent) => {
       if (e.key === "Control" || e.key === "Alt") {
-        if (e.repeat) return;
+        if (e.repeat || pressing) return;
         const key = e.key === "Control" ? "ctrl" : "alt";
         window.clearTimeout(timer);
         timer = window.setTimeout(() => set({ [key]: true }), HOLD_MS);
@@ -53,6 +55,15 @@ export function useHeldKeys(): HeldKeys {
       }
     };
 
+    const onPress = () => {
+      pressing = true;
+      window.clearTimeout(timer);
+      set({ ctrl: false, alt: false });
+    };
+    const onRelease = () => {
+      pressing = false;
+    };
+
     const reset = () => {
       window.clearTimeout(timer);
       digits.clear();
@@ -62,7 +73,11 @@ export function useHeldKeys(): HeldKeys {
     window.addEventListener("keydown", down, true);
     window.addEventListener("keyup", up, true);
     window.addEventListener("blur", reset);
+    window.addEventListener("pointerdown", onPress, true);
+    window.addEventListener("pointerup", onRelease, true);
     return () => {
+      window.removeEventListener("pointerdown", onPress, true);
+      window.removeEventListener("pointerup", onRelease, true);
       window.clearTimeout(timer);
       window.removeEventListener("keydown", down, true);
       window.removeEventListener("keyup", up, true);

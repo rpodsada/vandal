@@ -14,6 +14,8 @@ export interface StyleConfig {
   shareColor: boolean;
   /** Slot-number badges and shortcut tooltips on the pickers. */
   showShortcutHints: boolean;
+  /** Drawing tools select an object pressed on (else they draw over it); Ctrl flips it. */
+  drawingToolsSelect: boolean;
 }
 
 /** The Rust defaults (`styles.rs`), used until the host passes the real settings. */
@@ -39,6 +41,7 @@ export const DEFAULT_STYLE_CONFIG: StyleConfig = {
   },
   shareColor: true,
   showShortcutHints: true,
+  drawingToolsSelect: true,
 };
 
 /** Set by the host from settings (and kept in step with `SettingsChanged`). */

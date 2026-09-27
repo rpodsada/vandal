@@ -71,6 +71,7 @@ export function EditorApp() {
         styles: s.styles,
         shareColor: s.editor.shareColor,
         showShortcutHints: s.editor.showShortcutHints,
+        drawingToolsSelect: s.editor.drawingToolsSelect,
       });
     };
     void commands.getSettings().then((s) => apply(s as Settings));

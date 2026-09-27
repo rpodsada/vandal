@@ -192,6 +192,20 @@ export const sections: Section[] = [
           },
         ],
       },
+      {
+        title: "Drawing",
+        items: [
+          {
+            id: "editor-drawing-tools-select",
+            kind: "toggle",
+            path: "editor.drawingToolsSelect",
+            label: "Drawing tools select objects under the pointer",
+            description:
+              "Off: drawing tools always draw, even over other objects, and you select with the Select tool. Hold Ctrl to do the opposite for one click.",
+            keywords: ["draw over", "click", "select", "move", "ctrl", "arrow", "overlap"],
+          },
+        ],
+      },
     ],
   },
   {
