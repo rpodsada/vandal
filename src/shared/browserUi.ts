@@ -1,7 +1,11 @@
 // Our windows are app UI, not web pages: the webview's own shortcuts (reload,
-// print, find, back/forward) would only break them. Tauri doesn't expose
-// WebView2's switch for these, so cancel them here. Our own handlers still see
-// the keys (e.g. Ctrl+R = redo in the editor). DevTools keys are left alone.
+// print, find, back/forward) and its context menu (save image, inspect...)
+// would only break or confuse them. Tauri doesn't expose WebView2's switches
+// for these, so cancel them here. Our own handlers still see the events (e.g.
+// Ctrl+R = redo in the editor, right-click = cancel in the overlay). DevTools
+// keys are left alone.
+
+import { isTyping } from "./dom";
 
 function isBrowserShortcut(e: KeyboardEvent): boolean {
   const ctrl = e.ctrlKey && !e.altKey;
@@ -26,11 +30,19 @@ function isBrowserShortcut(e: KeyboardEvent): boolean {
 }
 
 /** Call once per page, before rendering. */
-export function blockBrowserShortcuts(): void {
+export function blockBrowserUi(): void {
   window.addEventListener(
     "keydown",
     (e) => {
       if (isBrowserShortcut(e)) e.preventDefault();
+    },
+    { capture: true },
+  );
+  // Text fields keep theirs: cut/copy/paste is useful there.
+  window.addEventListener(
+    "contextmenu",
+    (e) => {
+      if (!isTyping(e.target)) e.preventDefault();
     },
     { capture: true },
   );
