@@ -84,6 +84,13 @@ export const commands = {
 	 *  first call).
 	 */
 	listFonts: () => __TAURI_INVOKE<string[]>("list_fonts"),
+	/**
+	 *  The tool styles remembered from earlier windows (JSON text), or null: none
+	 *  yet, or `editor.rememberToolStyles` is off.
+	 */
+	getToolStyles: () => __TAURI_INVOKE<string | null>("get_tool_styles"),
+	/**  Remember the tools' current styles (JSON text) for the next window. */
+	setToolStyles: (styles: string) => __TAURI_INVOKE<void>("set_tool_styles", { styles }),
 };
 
 /** Events */
@@ -161,6 +168,11 @@ export type EditorSettings = {
 	 *  tools always draw). Ctrl flips this for one press.
 	 */
 	drawingToolsSelect?: boolean,
+	/**
+	 *  New windows start with the tools' styles as last used (colors, widths,
+	 *  fonts...), also after a restart. Off: they start from the defaults.
+	 */
+	rememberToolStyles?: boolean,
 };
 
 /**  What to do with the finished image. */

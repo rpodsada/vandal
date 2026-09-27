@@ -11,6 +11,7 @@ import { StatusBar, type Notice } from "./StatusBar";
 import { useViewStore } from "./viewStore";
 import { isTyping } from "../shared/dom";
 import { useStyleConfig } from "../markup/styles";
+import { flushToolStyles, startToolStylesSync } from "./toolStylesSync";
 import { ToolOptions } from "../markup/ToolOptions";
 import styles from "./EditorApp.module.css";
 
@@ -81,6 +82,9 @@ export function EditorApp() {
     return () => void unlisten.then((f) => f());
   }, []);
 
+  // Tool styles carry over between windows (PLAN 2A.6d).
+  useEffect(() => startToolStylesSync(), []);
+
   useEffect(() => {
     if (!notice) return;
     const id = setTimeout(() => setNotice(null), notice.error ? 2 * NOTICE_MS : NOTICE_MS);
@@ -112,6 +116,7 @@ export function EditorApp() {
       const init = initRef.current;
       if (!init) return;
       const onClose = settingsRef.current?.editor.onClose ?? { copy: true, save: false };
+      await flushToolStyles();
       try {
         if (onClose.copy && !alreadyDone("copy")) await exportImage(init, "copy");
         if (onClose.save && !alreadyDone("save")) await exportImage(init, "save");

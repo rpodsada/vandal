@@ -43,7 +43,7 @@ export const DEFAULT_STYLE_CONFIG: StyleConfig = {
       },
     },
   },
-  shareColor: true,
+  shareColor: false,
   showShortcutHints: true,
   drawingToolsSelect: true,
   fonts: [],

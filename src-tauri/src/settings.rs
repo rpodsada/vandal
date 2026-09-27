@@ -19,7 +19,7 @@ use tauri_specta::Event;
 use crate::state::AppState;
 use crate::styles::Styles;
 
-pub const CURRENT_VERSION: u32 = 2;
+pub const CURRENT_VERSION: u32 = 3;
 const STORE_FILE: &str = "settings.json";
 const STORE_KEY: &str = "settings";
 
@@ -172,6 +172,9 @@ pub struct EditorSettings {
     /// With a drawing tool, pressing on an object selects it (off: drawing
     /// tools always draw). Ctrl flips this for one press.
     pub drawing_tools_select: bool,
+    /// New windows start with the tools' styles as last used (colors, widths,
+    /// fonts...), also after a restart. Off: they start from the defaults.
+    pub remember_tool_styles: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -198,9 +201,10 @@ impl Default for EditorSettings {
             theme: "system".into(),
             notification_edit_button: true,
             on_close: EditorOnClose::default(),
-            share_color: true,
+            share_color: false,
             show_shortcut_hints: true,
             drawing_tools_select: true,
+            remember_tool_styles: true,
         }
     }
 }
@@ -325,6 +329,12 @@ pub fn migrate(stored: Option<Value>) -> (Settings, bool) {
             if version < 2 {
                 settings.after_capture.open_editor = false;
             }
+            // v2 → v3: `editor.shareColor` defaulted to true and had no control
+            // in Settings, so a stored true was never a choice. Per-tool colors
+            // are the default now that tool styles are remembered.
+            if version < 3 {
+                settings.editor.share_color = false;
+            }
             // Hand edits can leave picker specs the pages can't draw.
             let styles = settings.styles.clone().normalized();
             let changed = version != u64::from(CURRENT_VERSION) || styles != settings.styles;
@@ -447,7 +457,7 @@ mod tests {
     #[test]
     fn partial_file_fills_defaults() {
         let (s, changed) = migrate(Some(json!({
-            "version": 2,
+            "version": 3,
             "afterCapture": { "autoSave": true },
         })));
         assert!(!changed);
@@ -466,7 +476,7 @@ mod tests {
 
     #[test]
     fn unknown_fields_are_ignored() {
-        let (s, _) = migrate(Some(json!({ "version": 2, "fromTheFuture": true })));
+        let (s, _) = migrate(Some(json!({ "version": 3, "fromTheFuture": true })));
         assert_eq!(s, Settings::default());
     }
 
@@ -487,10 +497,26 @@ mod tests {
         assert!(!s.after_capture.open_editor);
         assert!(s.after_capture.auto_save, "other fields kept");
 
-        let v2 = json!({ "version": 2, "afterCapture": { "openEditor": true } });
-        let (s, changed) = migrate(Some(v2));
+        let v3 = json!({ "version": 3, "afterCapture": { "openEditor": true } });
+        let (s, changed) = migrate(Some(v3));
         assert!(!changed);
-        assert!(s.after_capture.open_editor, "a v2 choice is kept");
+        assert!(s.after_capture.open_editor, "a later choice is kept");
+    }
+
+    #[test]
+    fn v2_share_color_is_reset() {
+        let v2 =
+            json!({ "version": 2, "editor": { "shareColor": true, "onClose": { "copy": false } } });
+        let (s, changed) = migrate(Some(v2));
+        assert!(changed);
+        assert!(!s.editor.share_color);
+        assert!(!s.editor.on_close.copy, "other fields kept");
+
+        let v3 = json!({ "version": 3, "editor": { "shareColor": true } });
+        assert!(
+            migrate(Some(v3)).0.editor.share_color,
+            "a v3 choice is kept"
+        );
     }
 
     #[test]
@@ -546,7 +572,7 @@ mod tests {
     #[test]
     fn default_shape_matches_plan() {
         let v = serde_json::to_value(Settings::default()).unwrap();
-        assert_eq!(v["version"], 2);
+        assert_eq!(v["version"], 3);
         let region = if cfg!(debug_assertions) {
             "Ctrl+Win+F12"
         } else {
@@ -559,9 +585,10 @@ mod tests {
         assert_eq!(v["editor"]["onClose"]["save"], false);
         assert_eq!(v["save"]["format"], "png");
         assert_eq!(v["history"]["keepFramesInMemory"], 3);
-        assert_eq!(v["editor"]["shareColor"], true);
+        assert_eq!(v["editor"]["shareColor"], false);
         assert_eq!(v["editor"]["showShortcutHints"], true);
         assert_eq!(v["editor"]["drawingToolsSelect"], true);
+        assert_eq!(v["editor"]["rememberToolStyles"], true);
         assert_eq!(v["styles"]["width"]["control"], "buttons");
     }
 

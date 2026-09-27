@@ -19,6 +19,7 @@ mod settings;
 mod settings_window;
 mod state;
 mod styles;
+mod tool_styles;
 mod tray;
 
 use std::sync::{Mutex, RwLock};
@@ -52,6 +53,8 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::editor_new_capture,
             commands::reveal_file,
             commands::list_fonts,
+            commands::get_tool_styles,
+            commands::set_tool_styles,
         ])
         .events(collect_events![
             session::OverlayLoad,

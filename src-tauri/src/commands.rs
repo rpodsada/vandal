@@ -201,3 +201,18 @@ pub async fn list_fonts() -> Vec<String> {
         .await
         .unwrap_or_default()
 }
+
+/// The tool styles remembered from earlier windows (JSON text), or null: none
+/// yet, or `editor.rememberToolStyles` is off.
+#[tauri::command]
+#[specta::specta]
+pub fn get_tool_styles(app: AppHandle) -> Option<String> {
+    crate::tool_styles::load(&app)
+}
+
+/// Remember the tools' current styles (JSON text) for the next window.
+#[tauri::command]
+#[specta::specta]
+pub fn set_tool_styles(app: AppHandle, styles: String) {
+    crate::tool_styles::save(&app, &styles);
+}

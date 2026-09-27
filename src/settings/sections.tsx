@@ -204,6 +204,33 @@ export const sections: Section[] = [
               "Off: drawing tools always draw, even over other objects, and you select with the Select tool. Hold Ctrl to do the opposite for one click.",
             keywords: ["draw over", "click", "select", "move", "ctrl", "arrow", "overlap"],
           },
+          {
+            id: "editor-share-color",
+            kind: "toggle",
+            path: "editor.shareColor",
+            label: "All tools use the same color",
+            description:
+              "Picking a color for one tool picks it for the others too (except tools with their own palette, like the highlighter). Off: each tool keeps its own color.",
+            keywords: ["color", "colour", "shared", "same", "sync", "palette"],
+          },
+          {
+            id: "editor-remember-tool-styles",
+            kind: "toggle",
+            path: "editor.rememberToolStyles",
+            label: "Remember tool styles between windows",
+            description:
+              "New editors start with the colors, widths, fonts and other options you last used, even after a restart. Off: every editor starts from the defaults.",
+            keywords: [
+              "remember",
+              "keep",
+              "persist",
+              "restore",
+              "defaults",
+              "color",
+              "width",
+              "font",
+            ],
+          },
         ],
       },
     ],
