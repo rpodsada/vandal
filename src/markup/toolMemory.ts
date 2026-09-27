@@ -4,7 +4,7 @@
 // sense and ignores the rest.
 
 import type { ArrowEnds, ArrowHead, ShapeFill, TextAlign } from "./model/types";
-import { isTool, useToolStore, type ToolId } from "./toolStore";
+import { isTool, useToolStore, type PaletteKey, type ToolId } from "./toolStore";
 
 /** Bumped only if a field changes meaning; new fields just appear. */
 const VERSION = 1;
@@ -16,6 +16,7 @@ export interface ToolMemory {
   widths: Partial<Record<ToolId, number>>;
   fills: Partial<Record<ToolId, ShapeFill>>;
   fillColors: Partial<Record<ToolId, string>>;
+  customColors: Partial<Record<PaletteKey, string>>;
   arrowHead: ArrowHead;
   arrowEnds: ArrowEnds;
   fontFamily: string | null;
@@ -37,6 +38,7 @@ export function snapshotToolMemory(): ToolMemory {
     widths: t.widths,
     fills: t.fills,
     fillColors: t.fillColors,
+    customColors: t.customColors,
     arrowHead: t.arrowHead,
     arrowEnds: t.arrowEnds,
     fontFamily: t.fontFamily,
@@ -57,11 +59,17 @@ const oneOf =
     values.includes(v as T);
 
 /** A per-tool map with only known tools and valid values. */
-function perTool<T>(v: unknown, valid: (x: unknown) => x is T): Partial<Record<ToolId, T>> {
+function perTool<T, K extends string = never>(
+  v: unknown,
+  valid: (x: unknown) => x is T,
+  extraKeys: K[] = [],
+): Partial<Record<ToolId | K, T>> {
   if (!v || typeof v !== "object") return {};
   return Object.fromEntries(
-    Object.entries(v).filter(([tool, x]) => isTool(tool) && valid(x)),
-  ) as Partial<Record<ToolId, T>>;
+    Object.entries(v).filter(
+      ([key, x]) => (isTool(key) || (extraKeys as string[]).includes(key)) && valid(x),
+    ),
+  ) as Partial<Record<ToolId | K, T>>;
 }
 
 /** Restore what `stored` (a parsed ToolMemory, maybe from another version) validly holds. */
@@ -82,6 +90,7 @@ export function restoreToolMemory(stored: unknown): void {
     widths: perTool(s.widths, isSize),
     fills: perTool(s.fills, oneOf<ShapeFill>("none", "solid", "both")),
     fillColors: perTool(s.fillColors, isColor),
+    customColors: perTool(s.customColors, isColor, ["shared"]),
     arrowHead: pick("arrowHead", oneOf<ArrowHead>("filled", "open"), t.arrowHead),
     arrowEnds: pick("arrowEnds", oneOf<ArrowEnds>("end", "start", "both"), t.arrowEnds),
     fontFamily: pick(

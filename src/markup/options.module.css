@@ -78,6 +78,7 @@
 /* ---- colors ---- */
 
 .swatches {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -449,8 +450,13 @@
 
 /* ---- custom color (PLAN 2A.6c) ---- */
 
-/* The dashed swatch after the presets; filled with the color in use when that
-   color isn't a preset. */
+/* Lays the button out as a box, not a line of text (which left space under it). */
+.customRoot {
+  display: flex;
+}
+
+/* The picker button after the presets: a rainbow dot in a dashed ring. When
+   the color in use isn't a preset, a rainbow ring around that color. */
 .customSwatch {
   position: relative;
   width: 22px;
@@ -464,12 +470,16 @@
   background-clip: content-box;
 }
 
-.customSwatch[aria-pressed="true"] {
+.customSwatch[data-custom] {
   padding: 0;
-  border-style: solid;
-  border-color: transparent;
+  border: 0;
+  background:
+    radial-gradient(closest-side, var(--custom) 0 64%, var(--bg) 66% 76%, transparent 78%),
+    conic-gradient(#f44, #fd4, #4d4, #4dd, #44f, #d4d, #f44);
+}
+
+.customSwatch[aria-pressed="true"] {
   box-shadow:
-    inset 0 0 0 1px var(--control-border),
     0 0 0 2px var(--bg),
     0 0 0 4px var(--accent);
 }
@@ -502,7 +512,14 @@
   cursor: crosshair;
 }
 
+.hueRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .hueBar {
+  flex-grow: 1;
   height: 12px;
   border-radius: 6px;
   background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
@@ -609,6 +626,54 @@
   color: var(--on-accent);
 }
 
-.accentButton:hover {
+.accentButton:hover:not(:disabled) {
   filter: brightness(1.08);
+}
+
+.accentButton:disabled {
+  opacity: 0.45;
+}
+
+.eyedropper {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: var(--button-bg);
+  box-shadow: inset 0 0 0 1px var(--control-border);
+  color: var(--text);
+}
+
+.eyedropper:hover {
+  background: var(--button-bg-hover);
+}
+
+.options .eyedropper svg {
+  width: 16px;
+  height: 16px;
+}
+
+.colorCaption {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.deleteButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px 0 8px;
+}
+
+.options .deleteButton svg {
+  width: 14px;
+  height: 14px;
+}
+
+.colorActions .spacer {
+  flex-grow: 1;
 }

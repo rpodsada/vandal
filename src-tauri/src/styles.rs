@@ -209,14 +209,18 @@ impl Styles {
 }
 
 impl Styles {
-    /// Add `color` to the presets `tool` uses: its own palette if it has one,
-    /// else the global one (the custom picker's "Save as preset").
-    pub fn add_preset(&mut self, tool: &str, color: &str) -> Result<(), String> {
-        let color = normalize_color(color).ok_or_else(|| format!("Not a color: {color}"))?;
-        let palette = match self.tools.get_mut(tool).and_then(|o| o.palette.as_mut()) {
+    /// The presets `tool` uses: its own palette if it has one, else the global one.
+    fn palette_mut(&mut self, tool: &str) -> &mut Vec<String> {
+        match self.tools.get_mut(tool).and_then(|o| o.palette.as_mut()) {
             Some(own) => own,
             None => &mut self.palette,
-        };
+        }
+    }
+
+    /// Add `color` to the presets `tool` uses (the custom picker's "Save as preset").
+    pub fn add_preset(&mut self, tool: &str, color: &str) -> Result<(), String> {
+        let color = normalize_color(color).ok_or_else(|| format!("Not a color: {color}"))?;
+        let palette = self.palette_mut(tool);
         if palette.contains(&color) {
             return Err("That color is already a preset.".into());
         }
@@ -225,6 +229,39 @@ impl Styles {
         }
         palette.push(color);
         Ok(())
+    }
+
+    /// Change (`Some`) or delete (`None`) preset `index` of the palette `tool`
+    /// uses. The last color can't be deleted.
+    pub fn edit_preset(
+        &mut self,
+        tool: &str,
+        index: usize,
+        color: Option<&str>,
+    ) -> Result<(), String> {
+        let palette = self.palette_mut(tool);
+        if index >= palette.len() {
+            return Err("That preset no longer exists.".into());
+        }
+        match color {
+            None if palette.len() == 1 => Err("The palette needs at least one color.".into()),
+            None => {
+                palette.remove(index);
+                Ok(())
+            }
+            Some(c) => {
+                let c = normalize_color(c).ok_or_else(|| format!("Not a color: {c}"))?;
+                if palette
+                    .iter()
+                    .enumerate()
+                    .any(|(i, p)| i != index && *p == c)
+                {
+                    return Err("That color is already a preset.".into());
+                }
+                palette[index] = c;
+                Ok(())
+            }
+        }
     }
 }
 
@@ -250,6 +287,26 @@ mod tests {
             s.add_preset("pen", &c).unwrap();
         }
         assert!(s.add_preset("pen", "#fefefe").is_err()); // full
+    }
+
+    #[test]
+    fn presets_can_be_changed_and_deleted() {
+        let mut s = Styles::default();
+        s.edit_preset("pen", 0, Some("#ABCDEF")).unwrap();
+        assert_eq!(s.palette[0], "#abcdef");
+        // Not onto another preset's color.
+        assert!(s
+            .edit_preset("pen", 0, Some(&s.palette[1].clone()))
+            .is_err());
+        let second = s.palette[1].clone();
+        s.edit_preset("pen", 0, None).unwrap();
+        assert_eq!(s.palette[0], second);
+        assert!(s.edit_preset("pen", 99, None).is_err());
+
+        s.edit_preset("highlighter", 0, None).unwrap();
+        assert_eq!(s.tools["highlighter"].palette.as_ref().unwrap().len(), 4);
+        s.palette = vec!["#000000".into()];
+        assert!(s.edit_preset("pen", 0, None).is_err()); // the last one stays
     }
 
     #[test]

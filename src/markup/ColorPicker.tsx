@@ -1,6 +1,18 @@
 import { useRef, useState } from "react";
 import { hexToHsv, hexToRgb, hsvToHex, parseHex, rgbToHex, type Hsv } from "./color";
+import { setPickingFromScreen } from "./usePopover";
 import styles from "./options.module.css";
+
+// The browser's eyedropper (Chromium, so WebView2): picks any pixel on screen.
+interface EyeDropperApi {
+  open(): Promise<{ sRGBHex: string }>;
+}
+declare global {
+  interface Window {
+    EyeDropper?: new () => EyeDropperApi;
+  }
+}
+const canPickFromScreen = typeof window !== "undefined" && !!window.EyeDropper;
 
 interface Props {
   /** "#rrggbb". */
@@ -44,13 +56,16 @@ export function ColorPicker({ value, onChange }: Props) {
         onMove={(x, y) => set({ ...hsv, s: x, v: 1 - (y ?? 0) })}
         thumbStyle={{ background: value }}
       />
-      <Area
-        className={styles.hueBar}
-        label="Hue"
-        x={hsv.h / 360}
-        onMove={(x) => set({ ...hsv, h: Math.min(x * 360, 359.9) })}
-        thumbStyle={{ background: hue }}
-      />
+      <div className={styles.hueRow}>
+        {canPickFromScreen && <Eyedropper onPick={onChange} />}
+        <Area
+          className={styles.hueBar}
+          label="Hue"
+          x={hsv.h / 360}
+          onMove={(x) => set({ ...hsv, h: Math.min(x * 360, 359.9) })}
+          thumbStyle={{ background: hue }}
+        />
+      </div>
       <div className={styles.colorFields}>
         <span className={styles.colorPreview} style={{ background: value }} />
         <HexField value={value} onChange={onChange} />
@@ -200,5 +215,38 @@ function NumberField({
         onChange(n);
       }}
     />
+  );
+}
+
+/** Pick a color from anywhere on screen, the capture included. */
+function Eyedropper({ onPick }: { onPick: (hex: string) => void }) {
+  const pick = async () => {
+    const Api = window.EyeDropper;
+    if (!Api) return;
+    setPickingFromScreen(true);
+    try {
+      const { sRGBHex } = await new Api().open();
+      const hex = parseHex(sRGBHex);
+      if (hex) onPick(hex);
+    } catch {
+      // Esc: nothing picked.
+    } finally {
+      // After the click or Esc that ended it has gone past the popover.
+      setTimeout(() => setPickingFromScreen(false));
+    }
+  };
+  return (
+    <button
+      type="button"
+      className={styles.eyedropper}
+      aria-label="Pick a color from the screen"
+      title="Pick a color from the screen"
+      onClick={() => void pick()}
+    >
+      <svg viewBox="0 0 24 24" aria-hidden>
+        <path d="M14.5 5.5l4 4M17 3a2.1 2.1 0 0 1 3 3l-2.5 2.5-3-3z" />
+        <path d="M15.5 7.5L6 17l-1 3 3-1 9.5-9.5" />
+      </svg>
+    </button>
   );
 }

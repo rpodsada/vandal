@@ -13,6 +13,7 @@ describe("tool memory", () => {
       widths: { pen: 6, highlighter: 24 },
       fills: { rect: "both" },
       fillColors: { rect: "#ffffff" },
+      customColors: { shared: "#123456", highlighter: "#abcdef" },
       arrowEnds: "both",
       fontFamily: "Consolas",
       fontSize: 36,
@@ -31,6 +32,7 @@ describe("tool memory", () => {
       sharedColor: "red",
       widths: { pen: 6, rocket: 3, line: -1 },
       fills: { rect: "sparkly" },
+      customColors: { shared: "#fff000", rocket: "#000000", pen: "nope" },
       arrowHead: "open",
       fontSize: "big",
       textAlign: "center",
@@ -39,6 +41,7 @@ describe("tool memory", () => {
     expect(t.sharedColor).toBeNull();
     expect(t.widths).toEqual({ pen: 6 });
     expect(t.fills).toEqual({});
+    expect(t.customColors).toEqual({ shared: "#fff000" });
     expect(t.arrowHead).toBe("open");
     expect(t.fontSize).toBeNull();
     expect(t.textAlign).toBe("center");

@@ -141,6 +141,22 @@ pub fn add_color_preset(app: AppHandle, tool: String, color: String) -> Result<(
     settings::update(&app, s).map(|_| ())
 }
 
+/// Change (`color` given) or delete (`None`) a preset of the palette the
+/// given tool uses (right-click on a swatch). Returns a message to show if it can't.
+#[tauri::command]
+#[specta::specta]
+pub fn edit_color_preset(
+    app: AppHandle,
+    tool: String,
+    index: u32,
+    color: Option<String>,
+) -> Result<(), String> {
+    let mut s = app.state::<AppState>().settings.read().unwrap().clone();
+    s.styles
+        .edit_preset(&tool, index as usize, color.as_deref())?;
+    settings::update(&app, s).map(|_| ())
+}
+
 /// Open (or focus) the settings window, e.g. from the editor's status bar.
 #[tauri::command]
 #[specta::specta]

@@ -45,6 +45,11 @@ export const commands = {
 	 */
 	addColorPreset: (tool: string, color: string) => typedError<null, string>(__TAURI_INVOKE("add_color_preset", { tool, color })),
 	/**
+	 *  Change (`color` given) or delete (`None`) a preset of the palette the
+	 *  given tool uses (right-click on a swatch). Returns a message to show if it can't.
+	 */
+	editColorPreset: (tool: string, index: number, color: string | null) => typedError<null, string>(__TAURI_INVOKE("edit_color_preset", { tool, index, color })),
+	/**
 	 *  Folder picker, modal to the calling window. Paths under the user profile
 	 *  come back as `%USERPROFILE%\...`.
 	 */

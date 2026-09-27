@@ -6,7 +6,7 @@ import { create } from "zustand";
 import type { NumberPicker, StyleSettings } from "../shared/ipc";
 import type { AnnotationKind, ShapeFill, StrokeStyle } from "./model/types";
 import { nearestValue } from "./pickers";
-import { useToolStore, type ToolId } from "./toolStore";
+import { TOOLS, useToolStore, type PaletteKey, type ToolId } from "./toolStore";
 
 export interface StyleConfig {
   styles: StyleSettings;
@@ -135,6 +135,47 @@ export function rememberColor(tool: ToolId, color: string): void {
   useToolStore.setState((t) =>
     shared ? { sharedColor: color } : { colors: { ...t.colors, [tool]: color } },
   );
+}
+
+/** Which palette a tool uses: its own, or the shared one. */
+export function paletteKey(tool: ToolId, cfg = useStyleConfig.getState()): PaletteKey {
+  return hasOwnPalette(tool, cfg) ? tool : "shared";
+}
+
+/**
+ * Put `color` on the custom swatch of palette `key`. Every tool on that
+ * palette with the custom swatch selected (a remembered color that isn't a
+ * preset, in any of its color slots) moves to it too; tools on a preset keep
+ * theirs. `undefined` empties the swatch and moves no one.
+ */
+export function setCustomColor(key: PaletteKey, color: string | undefined): void {
+  const cfg = useStyleConfig.getState();
+  useToolStore.setState((t) => {
+    const next = {
+      customColors: { ...t.customColors, [key]: color },
+      colors: { ...t.colors },
+      fillColors: { ...t.fillColors },
+      sharedColor: t.sharedColor,
+      textBackgroundColor: t.textBackgroundColor,
+    };
+    if (!color) return next;
+    for (const tool of TOOLS) {
+      if (tool === "select" || paletteKey(tool, cfg) !== key) continue;
+      const palette = paletteFor(tool, cfg);
+      if (isCustom(next.colors[tool], palette)) next.colors[tool] = color;
+      if (isCustom(next.fillColors[tool], palette)) next.fillColors[tool] = color;
+      if (tool === "text" && isCustom(next.textBackgroundColor, palette))
+        next.textBackgroundColor = color;
+    }
+    if (key === "shared" && isCustom(next.sharedColor, cfg.styles.palette))
+      next.sharedColor = color;
+    return next;
+  });
+}
+
+/** A remembered color that isn't one of the presets. */
+function isCustom(c: string | null | undefined, palette: string[]): boolean {
+  return !!c && !palette.some((p) => p.toLowerCase() === c.toLowerCase());
 }
 
 export function rememberWidth(tool: ToolId, width: number): void {

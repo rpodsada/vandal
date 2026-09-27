@@ -18,6 +18,9 @@ export const TOOLS = [
 ] as const;
 export type ToolId = (typeof TOOLS)[number];
 
+/** A palette: the shared one, or a tool's own. */
+export type PaletteKey = ToolId | "shared";
+
 /** Single-key shortcuts (KeyboardEvent.code). */
 export const TOOL_KEYS: Record<string, ToolId> = {
   KeyV: "select",
@@ -41,7 +44,7 @@ export interface TextEditing {
   isNew: boolean;
 }
 
-interface ToolState {
+export interface ToolState {
   tool: ToolId;
   /** The current color of tools on the shared palette (`editor.shareColor`); null = first preset. */
   sharedColor: string | null;
@@ -53,6 +56,11 @@ interface ToolState {
   fills: Partial<Record<ToolId, ShapeFill>>;
   /** Rectangle and ellipse: the fill color for "both", once picked. */
   fillColors: Partial<Record<ToolId, string>>;
+  /**
+   * The last color from the custom picker, kept on the custom swatch: one for
+   * the shared palette ("shared"), and one per tool with its own palette.
+   */
+  customColors: Partial<Record<PaletteKey, string>>;
   /** Which color the swatches set when a shape has border and fill. */
   colorSlot: "border" | "fill";
   arrowHead: ArrowHead;
@@ -78,6 +86,7 @@ export const useToolStore = create<ToolState>((set) => ({
   widths: {},
   fills: {},
   fillColors: {},
+  customColors: {},
   colorSlot: "border",
   arrowHead: "filled",
   arrowEnds: "end",

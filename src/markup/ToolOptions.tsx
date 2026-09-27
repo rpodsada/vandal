@@ -1,11 +1,12 @@
 import { CustomColor } from "./CustomColor";
 import { hint } from "./HintLine";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Dropdown } from "./Dropdown";
 import { useDoc } from "./model/store";
 import { FontPickerControl } from "./FontPickerControl";
 import type { ArrowHead, ShapeFill, TextAlign } from "./model/types";
 import { NumberPickerControl } from "./NumberPickerControl";
+import { PresetEditor } from "./PresetEditor";
 import { slotKey } from "./pickers";
 import {
   applyStyle,
@@ -16,7 +17,7 @@ import {
   targetValues,
 } from "./restyle";
 import { fontChoices, paletteFor, useStyleConfig, widthPickerFor } from "./styles";
-import { useToolStore } from "./toolStore";
+import { useToolStore, type ToolId } from "./toolStore";
 import { useHeldKeys } from "./useHeldKeys";
 import styles from "./options.module.css";
 
@@ -72,6 +73,15 @@ const FILLS: { id: ShapeFill; label: string; icon: ReactNode }[] = [
  * The options for what's being drawn or selected (mockup: ToolOptions):
  * colors, line width, fill and arrow head. Shared by quick edit and the editor.
  */
+/** A preset being changed (right-click on a swatch): its draft color and where it sits. */
+interface PresetEdit {
+  tool: ToolId;
+  index: number;
+  color: string;
+  /** The swatch's offset in the swatch row, to put the editor under it. */
+  left: number;
+}
+
 export function ToolOptions() {
   const doc = useDoc((s) => s.doc);
   const selection = useDoc((s) => s.selection);
@@ -95,6 +105,8 @@ export function ToolOptions() {
   useToolStore((s) => s.textBackgroundColor);
   const config = useStyleConfig();
   const held = useHeldKeys();
+  // The preset being edited (right-click on a swatch).
+  const [presetEdit, setPresetEdit] = useState<PresetEdit | null>(null);
   const hints = config.showShortcutHints;
 
   const target = styleTarget(doc, selection, tool, editing);
@@ -114,6 +126,9 @@ export function ToolOptions() {
   const secondColor = (show.text ? text?.backgroundColor : values.fillColor) ?? values.color;
   const editingFill = twoColors && colorSlot === "fill";
   const current = (editingFill ? secondColor : values.color).toLowerCase();
+  // Only while that tool's palette is on show and the preset still exists.
+  const edit =
+    presetEdit?.tool === target.tool && presetEdit.index < palette.length ? presetEdit : null;
   const pickColor = (c: string, toSecond: boolean) =>
     applyStyle(
       !(toSecond && twoColors)
@@ -338,25 +353,51 @@ export function ToolOptions() {
             />
           </div>
         )}
-        {palette.map((c, i) => (
-          <button
-            key={c}
-            type="button"
-            className={styles.swatch}
-            {...hint(twoColors ? (show.text ? "swatch.box" : "swatch.fill") : "swatch")}
-            style={{ background: c }}
-            aria-pressed={c.toLowerCase() === current}
-            aria-label={`Color ${i + 1}`}
-            title={`Color ${i + 1}${hints ? ` (Ctrl+${slotKey(i)})` : ""}`}
-            // Shift+click sets the fill without switching the chip.
-            onClick={(e) => pickColor(c, e.shiftKey || editingFill)}
-          >
-            {hints && held.ctrl && <span className={styles.badge}>{slotKey(i)}</span>}
-          </button>
-        ))}
+        {palette.map((preset, i) => {
+          // The preset being edited shows its draft, and is the only one ringed.
+          const editingThis = edit?.index === i;
+          const c = editingThis ? edit.color : preset;
+          return (
+            <button
+              key={i}
+              type="button"
+              className={styles.swatch}
+              {...hint(twoColors ? (show.text ? "swatch.box" : "swatch.fill") : "swatch")}
+              style={{ background: c }}
+              aria-pressed={edit ? editingThis : c.toLowerCase() === current}
+              aria-label={`Color ${i + 1}`}
+              title={`Color ${i + 1}${hints ? ` (Ctrl+${slotKey(i)})` : ""}`}
+              // Shift+click sets the fill without switching the chip.
+              onClick={(e) => pickColor(c, e.shiftKey || editingFill)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setPresetEdit({
+                  tool: target.tool,
+                  index: i,
+                  color: preset,
+                  left: e.currentTarget.offsetLeft,
+                });
+              }}
+            >
+              {hints && held.ctrl && <span className={styles.badge}>{slotKey(i)}</span>}
+            </button>
+          );
+        })}
+        {edit && (
+          <PresetEditor
+            palette={palette}
+            index={edit.index}
+            tool={target.tool}
+            color={edit.color}
+            left={edit.left}
+            onChange={(color) => setPresetEdit({ ...edit, color })}
+            onClose={() => setPresetEdit(null)}
+          />
+        )}
         <CustomColor
           value={current}
           palette={palette}
+          selected={edit ? false : undefined}
           tool={target.tool}
           onPick={(c) => pickColor(c, editingFill)}
         />

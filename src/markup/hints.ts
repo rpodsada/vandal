@@ -22,14 +22,15 @@ export const CONTROL_HINTS = {
   "tool.text": "[T] Click to type, or drag to set a width",
   undo: "[Ctrl+Z] Undo",
   redo: "[Ctrl+Y] or [Ctrl+Shift+Z] Redo",
-  swatch: "[Ctrl+1…0] Pick a color by number",
+  swatch: "[Ctrl+1…0] Pick a color by number · Right-click to change or delete it",
   "swatch.fill":
-    "[Shift]+click sets the fill · [Ctrl+1…0] border color · [Ctrl+Shift+1…0] fill color",
+    "[Shift]+click sets the fill · [Ctrl+1…0] border color · [Ctrl+Shift+1…0] fill color · Right-click to change or delete",
   "swatch.box":
-    "[Shift]+click sets the background · [Ctrl+1…0] text color · [Ctrl+Shift+1…0] background color",
+    "[Shift]+click sets the background · [Ctrl+1…0] text color · [Ctrl+Shift+1…0] background color · Right-click to change or delete",
   "chip.fill": "Choose which color the swatches set · [Shift]+click a swatch sets the fill",
   "chip.box": "Choose which color the swatches set · [Shift]+click a swatch sets the background",
-  customColor: "Pick any color · [Esc] puts the old one back · Save it as a preset from there",
+  customColor:
+    "Your custom color · Click it again, or right-click, to change it · [Esc] in the picker puts the old one back",
   width: "[1…0] Pick a width by number",
   size: "[1…0] Pick a size by number",
   font: "[Alt+1…0] Pick a font by number · Type to filter the list",
