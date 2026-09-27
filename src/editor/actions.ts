@@ -17,9 +17,11 @@ const lastOutput: { copied: Doc | null; saved: Doc | null } = { copied: null, sa
 
 export async function exportImage(init: EditorInit, action: ExportAction): Promise<ExportOutcome> {
   const doc = docStore.getState().doc;
+  const t0 = performance.now();
   const layer = renderLayer(doc);
   if (layer) await uploadPixels(init.layerUrl, layer);
-  const result = await commands.editorExport(doc.crop, layer !== null, action);
+  const layerMs = layer ? performance.now() - t0 : null;
+  const result = await commands.editorExport(doc.crop, layer !== null, action, layerMs);
   if (result.status === "error") throw new Error(result.error);
   const outcome = result.data;
   if (outcome.kind === "copied") lastOutput.copied = doc;

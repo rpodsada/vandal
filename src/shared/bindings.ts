@@ -66,9 +66,10 @@ export const commands = {
 	editorReady: () => __TAURI_INVOKE<void>("editor_ready"),
 	/**
 	 *  Copy or save `crop` of the base image. With `withLayer`, the annotation
-	 *  layer POSTed to `layerUrl` just before is composited on top.
+	 *  layer POSTed to `layerUrl` just before is composited on top. `layerMs`
+	 *  (render + upload time in the page) is only for the perf log.
 	 */
-	editorExport: (crop: PhysicalRect, withLayer: boolean, action: ExportAction) => typedError<ExportOutcome, string>(__TAURI_INVOKE("editor_export", { crop, withLayer, action })),
+	editorExport: (crop: PhysicalRect, withLayer: boolean, action: ExportAction, layerMs: number | null) => typedError<ExportOutcome, string>(__TAURI_INVOKE("editor_export", { crop, withLayer, action, layerMs })),
 	/**  Ask whether to save unsaved changes before the editor closes. */
 	editorConfirmClose: () => __TAURI_INVOKE<CloseChoice>("editor_confirm_close"),
 	/**  Start a new region capture from the editor. */

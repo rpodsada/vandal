@@ -1,0 +1,70 @@
+/* ---- toolbar (mockup: Toolbar board) ---- */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.tool {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+}
+
+.tool svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tool:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.tool[aria-pressed="true"] {
+  background: var(--selected);
+  color: var(--accent);
+}
+
+/* The active tool's accent pill. */
+.tool[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 11px;
+  bottom: 2px;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.tool:disabled {
+  color: var(--text-3);
+}
+
+.toolbarDivider {
+  width: 1px;
+  height: 24px;
+  margin: 0 6px;
+  background: var(--border);
+}
+
+/* ---- drawing surface ---- */
+
+.surface {
+  position: absolute;
+  inset: 0;
+}

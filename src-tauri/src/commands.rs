@@ -71,7 +71,8 @@ pub fn editor_ready(app: AppHandle, window: WebviewWindow) {
 }
 
 /// Copy or save `crop` of the base image. With `withLayer`, the annotation
-/// layer POSTed to `layerUrl` just before is composited on top.
+/// layer POSTed to `layerUrl` just before is composited on top. `layerMs`
+/// (render + upload time in the page) is only for the perf log.
 #[tauri::command]
 #[specta::specta]
 pub async fn editor_export(
@@ -80,9 +81,10 @@ pub async fn editor_export(
     crop: PhysicalRect,
     with_layer: bool,
     action: ExportAction,
+    layer_ms: Option<f64>,
 ) -> Result<ExportOutcome, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        editor::export(&app, &window, crop, with_layer, action)
+        editor::export(&app, &window, crop, with_layer, action, layer_ms)
     })
     .await
     .map_err(|e| e.to_string())?

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { docStore, hasUnsavedChanges } from "../markup/model/store";
+import { useMarkupKeys } from "../markup/useMarkupKeys";
 import { emptyDoc } from "../markup/model/types";
 import { commands, events, type EditorInit, type ExportAction, type Settings } from "../shared/ipc";
 import { alreadyDone, exportImage } from "./actions";
@@ -24,6 +25,7 @@ export function EditorApp() {
   const initRef = useRef<EditorInit | null>(null);
   const busyRef = useRef(false);
   const settingsRef = useRef<Settings | null>(null);
+  useMarkupKeys();
 
   // Fetch the base image, paint the crop, then let Rust show the window.
   useEffect(() => {
@@ -134,14 +136,6 @@ export function EditorApp() {
         case "KeyN":
           if (e.shiftKey) return;
           void commands.editorNewCapture();
-          break;
-        case "KeyZ":
-          if (e.shiftKey) docStore.getState().redo();
-          else docStore.getState().undo();
-          break;
-        case "KeyY":
-          if (e.shiftKey) return;
-          docStore.getState().redo();
           break;
         case "Equal":
         case "NumpadAdd":

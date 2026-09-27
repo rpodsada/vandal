@@ -1,0 +1,34 @@
+// The active tool and the style new annotations get. Style controls and
+// per-tool memory arrive with the options panel (Phase 2A step 6).
+
+import { create } from "zustand";
+import type { StrokeStyle } from "./model/types";
+
+/** Tools built so far; the list grows one tool per increment. */
+export const TOOLS = ["select", "rect", "ellipse"] as const;
+export type ToolId = (typeof TOOLS)[number];
+
+/** Single-key shortcuts (KeyboardEvent.code). */
+export const TOOL_KEYS: Record<string, ToolId> = {
+  KeyV: "select",
+  KeyR: "rect",
+  KeyE: "ellipse",
+};
+
+export function isTool(value: string): value is ToolId {
+  return (TOOLS as readonly string[]).includes(value);
+}
+
+interface ToolState {
+  tool: ToolId;
+  style: StrokeStyle;
+  filled: boolean;
+  setTool: (tool: ToolId) => void;
+}
+
+export const useToolStore = create<ToolState>((set) => ({
+  tool: "select",
+  style: { color: "#e53935", width: 4, opacity: 1 },
+  filled: false,
+  setTool: (tool) => set({ tool }),
+}));

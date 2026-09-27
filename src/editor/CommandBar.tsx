@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Toolbar } from "../markup/Toolbar";
 import styles from "./EditorApp.module.css";
 
 interface Props {
@@ -9,10 +10,11 @@ interface Props {
   onSaveAs: () => void;
 }
 
-/** The editor's top row. Tools join on the left in step 5; actions sit on the right. */
+/** The editor's top row: tools on the left, actions on the right. */
 export function CommandBar({ busy, onNewCapture, onCopy, onSave, onSaveAs }: Props) {
   return (
     <div className={styles.commandBar}>
+      <Toolbar />
       <span className={styles.spacer} />
       <button
         type="button"

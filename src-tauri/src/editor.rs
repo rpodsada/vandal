@@ -279,6 +279,7 @@ pub fn export(
     crop: PhysicalRect,
     with_layer: bool,
     action: ExportAction,
+    layer_ms: Option<f64>,
 ) -> Result<ExportOutcome, String> {
     let started = Instant::now();
     let id = id_from_label(window.label()).ok_or("not an editor window")?;
@@ -325,11 +326,13 @@ pub fn export(
             None => ExportOutcome::Cancelled,
         },
     };
+    let layer = layer_ms.map_or(String::new(), |ms| {
+        format!(" +layer (render+upload {ms:.1}ms)")
+    });
     eprintln!(
-        "[perf] editor export {action:?} {}×{}{}: compose {:.1}ms, total {:.1}ms",
+        "[perf] editor export {action:?} {}×{}{layer}: compose {:.1}ms, total {:.1}ms",
         image.width,
         image.height,
-        if with_layer { " +layer" } else { "" },
         composed.as_secs_f64() * 1000.0,
         started.elapsed().as_secs_f64() * 1000.0
     );

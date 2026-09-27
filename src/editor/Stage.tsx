@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type Ref } from "react";
+import { MarkupLayer } from "../markup/MarkupLayer";
+import { useDoc } from "../markup/model/store";
 import { displaySize, snapToDevice, wheelZoomFactor } from "./view";
 import { useViewStore } from "./viewStore";
 import { isTyping } from "../shared/dom";
@@ -19,6 +21,8 @@ export function Stage({ canvasRef, message }: Props) {
   const image = useViewStore((s) => s.image);
   const view = useViewStore((s) => s.view);
   const dpr = useViewStore((s) => s.dpr);
+  const viewport = useViewStore((s) => s.viewport);
+  const crop = useDoc((s) => s.doc.crop);
   const space = useSpaceHeld();
   const [panning, setPanning] = useState<{ id: number; x: number; y: number } | null>(null);
 
@@ -79,6 +83,10 @@ export function Stage({ canvasRef, message }: Props) {
 
   const css = image ? displaySize(image, view.zoom, dpr) : null;
   const cursor = panning ? "grabbing" : space ? "grab" : undefined;
+  // The canvas shows the crop at (x, y); annotations are in source px.
+  const x = snapToDevice(view.x, dpr);
+  const y = snapToDevice(view.y, dpr);
+  const scale = view.zoom / dpr;
 
   return (
     <div
@@ -99,13 +107,22 @@ export function Stage({ canvasRef, message }: Props) {
             ? {
                 width: css.width,
                 height: css.height,
-                transform: `translate(${snapToDevice(view.x, dpr)}px, ${snapToDevice(view.y, dpr)}px)`,
+                transform: `translate(${x}px, ${y}px)`,
                 // Show real pixels when zoomed in; smooth when zoomed out.
                 imageRendering: view.zoom > 1 ? "pixelated" : "auto",
               }
             : undefined
         }
       />
+      {css && viewport && (
+        <MarkupLayer
+          width={viewport.width}
+          height={viewport.height}
+          scale={scale}
+          offset={{ x: x - crop.x * scale, y: y - crop.y * scale }}
+          interactive={!space && !panning}
+        />
+      )}
       {message && <p className={styles.message}>{message}</p>}
     </div>
   );
