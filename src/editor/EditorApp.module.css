@@ -27,6 +27,13 @@
   top: 0;
   display: block;
   transform-origin: 0 0;
+}
+
+/* The shadow under the area on show (the canvas itself is clipped to it). */
+.frame {
+  position: absolute;
+  left: 0;
+  top: 0;
   box-shadow: 0 2px 12px rgb(0 0 0 / 0.18);
 }
 
@@ -329,4 +336,158 @@
   box-shadow:
     inset 0 1px 0 var(--border),
     inset 0 -1px 0 var(--border);
+}
+
+/* ---- crop mode (PLAN 2A step 7, mockup "Editor") ---- */
+
+.cropOverlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.cropBox {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid #fff;
+  /* Outlines it on light images. */
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.35);
+  cursor: move;
+}
+
+.cropDim {
+  position: absolute;
+  background: rgb(0 0 0 / 0.5);
+  pointer-events: none;
+}
+
+.cropThirds {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      to right,
+      transparent calc(100% / 3 - 0.5px),
+      rgb(255 255 255 / 0.35) 0,
+      rgb(255 255 255 / 0.35) calc(100% / 3 + 0.5px),
+      transparent 0,
+      transparent calc(200% / 3 - 0.5px),
+      rgb(255 255 255 / 0.35) 0,
+      rgb(255 255 255 / 0.35) calc(200% / 3 + 0.5px),
+      transparent 0
+    ),
+    linear-gradient(
+      to bottom,
+      transparent calc(100% / 3 - 0.5px),
+      rgb(255 255 255 / 0.35) 0,
+      rgb(255 255 255 / 0.35) calc(100% / 3 + 0.5px),
+      transparent 0,
+      transparent calc(200% / 3 - 0.5px),
+      rgb(255 255 255 / 0.35) 0,
+      rgb(255 255 255 / 0.35) calc(200% / 3 + 0.5px),
+      transparent 0
+    );
+}
+
+.cropCorner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  border: 0 solid #fff;
+  pointer-events: none;
+  filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.5));
+}
+
+.corner_nw {
+  left: -4px;
+  top: -4px;
+  border-left-width: 4px;
+  border-top-width: 4px;
+}
+
+.corner_ne {
+  right: -4px;
+  top: -4px;
+  border-right-width: 4px;
+  border-top-width: 4px;
+}
+
+.corner_sw {
+  left: -4px;
+  bottom: -4px;
+  border-left-width: 4px;
+  border-bottom-width: 4px;
+}
+
+.corner_se {
+  right: -4px;
+  bottom: -4px;
+  border-right-width: 4px;
+  border-bottom-width: 4px;
+}
+
+/* Grab zones: 12 px strips along the edges, 20 px squares at the corners. */
+.cropHandle {
+  position: absolute;
+}
+
+.handle_n,
+.handle_s {
+  left: 10px;
+  right: 10px;
+  height: 12px;
+}
+
+.handle_e,
+.handle_w {
+  top: 10px;
+  bottom: 10px;
+  width: 12px;
+}
+
+.handle_n {
+  top: -6px;
+}
+
+.handle_s {
+  bottom: -6px;
+}
+
+.handle_e {
+  right: -6px;
+}
+
+.handle_w {
+  left: -6px;
+}
+
+.handle_nw,
+.handle_ne,
+.handle_sw,
+.handle_se {
+  width: 20px;
+  height: 20px;
+}
+
+.handle_nw {
+  left: -10px;
+  top: -10px;
+}
+
+.handle_ne {
+  right: -10px;
+  top: -10px;
+}
+
+.handle_sw {
+  left: -10px;
+  bottom: -10px;
+}
+
+.handle_se {
+  right: -10px;
+  bottom: -10px;
 }

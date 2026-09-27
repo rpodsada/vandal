@@ -102,6 +102,8 @@ interface Props {
   offset: Point;
   /** Tools respond (false while the host pans). */
   interactive: boolean;
+  /** Where annotations show, in source px (default: the crop; the editor's crop mode shows all). */
+  clip?: Rect;
 }
 
 type Drag =
@@ -143,7 +145,7 @@ function isBoxed(a: Annotation): boolean {
  * document over the host's image and runs the tools. Geometry is in source
  * pixels; `scale`/`offset` map it onto the surface.
  */
-export function MarkupLayer({ width, height, scale, offset, interactive }: Props) {
+export function MarkupLayer({ width, height, scale, offset, interactive, clip }: Props) {
   const doc = useDoc((s) => s.doc);
   const selection = useDoc((s) => s.selection);
   const tool = useToolStore((s) => s.tool);
@@ -547,7 +549,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
     }
   };
 
-  const { crop } = doc;
+  const crop = clip ?? doc.crop;
   const textSelected = doc.annotations.some((a) => a.kind === "text" && selection.includes(a.id));
   const editedText = doc.annotations.find(
     (a): a is TextAnnotation => a.kind === "text" && a.id === editing?.id,

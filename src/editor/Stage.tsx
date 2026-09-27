@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type R
 import { MarkupLayer } from "../markup/MarkupLayer";
 import { useDoc } from "../markup/model/store";
 import { displaySize, snapToDevice, wheelZoomFactor } from "./view";
+import { CropOverlay } from "./CropOverlay";
+import { useCropStore } from "./cropStore";
 import { useViewStore } from "./viewStore";
 import { isTyping } from "../shared/dom";
 import styles from "./EditorApp.module.css";
@@ -23,8 +25,18 @@ export function Stage({ canvasRef, message }: Props) {
   const dpr = useViewStore((s) => s.dpr);
   const viewport = useViewStore((s) => s.viewport);
   const crop = useDoc((s) => s.doc.crop);
+  const source = useDoc((s) => s.doc.source);
+  const draft = useCropStore((s) => s.draft);
+  const cropFrame = useCropStore((s) => s.frame);
+  // What's on show: the crop (in crop mode, the crop it started from).
+  const area = cropFrame ?? crop;
   const space = useSpaceHeld();
   const [panning, setPanning] = useState<{ id: number; x: number; y: number } | null>(null);
+
+  // Fit the view to it whenever it changes (a crop applied or undone).
+  useEffect(() => {
+    useViewStore.getState().setImage({ width: area.width, height: area.height });
+  }, [area.x, area.y, area.width, area.height]);
 
   // Track the stage size; this also fires when the window moves to a monitor
   // with a different scale.
@@ -83,10 +95,16 @@ export function Stage({ canvasRef, message }: Props) {
 
   const css = image ? displaySize(image, view.zoom, dpr) : null;
   const cursor = panning ? "grabbing" : space ? "grab" : undefined;
-  // The canvas shows the crop at (x, y); annotations are in source px.
+  // The view places the area on show at (x, y); the canvas holds the whole
+  // capture, so it sits further up-left and is clipped to the area.
   const x = snapToDevice(view.x, dpr);
   const y = snapToDevice(view.y, dpr);
   const scale = view.zoom / dpr;
+  const origin = { x: x - area.x * scale, y: y - area.y * scale };
+  const frame = displaySize(source, view.zoom, dpr);
+  const clip = `inset(${area.y * scale}px ${(source.width - area.x - area.width) * scale}px ${
+    (source.height - area.y - area.height) * scale
+  }px ${area.x * scale}px)`;
 
   return (
     <div
@@ -98,6 +116,12 @@ export function Stage({ canvasRef, message }: Props) {
       onPointerUp={endPan}
       onPointerCancel={endPan}
     >
+      {css && (
+        <div
+          className={styles.frame}
+          style={{ width: css.width, height: css.height, transform: `translate(${x}px, ${y}px)` }}
+        />
+      )}
       <canvas
         ref={canvasRef}
         className={styles.image}
@@ -105,9 +129,10 @@ export function Stage({ canvasRef, message }: Props) {
         style={
           css
             ? {
-                width: css.width,
-                height: css.height,
-                transform: `translate(${x}px, ${y}px)`,
+                width: frame.width,
+                height: frame.height,
+                transform: `translate(${origin.x}px, ${origin.y}px)`,
+                clipPath: clip,
                 // Show real pixels when zoomed in; smooth when zoomed out.
                 imageRendering: view.zoom > 1 ? "pixelated" : "auto",
               }
@@ -119,7 +144,17 @@ export function Stage({ canvasRef, message }: Props) {
           width={viewport.width}
           height={viewport.height}
           scale={scale}
-          offset={{ x: x - crop.x * scale, y: y - crop.y * scale }}
+          offset={origin}
+          clip={area}
+          interactive={!space && !panning && !draft}
+        />
+      )}
+      {css && viewport && draft && cropFrame && (
+        <CropOverlay
+          draft={draft}
+          frame={cropFrame}
+          scale={scale}
+          origin={origin}
           interactive={!space && !panning}
         />
       )}

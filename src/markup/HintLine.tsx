@@ -16,7 +16,7 @@ export function hint(id: ControlHint): { "data-hint": ControlHint } {
  * now. Off with `editor.showShortcutHints`.
  */
 export function HintLine() {
-  const { hover, drag, overObject } = useHintSources();
+  const { hover, drag, mode, overObject } = useHintSources();
   const tool = useToolStore((s) => s.tool);
   const typing = useToolStore((s) => s.editing !== null);
   const selected = useDoc((s) => s.selection.length);
@@ -60,6 +60,7 @@ export function HintLine() {
   const text = chooseHint({
     hover,
     drag,
+    mode,
     tool,
     selected,
     textSelected,

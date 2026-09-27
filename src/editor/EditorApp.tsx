@@ -6,10 +6,14 @@ import { emptyDoc } from "../markup/model/types";
 import { commands, events, type EditorInit, type ExportAction, type Settings } from "../shared/ipc";
 import { alreadyDone, exportImage } from "./actions";
 import { CommandBar } from "./CommandBar";
+import { CropOptions } from "./CropOptions";
+import { applyCrop, beginCrop, useCropStore } from "./cropStore";
 import { Stage } from "./Stage";
+import { useCropKeys } from "./useCropKeys";
 import { StatusBar, type Notice } from "./StatusBar";
 import { useViewStore } from "./viewStore";
 import { isTyping } from "../shared/dom";
+import { useHintSources } from "../markup/hints";
 import { useStyleConfig } from "../markup/styles";
 import { flushToolStyles, startToolStylesSync } from "./toolStylesSync";
 import { ToolOptions } from "../markup/ToolOptions";
@@ -29,8 +33,11 @@ export function EditorApp() {
   const busyRef = useRef(false);
   const settingsRef = useRef<Settings | null>(null);
   useMarkupKeys();
+  useCropKeys();
+  const cropping = useCropStore((s) => s.draft !== null);
+  useEffect(() => useHintSources.setState({ mode: cropping ? "crop" : null }), [cropping]);
 
-  // Fetch the base image, paint the crop, then let Rust show the window.
+  // Fetch the base image, paint it, then let Rust show the window.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -41,9 +48,9 @@ export function EditorApp() {
         if (!res.ok) throw new Error(`Couldn't load the image (HTTP ${res.status}).`);
         const pixels = new Uint8ClampedArray(await res.arrayBuffer());
         if (cancelled) return;
-        paintCrop(canvasRef.current!, init, pixels);
+        // The whole frame, so the crop can grow back (the stage clips it).
+        paintFrame(canvasRef.current!, init, pixels);
         docStore.getState().load(emptyDoc({ width: init.width, height: init.height }, init.crop));
-        useViewStore.getState().setImage({ width: init.crop.width, height: init.crop.height });
         initRef.current = init;
         setStatus({ kind: "ready", init });
       } catch (e) {
@@ -94,6 +101,8 @@ export function EditorApp() {
   const run = useCallback(async (action: ExportAction) => {
     const init = initRef.current;
     if (!init || busyRef.current) return;
+    // Copying or saving mid-crop uses the box on screen.
+    applyCrop();
     busyRef.current = true;
     setBusy(true);
     try {
@@ -116,6 +125,7 @@ export function EditorApp() {
       const init = initRef.current;
       if (!init) return;
       const onClose = settingsRef.current?.editor.onClose ?? { copy: true, save: false };
+      applyCrop();
       await flushToolStyles();
       try {
         if (onClose.copy && !alreadyDone("copy")) await exportImage(init, "copy");
@@ -179,33 +189,32 @@ export function EditorApp() {
     <div className={styles.app}>
       <CommandBar
         busy={busy || status.kind !== "ready"}
+        cropping={cropping}
+        onCrop={() => (cropping ? applyCrop() : status.kind === "ready" && beginCrop())}
+        onPickTool={applyCrop}
         onNewCapture={() => void commands.editorNewCapture()}
         onCopy={() => void run("copy")}
         onSave={() => void run("save")}
         onSaveAs={() => void run("saveAs")}
       />
-      <div className={styles.optionsBar}>
-        <ToolOptions />
-      </div>
+      <div className={styles.optionsBar}>{cropping ? <CropOptions /> : <ToolOptions />}</div>
       <Stage canvasRef={canvasRef} message={status.kind === "error" ? status.message : undefined} />
       <StatusBar notice={notice} onReveal={(path) => void commands.revealFile(path)} />
     </div>
   );
 }
 
-/** Draw the crop of a raw RGBA base image onto `canvas` at 1:1. */
-function paintCrop(
+/** Draw a raw RGBA base image onto `canvas` at 1:1. */
+function paintFrame(
   canvas: HTMLCanvasElement,
   init: EditorInit,
   pixels: Uint8ClampedArray<ArrayBuffer>,
 ) {
-  const { crop } = init;
-  canvas.width = crop.width;
-  canvas.height = crop.height;
+  canvas.width = init.width;
+  canvas.height = init.height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("No 2D canvas context.");
-  const base = new ImageData(pixels, init.width, init.height);
-  ctx.putImageData(base, -crop.x, -crop.y, crop.x, crop.y, crop.width, crop.height);
+  ctx.putImageData(new ImageData(pixels, init.width, init.height), 0, 0);
 }
 
 function errorText(e: unknown): string {

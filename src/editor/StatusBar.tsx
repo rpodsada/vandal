@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { HintLine, hint } from "../markup/HintLine";
 import { commands } from "../shared/ipc";
+import { useCropStore } from "./cropStore";
 import { zoomLabel } from "./view";
 import { useViewStore } from "./viewStore";
 import styles from "./EditorApp.module.css";
@@ -24,6 +25,8 @@ export function StatusBar({
   onReveal: (path: string) => void;
 }) {
   const image = useViewStore((s) => s.image);
+  const draft = useCropStore((s) => s.draft);
+  const frame = useCropStore((s) => s.frame);
   const zoom = useViewStore((s) => s.view.zoom);
   const fitted = useViewStore((s) => s.fitted);
   const { zoomStep, zoomTo, fit } = useViewStore.getState();
@@ -50,7 +53,9 @@ export function StatusBar({
       {image && (
         <>
           <span className={styles.size}>
-            {image.width} × {image.height} px
+            {draft && frame
+              ? `Crop ${draft.width} × ${draft.height} px of ${frame.width} × ${frame.height} px`
+              : `${image.width} × ${image.height} px`}
           </span>
           <span className={styles.divider} />
           <button

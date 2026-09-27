@@ -20,6 +20,7 @@ export const CONTROL_HINTS = {
   "tool.rect": "[R] Draw a rectangle · [Shift] square",
   "tool.ellipse": "[E] Draw an ellipse · [Shift] circle",
   "tool.text": "[T] Click to type, or drag to set a width",
+  "tool.crop": "[C] Crop the image · [Ctrl+Z] undoes a crop",
   undo: "[Ctrl+Z] Undo",
   redo: "[Ctrl+Y] or [Ctrl+Shift+Z] Redo",
   swatch: "[Ctrl+1…0] Pick a color by number · Right-click to change or delete it",
@@ -100,11 +101,16 @@ const SELECTED =
   "[Del] delete · [Ctrl+D] duplicate · [←↑↓→] nudge, [Shift] 10 px · [Ctrl+[] [Ctrl+]] order · [Shift]+click adds or removes";
 const TEXT_SELECTED = `[Enter] edit the text · ${SELECTED}`;
 const TYPING = "[Esc] done · [Ctrl+B] bold · [Ctrl+I] italic · [Alt+1…0] font";
+const CROP =
+  "Drag edges or corners, [Shift] keeps proportions · Drag outside for a new box · [Enter] apply · [Esc] cancel · [←↑↓→] nudge, [Ctrl] resize";
+
 const IDLE = `[V] [P] [H] [L] [A] [R] [E] [T] tools · [Ctrl+Z] undo · [Ctrl+C] copy · [Ctrl+S] save · ${PAN_ZOOM}`;
 
 export interface HintState {
   hover: ControlHint | null;
   drag: DragHint | null;
+  /** A host mode instead of a tool (the editor's crop). */
+  mode: HostMode | null;
   tool: ToolId;
   selected: number;
   /** The one selected object is text. */
@@ -122,6 +128,7 @@ export interface HintState {
 export function chooseHint(s: HintState): string {
   if (s.hover) return CONTROL_HINTS[s.hover];
   if (s.drag) return DRAG_HINTS[s.drag];
+  if (s.mode === "crop") return CROP;
   if (s.typing) return `${TYPING} · ${colorKeys("text", s.twoColors)}`;
   if (s.tool === "select") {
     if (s.selected) return s.textSelected && s.selected === 1 ? TEXT_SELECTED : SELECTED;
@@ -166,9 +173,13 @@ export function parseHint(hint: string): HintPart[] {
   return parts;
 }
 
+/** Modes a host adds beside the tools. */
+export type HostMode = "crop";
+
 interface HintSources {
   hover: ControlHint | null;
   drag: DragHint | null;
+  mode: HostMode | null;
   overObject: boolean;
 }
 
@@ -176,6 +187,7 @@ interface HintSources {
 export const useHintSources = create<HintSources>(() => ({
   hover: null,
   drag: null,
+  mode: null,
   overObject: false,
 }));
 

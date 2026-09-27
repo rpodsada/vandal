@@ -677,3 +677,21 @@
 .colorActions .spacer {
   flex-grow: 1;
 }
+
+/* ---- crop options (the editor's crop mode) ---- */
+
+.optionsSpacer {
+  flex-grow: 1;
+}
+
+.sizeField {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.sizeField input {
+  width: 56px;
+}

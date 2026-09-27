@@ -60,8 +60,17 @@ const TOOL_BUTTONS: { id: ToolId; label: string; key: string; icon: ReactNode }[
   },
 ];
 
+interface Props {
+  /** Host-only buttons after the tools (the editor's crop). */
+  extra?: ReactNode;
+  /** False while a host mode (crop) is active instead of a tool. */
+  toolsActive?: boolean;
+  /** Before a tool is picked (the editor applies a crop in progress). */
+  onPickTool?: (tool: ToolId) => void;
+}
+
 /** Tools, then undo/redo. Shared by quick edit and the editor (PLAN §4.6). */
-export function Toolbar() {
+export function Toolbar({ extra, toolsActive = true, onPickTool }: Props) {
   const tool = useToolStore((s) => s.tool);
   const undoable = useDoc(canUndo);
   const redoable = useDoc(canRedo);
@@ -75,15 +84,19 @@ export function Toolbar() {
           className={styles.tool}
           {...hint(`tool.${b.id}`)}
           aria-label={`${b.label} (${b.key})`}
-          aria-pressed={tool === b.id}
+          aria-pressed={toolsActive && tool === b.id}
           title={`${b.label} (${b.key})`}
-          onClick={() => useToolStore.getState().setTool(b.id)}
+          onClick={() => {
+            onPickTool?.(b.id);
+            useToolStore.getState().setTool(b.id);
+          }}
         >
           <svg viewBox="0 0 24 24" aria-hidden>
             {b.icon}
           </svg>
         </button>
       ))}
+      {extra}
       <span className={styles.toolbarDivider} />
       <button
         type="button"

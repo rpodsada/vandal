@@ -1,10 +1,16 @@
 import { hint } from "../markup/HintLine";
 import { useEffect, useRef, useState } from "react";
 import { Toolbar } from "../markup/Toolbar";
+import markupStyles from "../markup/markup.module.css";
 import styles from "./EditorApp.module.css";
 
 interface Props {
   busy: boolean;
+  /** Crop mode is on (the crop button shows pressed, the tools don't). */
+  cropping: boolean;
+  onCrop: () => void;
+  /** Picking a tool while cropping applies the crop first. */
+  onPickTool: () => void;
   onNewCapture: () => void;
   onCopy: () => void;
   onSave: () => void;
@@ -12,10 +18,38 @@ interface Props {
 }
 
 /** The editor's top row: tools on the left, actions on the right. */
-export function CommandBar({ busy, onNewCapture, onCopy, onSave, onSaveAs }: Props) {
+export function CommandBar({
+  busy,
+  cropping,
+  onCrop,
+  onPickTool,
+  onNewCapture,
+  onCopy,
+  onSave,
+  onSaveAs,
+}: Props) {
   return (
     <div className={styles.commandBar}>
-      <Toolbar />
+      <Toolbar
+        toolsActive={!cropping}
+        onPickTool={onPickTool}
+        extra={
+          <button
+            type="button"
+            className={markupStyles.tool}
+            {...hint("tool.crop")}
+            aria-label="Crop (C)"
+            aria-pressed={cropping}
+            title="Crop (C)"
+            onClick={onCrop}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden>
+              <path d="M6 2v16h16" />
+              <path d="M2 6h16v16" />
+            </svg>
+          </button>
+        }
+      />
       <span className={styles.spacer} />
       <button
         type="button"

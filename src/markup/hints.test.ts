@@ -4,6 +4,7 @@ import { CONTROL_HINTS, chooseHint, parseHint, type HintState } from "./hints";
 const base: HintState = {
   hover: null,
   drag: null,
+  mode: null,
   tool: "select",
   selected: 0,
   textSelected: false,
