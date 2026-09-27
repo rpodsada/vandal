@@ -158,49 +158,8 @@ export function ToolOptions() {
               onDragEnd={endStyleDrag}
             />
           </span>
-          <span className={styles.sep} />
         </>
       )}
-      <div className={styles.swatches}>
-        {twoColors && (
-          <div className={styles.chip} {...hint(show.text ? "chip.box" : "chip.fill")}>
-            <button
-              type="button"
-              className={styles.chipBorder}
-              style={{ borderColor: values.color }}
-              aria-pressed={!editingFill}
-              aria-label={labels[0]}
-              title={`${labels[0]}${hints ? " (Ctrl+1…0)" : ""}`}
-              onClick={() => setSlot("border")}
-            />
-            <button
-              type="button"
-              className={styles.chipFill}
-              style={{ background: secondColor }}
-              aria-pressed={editingFill}
-              aria-label={labels[1]}
-              title={`${labels[1]}${hints ? " (Shift+click a color, Ctrl+Shift+1…0)" : ""}`}
-              onClick={() => setSlot("fill")}
-            />
-          </div>
-        )}
-        {palette.map((c, i) => (
-          <button
-            key={c}
-            type="button"
-            className={styles.swatch}
-            {...hint(twoColors ? (show.text ? "swatch.box" : "swatch.fill") : "swatch")}
-            style={{ background: c }}
-            aria-pressed={c.toLowerCase() === current}
-            aria-label={`Color ${i + 1}`}
-            title={`Color ${i + 1}${hints ? ` (Ctrl+${slotKey(i)})` : ""}`}
-            // Shift+click sets the fill without switching the chip.
-            onClick={(e) => pickColor(c, e.shiftKey || editingFill)}
-          >
-            {hints && held.ctrl && <span className={styles.badge}>{slotKey(i)}</span>}
-          </button>
-        ))}
-      </div>
 
       {show.width && values.width !== null && (
         <>
@@ -351,6 +310,50 @@ export function ToolOptions() {
           </div>
         </>
       )}
+
+      {/* Last, so the chip appearing (border + fill, text box) moves nothing
+          else from under the pointer. */}
+      <span className={styles.sep} />
+      <div className={styles.swatches}>
+        {twoColors && (
+          <div className={styles.chip} {...hint(show.text ? "chip.box" : "chip.fill")}>
+            <button
+              type="button"
+              className={styles.chipBorder}
+              style={{ borderColor: values.color }}
+              aria-pressed={!editingFill}
+              aria-label={labels[0]}
+              title={`${labels[0]}${hints ? " (Ctrl+1…0)" : ""}`}
+              onClick={() => setSlot("border")}
+            />
+            <button
+              type="button"
+              className={styles.chipFill}
+              style={{ background: secondColor }}
+              aria-pressed={editingFill}
+              aria-label={labels[1]}
+              title={`${labels[1]}${hints ? " (Shift+click a color, Ctrl+Shift+1…0)" : ""}`}
+              onClick={() => setSlot("fill")}
+            />
+          </div>
+        )}
+        {palette.map((c, i) => (
+          <button
+            key={c}
+            type="button"
+            className={styles.swatch}
+            {...hint(twoColors ? (show.text ? "swatch.box" : "swatch.fill") : "swatch")}
+            style={{ background: c }}
+            aria-pressed={c.toLowerCase() === current}
+            aria-label={`Color ${i + 1}`}
+            title={`Color ${i + 1}${hints ? ` (Ctrl+${slotKey(i)})` : ""}`}
+            // Shift+click sets the fill without switching the chip.
+            onClick={(e) => pickColor(c, e.shiftKey || editingFill)}
+          >
+            {hints && held.ctrl && <span className={styles.badge}>{slotKey(i)}</span>}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

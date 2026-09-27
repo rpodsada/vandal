@@ -37,6 +37,11 @@
   background: var(--border);
 }
 
+/* Every group but the first starts with a separator. */
+.sep:first-child {
+  display: none;
+}
+
 .group {
   display: flex;
   gap: 2px;
