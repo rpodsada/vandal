@@ -9,7 +9,14 @@ import { useEffect } from "react";
 import { TOOL_KEYS, useToolStore } from "../markup/toolStore";
 import { isTyping } from "../shared/dom";
 import { inFrame, nudgeCrop } from "./cropGeometry";
-import { applyCrop, beginCrop, cancelCrop, isCropping, useCropStore } from "./cropStore";
+import {
+  applyCrop,
+  beginCrop,
+  cancelCrop,
+  isCropping,
+  lockedRatio,
+  useCropStore,
+} from "./cropStore";
 
 /** Editor shortcuts that still work while cropping (Ctrl + these codes). */
 const PASS_WITH_CTRL = new Set([
@@ -55,7 +62,14 @@ export function useCropKeys(): void {
         if (draft && frame)
           setDraft(
             inFrame(frame, (size, local) =>
-              nudgeCrop(local.rect(draft), arrow[0] * step, arrow[1] * step, size, e.ctrlKey),
+              nudgeCrop(
+                local.rect(draft),
+                arrow[0] * step,
+                arrow[1] * step,
+                size,
+                e.ctrlKey,
+                lockedRatio(),
+              ),
             ),
           );
         return;

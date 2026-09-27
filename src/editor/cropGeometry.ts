@@ -17,14 +17,18 @@ export type Handle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw" | "move";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-/** The box resized or moved by a drag of (`dx`, `dy`) source px on `handle`. */
+/**
+ * The box resized or moved by a drag of (`dx`, `dy`) source px on `handle`.
+ * `ratio` (width / height) holds the box to that shape: a locked aspect
+ * ratio, or the box's own with Shift.
+ */
 export function dragCrop(
   start: Rect,
   handle: Handle,
   dx: number,
   dy: number,
   frame: Size,
-  keepRatio = false,
+  ratio?: number,
 ): Rect {
   if (handle === "move") {
     return {
@@ -45,20 +49,25 @@ export function dragCrop(
   if (handle.includes("n")) top = clamp(top + dy, 0, bottom - 1);
   if (handle.includes("s")) bottom = clamp(bottom + dy, top + 1, frame.height);
   const free = round({ x: left, y: top, width: right - left, height: bottom - top });
-  return keepRatio ? keepProportions(start, free, handle, frame) : free;
+  return ratio ? keepProportions(start, free, handle, frame, ratio) : free;
 }
 
-/** A new box dragged from `from` to `to` (Shift: a square). */
-export function drawCrop(from: Point, to: Point, frame: Size, square = false): Rect {
+/** A new box dragged from `from` to `to`, held to `ratio` if given (Shift: 1, a square). */
+export function drawCrop(from: Point, to: Point, frame: Size, ratio?: number): Rect {
   const a = { x: clamp(from.x, 0, frame.width), y: clamp(from.y, 0, frame.height) };
   let b = { x: clamp(to.x, 0, frame.width), y: clamp(to.y, 0, frame.height) };
-  if (square) {
-    // The largest square toward the pointer that fits the frame.
+  if (ratio) {
+    // The largest box of that shape toward the pointer that fits the frame.
     const sx = Math.sign(b.x - a.x) || 1;
     const sy = Math.sign(b.y - a.y) || 1;
-    const room = Math.min(sx > 0 ? frame.width - a.x : a.x, sy > 0 ? frame.height - a.y : a.y);
-    const side = Math.min(Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y)), room);
-    b = { x: a.x + sx * side, y: a.y + sy * side };
+    let w = Math.abs(b.x - a.x);
+    let h = Math.abs(b.y - a.y);
+    if (w / ratio > h) h = w / ratio;
+    else w = h * ratio;
+    const roomX = sx > 0 ? frame.width - a.x : a.x;
+    const roomY = sy > 0 ? frame.height - a.y : a.y;
+    const fit = Math.min(1, roomX / w || 0, roomY / h || 0);
+    b = { x: a.x + sx * w * fit, y: a.y + sy * h * fit };
   }
   const x = Math.min(a.x, b.x);
   const y = Math.min(a.y, b.y);
@@ -66,14 +75,44 @@ export function drawCrop(from: Point, to: Point, frame: Size, square = false): R
 }
 
 /** Nudge (arrows) or resize from the bottom-right (Ctrl+arrows), like the capture overlay. */
-export function nudgeCrop(start: Rect, dx: number, dy: number, frame: Size, resize: boolean): Rect {
-  return resize ? dragCrop(start, "se", dx, dy, frame) : dragCrop(start, "move", dx, dy, frame);
+export function nudgeCrop(
+  start: Rect,
+  dx: number,
+  dy: number,
+  frame: Size,
+  resize: boolean,
+  ratio?: number,
+): Rect {
+  if (!resize) return dragCrop(start, "move", dx, dy, frame);
+  // With a ratio, the arrow along the longer side drives the size.
+  const d = ratio && !dx ? dy * ratio : dx;
+  return dragCrop(start, "se", ratio ? d : dx, ratio ? d / ratio : dy, frame, ratio);
 }
 
-/** `rect` with its size set, keeping its top-left where it can (the W/H fields). */
-export function resizeCrop(rect: Rect, width: number, height: number, frame: Size): Rect {
-  const w = clamp(Math.round(width), 1, frame.width);
-  const h = clamp(Math.round(height), 1, frame.height);
+/**
+ * `rect` with its size set, keeping its top-left where it can (the W/H
+ * fields). With a `ratio`, the other side follows the one typed (`changed`),
+ * and the box shrinks to fit the frame.
+ */
+export function resizeCrop(
+  rect: Rect,
+  width: number,
+  height: number,
+  frame: Size,
+  ratio?: number,
+  changed: "width" | "height" = "width",
+): Rect {
+  let w = width;
+  let h = height;
+  if (ratio) {
+    if (changed === "width") h = w / ratio;
+    else w = h * ratio;
+    const fit = Math.min(1, frame.width / w, frame.height / h);
+    w *= fit;
+    h *= fit;
+  }
+  w = clamp(Math.round(w), 1, frame.width);
+  h = clamp(Math.round(h), 1, frame.height);
   return {
     x: Math.min(rect.x, frame.width - w),
     y: Math.min(rect.y, frame.height - h),
@@ -82,13 +121,34 @@ export function resizeCrop(rect: Rect, width: number, height: number, frame: Siz
   };
 }
 
+/** The largest box of `ratio` inside `box`, centred on it (picking an aspect ratio). */
+export function fitRatio(box: Rect, ratio: number): Rect {
+  let width = box.width;
+  let height = width / ratio;
+  if (height > box.height) {
+    height = box.height;
+    width = height * ratio;
+  }
+  return round({
+    x: box.x + (box.width - width) / 2,
+    y: box.y + (box.height - height) / 2,
+    width,
+    height,
+  });
+}
+
 /**
- * The start box's proportions applied to a freely dragged one. A corner keeps
+ * `ratio` applied to a freely dragged box. A corner keeps
  * the opposite corner still; an edge keeps the box centred across it. Shrinks
  * rather than leave the frame.
  */
-function keepProportions(start: Rect, free: Rect, handle: Handle, frame: Size): Rect {
-  const ratio = start.width / start.height;
+function keepProportions(
+  start: Rect,
+  free: Rect,
+  handle: Handle,
+  frame: Size,
+  ratio: number,
+): Rect {
   const horizontal = handle === "e" || handle === "w";
   const vertical = handle === "n" || handle === "s";
   let width = free.width;

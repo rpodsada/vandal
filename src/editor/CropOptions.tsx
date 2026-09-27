@@ -1,36 +1,93 @@
 import { useState } from "react";
 import { useDoc } from "../markup/model/store";
-import { inFrame, resizeCrop, type Rect } from "./cropGeometry";
-import { applyCrop, cancelCrop, resetCrop, showFullCapture, useCropStore } from "./cropStore";
+import { fitRatio, inFrame, resizeCrop, type Rect } from "./cropGeometry";
+import {
+  CROP_RATIOS,
+  applyCrop,
+  cancelCrop,
+  lockedRatio,
+  resetCrop,
+  setCropRatio,
+  showFullCapture,
+  toggleCropPortrait,
+  useCropStore,
+} from "./cropStore";
 import styles from "../markup/options.module.css";
 
 /**
- * Crop mode's options bar (mockup "ToolOptions", crop): the box's size, Reset,
- * Show full capture, and Cancel / Apply for mouse users (Esc / Enter).
+ * Crop mode's options bar (mockup "ToolOptions", crop): the box's size, the
+ * aspect ratio (with a portrait turn), Reset, Show full capture, and Cancel /
+ * Apply for mouse users (Esc / Enter).
  */
 export function CropOptions() {
   const draft = useCropStore((s) => s.draft);
   const frame = useCropStore((s) => s.frame);
   const start = useCropStore((s) => s.start);
   const source = useDoc((s) => s.doc.source);
+  const ratioId = useCropStore((s) => s.ratio);
+  const portrait = useCropStore((s) => s.portrait);
   if (!draft || !frame || !start) return null;
   const set = useCropStore.getState().setDraft;
-  const resize = (w: number, h: number) =>
-    set(inFrame(frame, (size, local) => resizeCrop(local.rect(draft), w, h, size)));
+  const ratio = lockedRatio();
+  const resize = (w: number, h: number, changed: "width" | "height") =>
+    set(inFrame(frame, (size, local) => resizeCrop(local.rect(draft), w, h, size, ratio, changed)));
+  const resetTo = ratio ? fitRatio(start, ratio) : start;
+  // Portrait only means something for a ratio that isn't square or the image's own.
+  const canTurn = ratioId !== "free" && ratioId !== "original" && ratioId !== "1:1";
   const same = (a: Rect, b: Rect) =>
     a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
   const full = frame.width === source.width && frame.height === source.height;
 
   return (
     <div className={styles.options}>
-      <SizeField label="W" value={draft.width} onChange={(w) => resize(w, draft.height)} />
-      <SizeField label="H" value={draft.height} onChange={(h) => resize(draft.width, h)} />
+      <SizeField label="W" value={draft.width} onChange={(w) => resize(w, draft.height, "width")} />
+      <SizeField
+        label="H"
+        value={draft.height}
+        onChange={(h) => resize(draft.width, h, "height")}
+      />
+      <span className={styles.sep} />
+      <div className={styles.group} role="radiogroup" aria-label="Aspect ratio">
+        {CROP_RATIOS.map((r) => (
+          <button
+            key={r.id}
+            type="button"
+            role="radio"
+            className={`${styles.toggle} ${styles.ratio}`}
+            aria-checked={ratioId === r.id}
+            aria-pressed={ratioId === r.id}
+            title={
+              r.id === "free"
+                ? "Any shape"
+                : r.id === "original"
+                  ? "The image's own proportions"
+                  : `Keep ${portrait && canTurn ? r.label.split(":").reverse().join(":") : r.label}`
+            }
+            onClick={() => setCropRatio(r.id)}
+          >
+            {r.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          className={styles.toggle}
+          aria-pressed={portrait && canTurn}
+          disabled={!canTurn}
+          aria-label="Portrait"
+          title={canTurn ? "Portrait (turns 16:9 into 9:16)" : "Portrait (pick a ratio first)"}
+          onClick={toggleCropPortrait}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden>
+            <rect x="7" y="3" width="10" height="18" rx="1.5" />
+          </svg>
+        </button>
+      </div>
       <span className={styles.sep} />
       <button
         type="button"
         className={styles.ghostButton}
         title="Back to the image as it was, with the box around all of it"
-        disabled={same(draft, start) && same(frame, start)}
+        disabled={same(draft, resetTo) && same(frame, start)}
         onClick={resetCrop}
       >
         Reset

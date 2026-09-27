@@ -695,3 +695,16 @@
 .sizeField input {
   width: 56px;
 }
+
+/* Aspect-ratio buttons: text, so a little padding instead of a fixed width. */
+.ratio {
+  padding: 0 8px;
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.toggle:disabled {
+  color: var(--text-3);
+  background: transparent;
+}

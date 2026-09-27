@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dragCrop, drawCrop, inFrame, nudgeCrop, resizeCrop } from "./cropGeometry";
+import { dragCrop, drawCrop, fitRatio, inFrame, nudgeCrop, resizeCrop } from "./cropGeometry";
 
 const frame = { width: 1000, height: 500 };
 const box = { x: 100, y: 100, width: 200, height: 100 };
@@ -29,16 +29,16 @@ describe("dragCrop", () => {
 
   it("keeps the proportions with Shift", () => {
     // Corner: the opposite corner stays, 2:1 kept.
-    expect(dragCrop(box, "se", 100, 0, frame, true)).toEqual({ ...box, width: 300, height: 150 });
+    expect(dragCrop(box, "se", 100, 0, frame, 2)).toEqual({ ...box, width: 300, height: 150 });
     // Edge: centred across it.
-    expect(dragCrop(box, "e", 100, 0, frame, true)).toEqual({
+    expect(dragCrop(box, "e", 100, 0, frame, 2)).toEqual({
       x: 100,
       y: 75,
       width: 300,
       height: 150,
     });
     // Shrinks rather than leave the frame.
-    const r = dragCrop(box, "se", 5000, 0, frame, true);
+    const r = dragCrop(box, "se", 5000, 0, frame, 2);
     expect(r).toEqual({ x: 100, y: 100, width: 800, height: 400 });
   });
 });
@@ -60,13 +60,13 @@ describe("drawCrop", () => {
   });
 
   it("draws a square with Shift, as big as fits", () => {
-    expect(drawCrop({ x: 100, y: 100 }, { x: 300, y: 150 }, frame, true)).toEqual({
+    expect(drawCrop({ x: 100, y: 100 }, { x: 300, y: 150 }, frame, 1)).toEqual({
       x: 100,
       y: 100,
       width: 200,
       height: 200,
     });
-    expect(drawCrop({ x: 100, y: 400 }, { x: 400, y: 450 }, frame, true).height).toBe(100);
+    expect(drawCrop({ x: 100, y: 400 }, { x: 400, y: 450 }, frame, 1).height).toBe(100);
   });
 });
 
@@ -93,5 +93,46 @@ describe("keyboard and fields", () => {
   it("sets the size, moving the box in only if it must", () => {
     expect(resizeCrop(box, 400, 50, frame)).toEqual({ ...box, width: 400, height: 50 });
     expect(resizeCrop(box, 950, 600, frame)).toEqual({ x: 50, y: 0, width: 950, height: 500 });
+  });
+});
+
+describe("aspect ratios", () => {
+  it("fits the largest box of a ratio inside, centred", () => {
+    expect(fitRatio(box, 1)).toEqual({ x: 150, y: 100, width: 100, height: 100 });
+    expect(fitRatio(box, 16 / 9)).toEqual({ x: 111, y: 100, width: 178, height: 100 });
+    expect(fitRatio(box, 4)).toEqual({ x: 100, y: 125, width: 200, height: 50 });
+  });
+
+  it("draws and drags at a locked ratio", () => {
+    const drawn = drawCrop({ x: 0, y: 0 }, { x: 400, y: 10 }, frame, 16 / 9);
+    expect(drawn).toEqual({ x: 0, y: 0, width: 400, height: 225 });
+    // Only 100 px of room below: the box shrinks to keep 4:3.
+    const low = drawCrop({ x: 0, y: 400 }, { x: 400, y: 500 }, frame, 4 / 3);
+    expect(low).toEqual({ x: 0, y: 400, width: 133, height: 100 });
+    const dragged = dragCrop({ x: 0, y: 0, width: 160, height: 90 }, "se", 160, 0, frame, 16 / 9);
+    expect(dragged).toEqual({ x: 0, y: 0, width: 320, height: 180 });
+  });
+
+  it("links the W/H fields and the Ctrl+arrow resize", () => {
+    expect(resizeCrop(box, 300, 100, frame, 2, "width")).toEqual({
+      ...box,
+      width: 300,
+      height: 150,
+    });
+    expect(resizeCrop(box, 200, 50, frame, 2, "height")).toEqual({
+      ...box,
+      width: 100,
+      height: 50,
+    });
+    // Too big for the frame: shrunk, still 2:1.
+    expect(resizeCrop(box, 5000, 100, frame, 2, "width")).toEqual({
+      x: 0,
+      y: 0,
+      width: 1000,
+      height: 500,
+    });
+    const r = nudgeCrop(box, 0, 10, frame, true, 2);
+    expect(r.width / r.height).toBeCloseTo(2);
+    expect(r.height).toBe(110);
   });
 });

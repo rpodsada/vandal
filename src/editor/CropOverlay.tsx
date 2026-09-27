@@ -1,7 +1,7 @@
 import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { setDragHint } from "../markup/hints";
 import { dragCrop, drawCrop, inFrame, type Handle, type Rect } from "./cropGeometry";
-import { applyCrop, useCropStore } from "./cropStore";
+import { applyCrop, lockedRatio, useCropStore } from "./cropStore";
 import type { Point } from "./view";
 import styles from "./EditorApp.module.css";
 
@@ -59,6 +59,7 @@ export function CropOverlay({ draft, frame, scale, origin, interactive }: Props)
       ?.getAttribute("data-handle") ?? "new") as Handle | "new";
     const start = toSource(e.clientX, e.clientY);
     const startRect = draft;
+    const ratio = lockedRatio();
     const client = { x: e.clientX, y: e.clientY };
     const root = e.currentTarget;
     root.setPointerCapture(e.pointerId);
@@ -72,13 +73,27 @@ export function CropOverlay({ draft, frame, scale, origin, interactive }: Props)
         if (Math.hypot(m.clientX - client.x, m.clientY - client.y) < DRAW_THRESHOLD) return;
         setDraft(
           inFrame(frame, (size, local) =>
-            drawCrop(local.point(start), local.point(p), size, m.shiftKey),
+            // A locked ratio holds; otherwise Shift draws a square.
+            drawCrop(
+              local.point(start),
+              local.point(p),
+              size,
+              ratio ?? (m.shiftKey ? 1 : undefined),
+            ),
           ),
         );
       } else {
         setDraft(
           inFrame(frame, (size, local) =>
-            dragCrop(local.rect(startRect), handle, p.x - start.x, p.y - start.y, size, m.shiftKey),
+            dragCrop(
+              local.rect(startRect),
+              handle,
+              p.x - start.x,
+              p.y - start.y,
+              size,
+              // A locked ratio holds; otherwise Shift keeps the box's own.
+              ratio ?? (m.shiftKey ? startRect.width / startRect.height : undefined),
+            ),
           ),
         );
       }
