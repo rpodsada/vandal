@@ -28,7 +28,7 @@ Tray-resident Windows screen capture + markup tool. Tauri 2 (Rust) + React/TS (V
 ```
 cd src-tauri && cargo fmt && cargo clippy --all-targets -- -D warnings && cargo test
 npm run lint && npm test && npx tsc --noEmit
-npm run tauri dev   # smoke run
+npm run tauri:dev   # smoke run (dev identity; coexists with an installed copy)
 ```
 
 Never edit source files with Windows PowerShell `Get-Content`/`Set-Content`: 5.1 reads UTF-8 as
@@ -36,12 +36,24 @@ Windows-1252 and corrupts non-ASCII text (`src/shared/encoding.test.ts` catches 
 
 Run Node tooling from PowerShell. Git Bash on this machine has an old nvm Node 16 first on PATH.
 
+## Settings
+
+- Rust (`settings.rs`) is the source of truth; every change goes through `settings::update`
+  (validate, save, apply live, broadcast `SettingsChanged`).
+- To add a setting: add the field (with a default) to the Rust struct, then add an item to
+  `src/settings/sections.tsx`. New control kind: extend `Item` in `schema.ts` and register a
+  component in `controls/index.ts`.
+- If applying a setting needs side effects (re-register, rebuild a menu...), add them to
+  `settings::update`.
+
 ## Handy
 
 - Hotkeys (defaults): `Win+F12` region, `Win+Shift+F12` full screen. Overlay keys: Enter/double-click
   confirm, F this screen, A all screens, arrows nudge, Ctrl+arrows resize from the bottom-right (Shift = 10px),
   Esc/right-click cancel.
-- Settings file: `%APPDATA%\com.captureapp.desktop\settings.json` (read at startup).
+- Settings files: `%APPDATA%\com.captureapp.desktop\settings.json` (installed) and
+  `%APPDATA%\com.captureapp.desktop.dev\` (dev builds). `capture-app --settings` opens Settings.
+- Dev builds use Ctrl-prefixed hotkeys (`Ctrl+Win+F12`...) so they don't clash with an installed copy.
 - Synthetic-input testing from PowerShell: pass coordinates as `[int]` params. A bare `-100`
   command argument is a _string_, and `"-100" + 10` concatenates. Send arrow keys with
   `KEYEVENTF_EXTENDEDKEY`, or Windows treats them as numpad keys and drops Shift.
