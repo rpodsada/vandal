@@ -6,6 +6,7 @@ import {
   Ellipse,
   Group,
   Layer,
+  Line,
   Rect as KRect,
   Shape,
   Stage,
@@ -17,6 +18,7 @@ import {
   arrowGeometry,
   rectFromDrag,
   rectsIntersect,
+  simplifyPath,
   snapAngle,
   translateAnnotation,
 } from "./geometry";
@@ -26,6 +28,7 @@ import type {
   AnnotationId,
   ArrowAnnotation,
   LineAnnotation,
+  PenAnnotation,
   Point,
   Rect,
 } from "./model/types";
@@ -40,6 +43,10 @@ const DRAG_THRESHOLD = 3;
 const HIT_SLOP = 12;
 /** Drawn shapes smaller than this (screen px) are treated as a click and dropped. */
 const MIN_DRAWN = 4;
+/** Screen px a pen stroke may stray from the pointer's path when simplified. */
+const PEN_TOLERANCE = 0.5;
+/** Cardinal-spline tension for freehand strokes: a light smoothing of mouse jitter. */
+const PEN_TENSION = 0.3;
 /** Degrees from a 45° step within which rotation snaps to it. */
 const ROTATION_SNAP = 6;
 
@@ -77,11 +84,17 @@ type Drag =
     }
   | { mode: "draw"; start: Point; id: AnnotationId }
   | { mode: "endpoint"; id: AnnotationId; end: "from" | "to"; anchor: Point }
+  | { mode: "stroke"; id: AnnotationId; last: Point }
   | { mode: "marquee"; start: Point; base: AnnotationId[] };
 
 /** Line-like annotations get endpoint handles instead of the transformer. */
 function hasEndpoints(a: Annotation): a is ArrowAnnotation | LineAnnotation {
   return a.kind === "arrow" || a.kind === "line";
+}
+
+/** Rects and ellipses get the resize/rotate transformer. */
+function isBoxed(a: Annotation): boolean {
+  return a.kind === "rect" || a.kind === "ellipse";
 }
 
 /**
@@ -114,7 +127,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
     const stage = stageRef.current;
     if (!tr || !stage) return;
     const boxed = doc.annotations
-      .filter((a) => selection.includes(a.id) && !hasEndpoints(a))
+      .filter((a) => selection.includes(a.id) && isBoxed(a))
       .map((a) => a.id);
     const nodes = boxed.map((id) => stage.findOne(`#${id}`)).filter((n): n is Konva.Node => !!n);
     tr.nodes(nodes);
@@ -145,7 +158,14 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
     const hit = e.target.name() === "annotation" ? e.target.id() : null;
     let drag: Drag;
 
-    if (e.target.name() === "endpoint") {
+    if (tool === "pen") {
+      // The pen always draws, even over other annotations.
+      const { style } = useToolStore.getState();
+      store.select([]);
+      store.beginGesture();
+      const id = store.add({ kind: "pen", points: [p.x, p.y], style });
+      drag = { mode: "stroke", id, last: { x: ev.clientX, y: ev.clientY } };
+    } else if (e.target.name() === "endpoint") {
       const attrs = (e.target as Konva.Node).attrs as {
         annotationId: AnnotationId;
         end: "from" | "to";
@@ -232,6 +252,21 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
           s.update(drag.id, (a) => (hasEndpoints(a) ? { ...a, [end]: pt } : a));
           break;
         }
+        case "stroke": {
+          // Coalesced events keep fast strokes smooth.
+          const added: number[] = [];
+          for (const c of m.getCoalescedEvents?.() ?? [m]) {
+            if (Math.hypot(c.clientX - drag.last.x, c.clientY - drag.last.y) < 1) continue;
+            drag.last = { x: c.clientX, y: c.clientY };
+            const pt = toSource(c.clientX, c.clientY);
+            added.push(pt.x, pt.y);
+          }
+          if (added.length)
+            s.update(drag.id, (a) =>
+              a.kind === "pen" ? { ...a, points: [...a.points, ...added] } : a,
+            );
+          break;
+        }
         case "marquee":
           setMarquee(rectFromDrag(drag.start, q));
           break;
@@ -259,6 +294,20 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
         case "endpoint":
           s.endGesture();
           break;
+        case "stroke": {
+          // A click leaves a dot; strokes lose the points that add nothing.
+          const tolerance = PEN_TOLERANCE / view.current.scale;
+          s.update(drag.id, (a) => {
+            if (a.kind !== "pen") return a;
+            const points =
+              a.points.length === 2
+                ? [...a.points, ...a.points]
+                : simplifyPath(a.points, tolerance);
+            return { ...a, points };
+          });
+          s.endGesture();
+          break;
+        }
         case "marquee": {
           const box = rectFromDrag(drag.start, toSource(u.clientX, u.clientY));
           setMarquee(null);
@@ -284,7 +333,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
     if (!container || e.target.getParent() instanceof Konva.Transformer) return;
     const name = e.target.name();
     container.style.cursor =
-      name === "endpoint"
+      tool === "pen" || name === "endpoint"
         ? "crosshair"
         : name === "annotation"
           ? "move"
@@ -396,6 +445,11 @@ export function MarkupLayer({ width, height, scale, offset, interactive }: Props
                   ))
                 : [],
             )}
+          {doc.annotations.map((a) =>
+            a.kind === "pen" && selection.includes(a.id) ? (
+              <SelectionBounds key={`${a.id}-bounds`} a={a} scale={scale} offset={offset} />
+            ) : null,
+          )}
           {marquee && (
             <KRect
               x={offset.x + marquee.x * scale}
@@ -427,6 +481,47 @@ function drawnBigEnough(a: Annotation, scale: number): boolean {
 /** One annotation as a Konva node. Shapes are positioned about their centre so rotation works. */
 function AnnotationShape({ a, hitSlop }: { a: Annotation; hitSlop: number }) {
   if (hasEndpoints(a)) return <SegmentShape a={a} hitSlop={hitSlop} />;
+  if (a.kind === "pen") {
+    const { color, width, opacity } = a.style;
+    const b = annotationBounds(a);
+    if (b.width === 0 && b.height === 0) {
+      // A click: canvas doesn't reliably draw a zero-length line, so draw the dot.
+      return (
+        <Circle
+          id={a.id}
+          name="annotation"
+          x={b.x}
+          y={b.y}
+          radius={width / 2}
+          fill={color}
+          opacity={opacity}
+          perfectDrawEnabled={false}
+          // The same grab margin as strokes get.
+          hitFunc={(ctx, shape) => {
+            ctx.beginPath();
+            ctx.arc(0, 0, (width + hitSlop) / 2, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.fillShape(shape);
+          }}
+        />
+      );
+    }
+    return (
+      <Line
+        id={a.id}
+        name="annotation"
+        points={a.points}
+        stroke={color}
+        strokeWidth={width}
+        opacity={opacity}
+        tension={PEN_TENSION}
+        lineCap="round"
+        lineJoin="round"
+        hitStrokeWidth={width + hitSlop}
+        perfectDrawEnabled={false}
+      />
+    );
+  }
   if (a.kind !== "rect" && a.kind !== "ellipse") return null; // other kinds: later steps
   const { rect, style } = a;
   const common = {
@@ -493,6 +588,24 @@ function SegmentShape({ a, hitSlop }: { a: ArrowAnnotation | LineAnnotation; hit
           ctx.fillShape(shape);
         }
       }}
+    />
+  );
+}
+
+/** A dashed box around a selected stroke, which can move but not be reshaped. */
+function SelectionBounds({ a, scale, offset }: { a: PenAnnotation; scale: number; offset: Point }) {
+  const b = annotationBounds(a);
+  const pad = a.style.width / 2;
+  return (
+    <KRect
+      x={offset.x + (b.x - pad) * scale}
+      y={offset.y + (b.y - pad) * scale}
+      width={(b.width + 2 * pad) * scale}
+      height={(b.height + 2 * pad) * scale}
+      stroke={CHROME}
+      strokeWidth={1}
+      dash={[4, 3]}
+      listening={false}
     />
   );
 }

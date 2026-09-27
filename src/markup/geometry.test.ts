@@ -6,6 +6,7 @@ import {
   rectFromDrag,
   rectsIntersect,
   rotatedBounds,
+  simplifyPath,
   snapAngle,
   translateAnnotation,
 } from "./geometry";
@@ -123,5 +124,21 @@ describe("arrowGeometry", () => {
   it("shrinks the head on short arrows", () => {
     const g = arrowGeometry(from, { x: 10, y: 0 }, "filled", 4);
     expect(g.shaft[2]).toBeCloseTo(2); // head is 80% of the length
+  });
+});
+
+describe("simplifyPath", () => {
+  it("drops points on a straight run and keeps corners", () => {
+    const path = [0, 0, 1, 0.1, 2, 0, 3, 0, 3, 1, 3, 2];
+    expect(simplifyPath(path, 0.5)).toEqual([0, 0, 3, 0, 3, 2]);
+  });
+
+  it("keeps detail larger than the tolerance", () => {
+    expect(simplifyPath([0, 0, 1, 2, 2, 0], 0.5)).toEqual([0, 0, 1, 2, 2, 0]);
+  });
+
+  it("leaves one- and two-point paths alone", () => {
+    expect(simplifyPath([4, 4], 1)).toEqual([4, 4]);
+    expect(simplifyPath([0, 0, 5, 5], 1)).toEqual([0, 0, 5, 5]);
   });
 });

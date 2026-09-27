@@ -139,3 +139,51 @@ export function arrowGeometry(
   const end = head === "filled" ? base : to;
   return { shaft: [from.x, from.y, end.x, end.y], head: [left, { ...to }, right] };
 }
+
+/** Distance from `p` to the segment `a`–`b`. */
+function segmentDistance(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  const t = len2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2)) : 0;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+
+/**
+ * A freehand path (flat `[x0, y0, x1, y1, …]`) with points dropped wherever
+ * the result stays within `tolerance` of the original (Ramer–Douglas–Peucker).
+ * The first and last points are always kept.
+ */
+export function simplifyPath(points: number[], tolerance: number): number[] {
+  const n = points.length / 2;
+  if (n <= 2) return points.slice();
+  const keep = new Uint8Array(n);
+  keep[0] = keep[n - 1] = 1;
+  const stack: [number, number][] = [[0, n - 1]];
+  while (stack.length) {
+    const [i, j] = stack.pop()!;
+    let worst = -1;
+    let dist = tolerance;
+    for (let k = i + 1; k < j; k++) {
+      const d = segmentDistance(
+        points[2 * k],
+        points[2 * k + 1],
+        points[2 * i],
+        points[2 * i + 1],
+        points[2 * j],
+        points[2 * j + 1],
+      );
+      if (d > dist) {
+        dist = d;
+        worst = k;
+      }
+    }
+    if (worst >= 0) {
+      keep[worst] = 1;
+      stack.push([i, worst], [worst, j]);
+    }
+  }
+  const out: number[] = [];
+  for (let k = 0; k < n; k++) if (keep[k]) out.push(points[2 * k], points[2 * k + 1]);
+  return out;
+}
