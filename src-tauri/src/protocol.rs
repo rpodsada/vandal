@@ -48,12 +48,26 @@ pub fn editor_url(editor_id: EditorId) -> String {
     format!("http://{SCHEME}.localhost/editor/{editor_id}")
 }
 
-pub fn editor_layer_url(editor_id: EditorId, kind: LayerKind) -> String {
-    let name = match kind {
+/// Where quick edit POSTs a capture's annotation or highlight layer.
+pub fn capture_layer_url(capture_id: u32, kind: LayerKind) -> String {
+    format!(
+        "http://{SCHEME}.localhost/capture/{capture_id}/{}",
+        layer_name(kind)
+    )
+}
+
+fn layer_name(kind: LayerKind) -> &'static str {
+    match kind {
         LayerKind::Annotations => "layer",
         LayerKind::Highlights => "highlights",
-    };
-    format!("http://{SCHEME}.localhost/editor/{editor_id}/{name}")
+    }
+}
+
+pub fn editor_layer_url(editor_id: EditorId, kind: LayerKind) -> String {
+    format!(
+        "http://{SCHEME}.localhost/editor/{editor_id}/{}",
+        layer_name(kind)
+    )
 }
 
 #[derive(Debug, PartialEq)]
@@ -65,6 +79,7 @@ enum Route {
     },
     Editor(EditorId),
     EditorLayer(EditorId, LayerKind),
+    CaptureLayer(u32, LayerKind),
 }
 
 pub fn handle<R: Runtime>(
@@ -88,7 +103,11 @@ pub fn handle<R: Runtime>(
     }
     let route = parse(request.uri());
     let is_post = request.method() == Method::POST;
-    if is_post != matches!(route, Some(Route::EditorLayer(..))) {
+    let is_upload = matches!(
+        route,
+        Some(Route::EditorLayer(..) | Route::CaptureLayer(..))
+    );
+    if is_post != is_upload {
         responder.respond(error(StatusCode::METHOD_NOT_ALLOWED));
         return;
     }
@@ -138,6 +157,19 @@ pub fn handle<R: Runtime>(
                 responder.respond(error(StatusCode::NOT_FOUND));
             }
         }
+        Some(Route::CaptureLayer(capture_id, kind)) => {
+            let bytes = request.into_body();
+            let n = bytes.len();
+            if crate::session::set_layer(ctx.app_handle(), capture_id, kind, bytes) {
+                eprintln!(
+                    "[capture] #{capture_id}: {kind:?} received ({:.1} MB)",
+                    n as f64 / 1e6
+                );
+                responder.respond(ok(Vec::new(), "text/plain"));
+            } else {
+                responder.respond(error(StatusCode::NOT_FOUND));
+            }
+        }
         None => responder.respond(error(StatusCode::BAD_REQUEST)),
     }
 }
@@ -180,6 +212,13 @@ fn parse(uri: &tauri::http::Uri) -> Option<Route> {
         }
         ["editor", id, "highlights"] if uri.query().is_none() => {
             Some(Route::EditorLayer(id.parse().ok()?, LayerKind::Highlights))
+        }
+        ["capture", id, "layer"] if uri.query().is_none() => Some(Route::CaptureLayer(
+            id.parse().ok()?,
+            LayerKind::Annotations,
+        )),
+        ["capture", id, "highlights"] if uri.query().is_none() => {
+            Some(Route::CaptureLayer(id.parse().ok()?, LayerKind::Highlights))
         }
         _ => None,
     }
@@ -264,6 +303,14 @@ mod tests {
         assert_eq!(i32::from_le_bytes(bmp[22..26].try_into().unwrap()), -1);
         assert_eq!(u16::from_le_bytes(bmp[28..30].try_into().unwrap()), 32);
         assert_eq!(&bmp[54..], &[1, 2, 3, 255, 4, 5, 6, 255]);
+    }
+
+    #[test]
+    fn parses_capture_layer_urls() {
+        for kind in [LayerKind::Annotations, LayerKind::Highlights] {
+            let uri: tauri::http::Uri = capture_layer_url(9, kind).parse().unwrap();
+            assert_eq!(parse(&uri), Some(Route::CaptureLayer(9, kind)));
+        }
     }
 
     #[test]

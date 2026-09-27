@@ -12,6 +12,7 @@ use tauri_specta::Event;
 
 use crate::capture::{CaptureTiming, MonitorFrame};
 use crate::compose;
+use crate::editor::LayerKind;
 use crate::frames::{Capture, CaptureId};
 use crate::geometry::{monitor_at, virtual_bounds, MonitorInfo, PhysicalRect};
 use crate::protocol::{self, TransferFormat};
@@ -39,6 +40,9 @@ pub struct OverlayLoad {
     pub show_dimensions: bool,
     /// Show the quick-edit toolbar on a region selection (`quickEdit.enabled`).
     pub quick_edit: bool,
+    /// Where quick edit POSTs its annotation and highlight layers.
+    pub layer_url: String,
+    pub highlights_url: String,
 }
 
 /// Rust → overlays: you're now shown; reply with `overlay_visible` once painted.
@@ -54,6 +58,15 @@ pub struct OverlayShown {
 pub struct OverlayClearSelection {
     pub capture_id: CaptureId,
     pub monitor_index: u32,
+}
+
+/// Rust → overlays: the overlay on `owner` has quick-edit markup (None: none
+/// has). The others stop starting selections, so it can't be thrown away.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[serde(rename_all = "camelCase")]
+pub struct OverlayMarkupOwner {
+    pub capture_id: CaptureId,
+    pub owner: Option<u32>,
 }
 
 /// Overlay → Rust: frame drawn, with the overlay-side timing.
@@ -96,27 +109,117 @@ pub struct Session {
     pub visible: Option<Duration>,
     /// What quick edit already did, so closing doesn't do it again.
     done: QuickDone,
+    /// The overlay whose selection has quick-edit markup, if any.
+    markup_owner: Option<u32>,
+    /// Quick edit's latest layers (straight-alpha RGBA the size of the region).
+    layer: Option<Vec<u8>>,
+    highlights: Option<Vec<u8>>,
 }
 
-/// Quick edit's copies and saves so far, each with the region it was of: the
-/// after-capture actions skip them only while the region is still the same.
+/// What quick edit's image is: the region and the markup's revision (the page
+/// counts its changes). The after-capture actions skip a copy or save only
+/// while both are still the same.
+type QuickImage = (PhysicalRect, u32);
+
+/// Quick edit's copies and saves so far.
 #[derive(Debug, Default, Clone)]
 struct QuickDone {
-    copied: Option<PhysicalRect>,
-    saved: Option<(PhysicalRect, PathBuf)>,
+    copied: Option<QuickImage>,
+    saved: Option<(QuickImage, PathBuf)>,
 }
 
 impl QuickDone {
-    fn for_rect(&self, rect: PhysicalRect) -> output::Already {
+    fn for_image(&self, image: QuickImage) -> output::Already {
         output::Already {
-            copied: self.copied == Some(rect),
+            copied: self.copied == Some(image),
             saved: self
                 .saved
                 .as_ref()
-                .filter(|(r, _)| *r == rect)
+                .filter(|(i, _)| *i == image)
                 .map(|(_, p)| p.clone()),
         }
     }
+}
+
+/// Quick edit's markup, as the page describes it with each action: which
+/// layers it just uploaded, and its revision.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickMarkup {
+    pub layer: bool,
+    pub highlights: bool,
+    pub revision: u32,
+}
+
+/// An overlay's selection gained or lost its last markup: record it and tell
+/// every overlay.
+pub fn markup_changed(app: &AppHandle, capture_id: CaptureId, monitor_index: u32, has: bool) {
+    let state = app.state::<AppState>();
+    let owner = {
+        let mut guard = state.session.lock().unwrap();
+        let Some(s) = guard.as_mut().filter(|s| s.capture_id == capture_id) else {
+            return;
+        };
+        if has {
+            s.markup_owner = Some(monitor_index);
+        } else if s.markup_owner == Some(monitor_index) {
+            s.markup_owner = None;
+        }
+        s.markup_owner
+    };
+    let _ = OverlayMarkupOwner { capture_id, owner }.emit(app);
+}
+
+/// A press on another monitor while `monitor_index` has markup: give that
+/// overlay the keyboard back.
+pub fn focus_overlay(app: &AppHandle, monitor_index: u32) {
+    if let Some(window) = app.get_webview_window(&overlay::label(monitor_index)) {
+        if let Ok(hwnd) = window.hwnd() {
+            overlay::force_foreground(windows::Win32::Foundation::HWND(hwnd.0));
+        }
+    }
+}
+
+/// Store a layer quick edit uploaded for the capture on screen.
+pub fn set_layer<R: tauri::Runtime>(
+    app: &AppHandle<R>,
+    capture_id: CaptureId,
+    kind: LayerKind,
+    bytes: Vec<u8>,
+) -> bool {
+    let state = app.state::<AppState>();
+    let mut guard = state.session.lock().unwrap();
+    match guard.as_mut() {
+        Some(s) if s.capture_id == capture_id => {
+            match kind {
+                LayerKind::Annotations => s.layer = Some(bytes),
+                LayerKind::Highlights => s.highlights = Some(bytes),
+            }
+            true
+        }
+        _ => false,
+    }
+}
+
+/// The region of a capture with quick edit's markup on it, as delivered.
+fn quick_image(
+    capture: &Capture,
+    rect: PhysicalRect,
+    markup: QuickMarkup,
+    layer: Option<&[u8]>,
+    highlights: Option<&[u8]>,
+) -> Result<compose::RgbaImage, String> {
+    let frames: Vec<&MonitorFrame> = capture.frames.iter().map(|f| f.as_ref()).collect();
+    let mut image = compose::compose(&frames, rect).ok_or("The selection is empty.")?;
+    if markup.highlights {
+        let h = highlights.ok_or("The highlights didn't arrive.")?;
+        compose::blend_multiply(&mut image, h)?;
+    }
+    if markup.layer {
+        let l = layer.ok_or("The annotations didn't arrive.")?;
+        compose::blend_over(&mut image, l)?;
+    }
+    Ok(image)
 }
 
 /// A quick-edit toolbar action that doesn't have to end the capture.
@@ -211,6 +314,8 @@ pub fn start_region(app: &AppHandle) {
             dim_opacity: overlay_settings.dim_opacity,
             show_dimensions: overlay_settings.show_dimensions,
             quick_edit,
+            layer_url: protocol::capture_layer_url(capture.id, LayerKind::Annotations),
+            highlights_url: protocol::capture_layer_url(capture.id, LayerKind::Highlights),
         })
         .collect();
     *session = Some(Session {
@@ -228,6 +333,9 @@ pub fn start_region(app: &AppHandle) {
         shown_by_timeout: false,
         visible: None,
         done: QuickDone::default(),
+        markup_owner: None,
+        layer: None,
+        highlights: None,
     });
     drop(session);
 
@@ -278,13 +386,7 @@ pub fn capture_fullscreen(app: &AppHandle) {
         return;
     };
     let capture = state.frames.lock().unwrap().insert(frames);
-    finish(
-        app,
-        &capture,
-        virtual_bounds(&monitors),
-        started,
-        output::Already::default(),
-    );
+    finish(app, &capture, virtual_bounds(&monitors), started);
     if layout_changed {
         *state.monitors.write().unwrap() = monitors.clone();
         let app = app.clone();
@@ -447,9 +549,9 @@ pub fn cancel(app: &AppHandle, capture_id: CaptureId) {
 
 pub fn commit(app: &AppHandle, capture_id: CaptureId, target: CaptureTarget) {
     let started = Instant::now();
-    let Some(session) = end(app, capture_id) else {
+    if end(app, capture_id).is_none() {
         return;
-    };
+    }
     let state = app.state::<AppState>();
     let Some(capture) = state.frames.lock().unwrap().get(capture_id) else {
         return;
@@ -465,7 +567,44 @@ pub fn commit(app: &AppHandle, capture_id: CaptureId, target: CaptureTarget) {
             .unwrap_or_default(),
         CaptureTarget::AllMonitors => virtual_bounds(&monitors),
     };
-    finish(app, &capture, rect, started, session.done.for_rect(rect));
+    finish(app, &capture, rect, started);
+}
+
+/// Quick edit's Done (Enter): deliver the region with its markup, minus what
+/// quick edit already did for this same image.
+pub fn quick_done(
+    app: &AppHandle,
+    capture_id: CaptureId,
+    rect: PhysicalRect,
+    markup: QuickMarkup,
+) -> Result<(), String> {
+    let started = Instant::now();
+    let Some(session) = end(app, capture_id) else {
+        return Err("This capture has already closed.".into());
+    };
+    let state = app.state::<AppState>();
+    let capture = state
+        .frames
+        .lock()
+        .unwrap()
+        .get(capture_id)
+        .ok_or("This capture is no longer in memory.")?;
+    let open_editor = state.settings.read().unwrap().after_capture.open_editor;
+    if open_editor {
+        // The document handoff (markup kept editable) comes with 2B.3.
+        editor::open_capture(app, &capture, rect);
+        return Ok(());
+    }
+    let image = quick_image(
+        &capture,
+        rect,
+        markup,
+        session.layer.as_deref(),
+        session.highlights.as_deref(),
+    )?;
+    let already = session.done.for_image((rect, markup.revision));
+    output::deliver(app, image, started, already);
+    Ok(())
 }
 
 /// Quick edit's Copy or Save of `rect` (virtual-desktop physical px). The
@@ -476,23 +615,29 @@ pub fn quick_output(
     capture_id: CaptureId,
     rect: PhysicalRect,
     action: QuickAction,
+    markup: QuickMarkup,
 ) -> Result<QuickOutcome, String> {
     let state = app.state::<AppState>();
-    let is_current = matches!(
-        state.session.lock().unwrap().as_ref(),
-        Some(s) if s.capture_id == capture_id
-    );
-    if !is_current {
-        return Err("This capture has already closed.".into());
-    }
+    let (layer, highlights) = {
+        let guard = state.session.lock().unwrap();
+        match guard.as_ref() {
+            Some(s) if s.capture_id == capture_id => (s.layer.clone(), s.highlights.clone()),
+            _ => return Err("This capture has already closed.".into()),
+        }
+    };
     let capture = state
         .frames
         .lock()
         .unwrap()
         .get(capture_id)
         .ok_or("This capture is no longer in memory.")?;
-    let frames: Vec<&MonitorFrame> = capture.frames.iter().map(|f| f.as_ref()).collect();
-    let image = compose::compose(&frames, rect).ok_or("The selection is empty.")?;
+    let image = quick_image(
+        &capture,
+        rect,
+        markup,
+        layer.as_deref(),
+        highlights.as_deref(),
+    )?;
     let settings = state.settings.read().unwrap().clone();
 
     let (path, close) = match action {
@@ -505,14 +650,15 @@ pub fn quick_output(
             (Some(path), settings.quick_edit.close_on_save)
         }
     };
+    let done = (rect, markup.revision);
     if let Some(s) = state.session.lock().unwrap().as_mut() {
         match &path {
-            None => s.done.copied = Some(rect),
-            Some(p) => s.done.saved = Some((rect, p.clone())),
+            None => s.done.copied = Some(done),
+            Some(p) => s.done.saved = Some((done, p.clone())),
         }
     }
     if close {
-        commit(app, capture_id, CaptureTarget::Region { rect });
+        quick_done(app, capture_id, rect, markup)?;
     }
     Ok(QuickOutcome {
         closed: close,
@@ -523,13 +669,7 @@ pub fn quick_output(
 /// Hand `rect` of a capture to the editor or the after-capture actions. When
 /// the editor opens, the actions are held back: the editor's own copy/save
 /// (and on-close actions) finish the job (PLAN Phase 2).
-fn finish(
-    app: &AppHandle,
-    capture: &Capture,
-    rect: PhysicalRect,
-    started: Instant,
-    already: output::Already,
-) {
+fn finish(app: &AppHandle, capture: &Capture, rect: PhysicalRect, started: Instant) {
     let open_editor = app
         .state::<AppState>()
         .settings
@@ -543,7 +683,7 @@ fn finish(
     }
     let frames: Vec<&MonitorFrame> = capture.frames.iter().map(|f| f.as_ref()).collect();
     match compose::compose(&frames, rect) {
-        Some(image) => output::deliver(app, image, started, already),
+        Some(image) => output::deliver(app, image, started, output::Already::default()),
         None => eprintln!("[capture] #{}: empty selection {rect:?}", capture.id),
     }
 }

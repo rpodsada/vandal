@@ -3,7 +3,7 @@
 // the Esc ladder.
 // Host-specific keys (copy, save, zoom, close) live in the host.
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { isTyping } from "../shared/dom";
 import { translateAnnotation } from "./geometry";
 import { docStore } from "./model/store";
@@ -17,9 +17,18 @@ import { TOOL_KEYS, useToolStore } from "./toolStore";
 /** Duplicates land this far (source px) down-right of the original. */
 const DUPLICATE_OFFSET = 10;
 
-export function useMarkupKeys(): void {
+/**
+ * The markup's shortcuts. `active` (read on each key) lets a host switch them
+ * off, e.g. quick edit before there's a selection.
+ */
+export function useMarkupKeys(active?: () => boolean): void {
+  const activeRef = useRef(active);
+  useEffect(() => {
+    activeRef.current = active;
+  });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (activeRef.current && !activeRef.current()) return;
       const slot = digitSlot(e.code);
       // Exactly one of Ctrl and Alt: Ctrl+Alt is AltGr, which types characters.
       const styleDigit = slot !== null && e.ctrlKey !== e.altKey;

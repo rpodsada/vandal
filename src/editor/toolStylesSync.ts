@@ -12,6 +12,8 @@ const SAVE_DELAY_MS = 300;
 
 let timer: number | undefined;
 let pending: string | null = null;
+/** The memory as last loaded or saved, to tell style changes from other ones. */
+let last = "";
 
 function save(): Promise<void> {
   window.clearTimeout(timer);
@@ -26,22 +28,30 @@ export function flushToolStyles(): Promise<void> {
   return save();
 }
 
+/**
+ * Load the remembered styles again (a quick-edit overlay page lives across
+ * captures, so each capture picks up what other windows saved since).
+ */
+export async function loadToolStyles(): Promise<void> {
+  const json = await commands.getToolStyles();
+  if (json) {
+    try {
+      restoreToolMemory(JSON.parse(json));
+    } catch {
+      // Unreadable: start from the defaults; the next change overwrites it.
+    }
+  }
+  last = JSON.stringify(snapshotToolMemory());
+}
+
 /** Load the remembered styles, then keep saving changes. Returns a stop function. */
 export function startToolStylesSync(): () => void {
-  let last = JSON.stringify(snapshotToolMemory());
+  last = JSON.stringify(snapshotToolMemory());
   let unsubscribe = () => {};
   let stopped = false;
 
-  void commands.getToolStyles().then((json) => {
+  void loadToolStyles().then(() => {
     if (stopped) return;
-    if (json) {
-      try {
-        restoreToolMemory(JSON.parse(json));
-      } catch {
-        // Unreadable: start from the defaults; the next change overwrites it.
-      }
-    }
-    last = JSON.stringify(snapshotToolMemory());
     // Only after loading, so the defaults never overwrite what was remembered.
     unsubscribe = useToolStore.subscribe(() => {
       const json = JSON.stringify(snapshotToolMemory());

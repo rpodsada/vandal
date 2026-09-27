@@ -1,4 +1,8 @@
 import { forwardRef } from "react";
+import { useDoc } from "../markup/model/store";
+import { Toolbar } from "../markup/Toolbar";
+import { ToolOptions } from "../markup/ToolOptions";
+import { useToolStore } from "../markup/toolStore";
 import styles from "./OverlayApp.module.css";
 
 interface Props {
@@ -14,14 +18,20 @@ interface Props {
 }
 
 /**
- * Quick edit's toolbar card on the selection (PLAN 2B.1, mockup "Main"):
- * Copy, Save (the accent button) and Exit. The tools, undo/redo and "Open in
- * editor" join it in 2B.2 and 2B.3.
+ * Quick edit's toolbar card on the selection (PLAN 2B.1–2, mockup "Main"):
+ * the tools and undo/redo, Copy, Save (the accent button) and Exit, with the
+ * current tool's options as a second row ("Open in editor" joins in 2B.3).
  */
 export const QuickBar = forwardRef<HTMLDivElement, Props>(function QuickBar(
   { x, y, busy, notice, onCopy, onSave, onExit },
   ref,
 ) {
+  // The options row shows when there's something to style (hidden with Select
+  // and nothing selected, as in the mockup).
+  const tool = useToolStore((s) => s.tool);
+  const typing = useToolStore((s) => s.editing !== null);
+  const selected = useDoc((s) => s.selection.length > 0);
+  const showOptions = tool !== "select" || selected || typing;
   return (
     <div
       ref={ref}
@@ -32,6 +42,8 @@ export const QuickBar = forwardRef<HTMLDivElement, Props>(function QuickBar(
       onDoubleClick={(e) => e.stopPropagation()}
     >
       <div className={styles.quickRow}>
+        <Toolbar />
+        <span className={styles.quickDivider} />
         <button
           type="button"
           className={styles.quickButton}
@@ -72,6 +84,11 @@ export const QuickBar = forwardRef<HTMLDivElement, Props>(function QuickBar(
           </svg>
         </button>
       </div>
+      {showOptions && (
+        <div className={styles.quickOptions}>
+          <ToolOptions />
+        </div>
+      )}
       {notice && (
         <div className={notice.error ? styles.quickNoticeError : styles.quickNotice} role="status">
           {notice.text}

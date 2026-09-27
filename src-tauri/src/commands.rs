@@ -8,7 +8,9 @@ use crate::editor::{self, CloseChoice, EditorInit, ExportAction, ExportOutcome};
 use crate::frames::CaptureId;
 use crate::geometry::PhysicalRect;
 use crate::output;
-use crate::session::{self, CaptureTarget, OverlayLoad, OverlayReport, QuickAction, QuickOutcome};
+use crate::session::{
+    self, CaptureTarget, OverlayLoad, OverlayReport, QuickAction, QuickMarkup, QuickOutcome,
+};
 use crate::settings::{self, Settings};
 use crate::state::AppState;
 
@@ -55,8 +57,35 @@ pub async fn quick_output(
     capture_id: CaptureId,
     rect: PhysicalRect,
     action: QuickAction,
+    markup: QuickMarkup,
 ) -> Result<QuickOutcome, String> {
-    session::quick_output(&app, capture_id, rect, action)
+    session::quick_output(&app, capture_id, rect, action, markup)
+}
+
+/// Quick edit's Done (Enter): deliver the selection with its markup.
+#[tauri::command]
+#[specta::specta]
+pub async fn quick_done(
+    app: AppHandle,
+    capture_id: CaptureId,
+    rect: PhysicalRect,
+    markup: QuickMarkup,
+) -> Result<(), String> {
+    session::quick_done(&app, capture_id, rect, markup)
+}
+
+/// Quick edit: this overlay's selection now has markup (or no longer has).
+#[tauri::command]
+#[specta::specta]
+pub fn quick_markup_changed(app: AppHandle, capture_id: CaptureId, monitor_index: u32, has: bool) {
+    session::markup_changed(&app, capture_id, monitor_index, has);
+}
+
+/// Quick edit: bring the overlay with the markup back to the front.
+#[tauri::command]
+#[specta::specta]
+pub fn quick_focus_overlay(app: AppHandle, monitor_index: u32) {
+    session::focus_overlay(&app, monitor_index);
 }
 
 /// Esc / right-click on an overlay.

@@ -50,6 +50,7 @@ import {
 import { textBoxPadding, textFontStyle } from "./textMeasure";
 import { TextEditor } from "./TextEditor";
 import { createText, editText, finishTextEdit } from "./textEditing";
+import { markTaken } from "./pressRouting";
 import { useToolStore } from "./toolStore";
 import styles from "./markup.module.css";
 
@@ -104,6 +105,11 @@ interface Props {
   interactive: boolean;
   /** Where annotations show, in source px (default: the crop; the editor's crop mode shows all). */
   clip?: Rect;
+  /**
+   * With the Select tool, a press on empty space draws a marquee, or, with
+   * "pass", is left to the host (quick edit moves the selection).
+   */
+  emptyPress?: "marquee" | "pass";
 }
 
 type Drag =
@@ -145,7 +151,15 @@ function isBoxed(a: Annotation): boolean {
  * document over the host's image and runs the tools. Geometry is in source
  * pixels; `scale`/`offset` map it onto the surface.
  */
-export function MarkupLayer({ width, height, scale, offset, interactive, clip }: Props) {
+export function MarkupLayer({
+  width,
+  height,
+  scale,
+  offset,
+  interactive,
+  clip,
+  emptyPress = "marquee",
+}: Props) {
   const doc = useDoc((s) => s.doc);
   const selection = useDoc((s) => s.selection);
   const tool = useToolStore((s) => s.tool);
@@ -257,6 +271,18 @@ export function MarkupLayer({ width, height, scale, offset, interactive, clip }:
   const onPointerDown = (e: KonvaEventObject<PointerEvent>) => {
     const ev = e.evt;
     if (!interactive || ev.button !== 0) return;
+    const hitsObject = e.target.name() === "annotation" && picksObjects(ev.ctrlKey);
+    if (
+      tool === "select" &&
+      emptyPress === "pass" &&
+      !hitsObject &&
+      !useToolStore.getState().editing
+    ) {
+      // Empty space with Select, or a transformer handle: see below.
+      if (!(e.target.getParent() instanceof Konva.Transformer) && e.target.name() !== "endpoint")
+        return;
+    }
+    markTaken(ev);
     // A click while typing just finishes the text.
     if (useToolStore.getState().editing) {
       finishTextEdit();
@@ -507,6 +533,7 @@ export function MarkupLayer({ width, height, scale, offset, interactive, clip }:
 
   const onDblClick = (e: KonvaEventObject<MouseEvent>) => {
     if (!interactive || e.target.name() !== "annotation") return;
+    markTaken(e.evt);
     editText(e.target.id());
   };
 

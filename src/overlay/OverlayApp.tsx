@@ -12,6 +12,16 @@ import { commands, events, type OverlayLoad } from "../shared/ipc";
 import { cssToLocalPhysical } from "../shared/geometry";
 import { drawFrame } from "./frame";
 import { HintBar } from "./HintBar";
+import { MarkupLayer } from "../markup/MarkupLayer";
+import { useDoc } from "../markup/model/store";
+import { wasTaken } from "../markup/pressRouting";
+import { finishTextEdit } from "../markup/textEditing";
+import { useToolStore } from "../markup/toolStore";
+import { useMarkupKeys } from "../markup/useMarkupKeys";
+import { useStyleSettings } from "../markup/useStyleSettings";
+import { startToolStylesSync } from "../editor/toolStylesSync";
+import { isTyping } from "../shared/dom";
+import { resetMarkup, uploadMarkup } from "./quickEdit";
 import { QuickBar } from "./QuickBar";
 import { toolbarPlacement, type Size } from "./toolbarPlacement";
 import {
@@ -58,6 +68,25 @@ export function OverlayApp() {
   const scale = load?.scaleFactor ?? window.devicePixelRatio;
   const size = useMemo(() => (load ? { width: load.width, height: load.height } : null), [load]);
 
+  // Quick edit's markup (PLAN 2B.2): the tools work while there's a selection.
+  const quickEdit = !!load?.quickEdit;
+  const creating = drag?.mode === "create";
+  const quickActive = quickEdit && !!selection && !creating;
+  const quickActiveRef = useRef(quickActive);
+  useEffect(() => {
+    quickActiveRef.current = quickActive;
+  });
+  // First, so the markup's keys (Esc steps, arrows on objects...) come before ours.
+  useMarkupKeys(() => quickActiveRef.current);
+  useStyleSettings();
+  useEffect(() => startToolStylesSync(), []);
+  const hasMarkup = useDoc((s) => s.doc.annotations.length > 0);
+  // The overlay (monitor) whose selection has markup, if any: the others
+  // leave the capture alone so the markup can't be thrown away from there.
+  const [markupOwner, setMarkupOwner] = useState<number | null>(null);
+  const lockedOut = markupOwner !== null && markupOwner !== monitorIndex;
+  const tool = useToolStore((s) => s.tool);
+
   // ---- Rust â†’ overlay ----
 
   useEffect(() => {
@@ -73,6 +102,8 @@ export function OverlayApp() {
       setPointer(null);
       setNotice(null);
       setBusy(false);
+      resetMarkup(payload);
+      setMarkupOwner(null);
       try {
         const report = await drawFrame(canvas, payload);
         await commands.overlayReady(payload.captureId, report);
@@ -92,6 +123,9 @@ export function OverlayApp() {
             () => void commands.overlayVisible(payload.captureId, monitorIndex),
           ),
         );
+      }),
+      events.overlayMarkupOwner.listen(({ payload }) => {
+        if (payload.captureId === captureId) setMarkupOwner(payload.owner);
       }),
       events.overlayClearSelection.listen(({ payload }) => {
         if (payload.captureId === captureId && payload.monitorIndex !== monitorIndex) {
@@ -134,17 +168,18 @@ export function OverlayApp() {
   }, [load]);
 
   // Quick edit: the toolbar on the selection (PLAN 2B.1).
-  const quickEdit = !!load?.quickEdit;
   const quickOutput = useCallback(
     async (action: "copy" | "save") => {
       if (!load || !selection || busy) return;
       const { x, y } = load.physicalBounds;
       setBusy(true);
       try {
+        const markup = await uploadMarkup(load, selection);
         const r = await commands.quickOutput(
           load.captureId,
           { ...selection, x: selection.x + x, y: selection.y + y },
           action,
+          markup,
         );
         if (r.status === "error") setNotice({ text: r.error, error: true });
         else if (!r.data.closed)
@@ -158,6 +193,33 @@ export function OverlayApp() {
     [load, selection, busy],
   );
 
+  // Tell the other overlays when this selection gains or loses its markup.
+  useEffect(() => {
+    if (load?.quickEdit) void commands.quickMarkupChanged(load.captureId, monitorIndex, hasMarkup);
+  }, [load, hasMarkup]);
+
+  /** Enter / double-click: deliver the selection (with its markup, in quick edit). */
+  const done = useCallback(async () => {
+    if (!load || !selection) return;
+    if (!quickEdit) return commitSelection();
+    if (busy) return;
+    const { x, y } = load.physicalBounds;
+    setBusy(true);
+    try {
+      const markup = await uploadMarkup(load, selection);
+      const r = await commands.quickDone(
+        load.captureId,
+        { ...selection, x: selection.x + x, y: selection.y + y },
+        markup,
+      );
+      if (r.status === "error") setNotice({ text: r.error, error: true });
+    } catch (e) {
+      setNotice({ text: e instanceof Error ? e.message : String(e), error: true });
+    } finally {
+      setBusy(false);
+    }
+  }, [load, selection, quickEdit, busy, commitSelection]);
+
   useEffect(() => {
     if (!notice) return;
     const id = setTimeout(() => setNotice(null), notice.error ? 2 * NOTICE_MS : NOTICE_MS);
@@ -168,9 +230,12 @@ export function OverlayApp() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!load) return;
+      // Taken by the markup (or typed into a text box).
+      if (!load || e.defaultPrevented || isTyping(e.target)) return;
+      // The markup is on another monitor: its overlay has the keys.
+      if (lockedOut) return;
       if (e.key === "Escape") return cancel();
-      if (e.key === "Enter") return commitSelection();
+      if (e.key === "Enter") return void done();
       if (quickEdit && selection && e.ctrlKey && !e.altKey && !e.shiftKey) {
         if (e.code === "KeyC" || e.code === "KeyS") {
           e.preventDefault();
@@ -202,7 +267,9 @@ export function OverlayApp() {
     };
     const onContextMenu = (e: MouseEvent) => {
       e.preventDefault();
-      cancel();
+      // Once there's markup (here or on another monitor), a stray right-click
+      // doesn't throw it away.
+      if (!hasMarkup && !lockedOut) cancel();
     };
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("contextmenu", onContextMenu);
@@ -210,7 +277,7 @@ export function OverlayApp() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("contextmenu", onContextMenu);
     };
-  }, [load, selection, size, drag, cancel, commitSelection, quickEdit, quickOutput]);
+  }, [load, selection, size, drag, cancel, done, quickEdit, quickOutput, hasMarkup, lockedOut]);
 
   // ---- pointer ----
 
@@ -220,8 +287,31 @@ export function OverlayApp() {
       size!,
     );
 
+  /**
+   * Quick edit shares the pointer with the markup: the selection's grips
+   * always resize, a press outside the selection starts a new one (none once
+   * there's markup), and inside it the markup goes first. What the markup
+   * leaves (Select on empty space) moves the selection.
+   */
+  const onPointerDownCapture = (e: PointerEvent<HTMLDivElement>) => {
+    if (!quickActive || e.button !== 0 || !selection) return;
+    const target = e.target as Element;
+    if (target.closest("[data-grip]") || barRef.current?.contains(target)) return;
+    if (hitTest(selection, toLocal(e), 0)?.kind === "inside") return;
+    // Outside: not the markup's.
+    e.stopPropagation();
+    if (useToolStore.getState().editing) finishTextEdit();
+    if (!hasMarkup) onPointerDown(e);
+  };
+
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 || !load || !size) return;
+    // Selecting text in the box being typed into.
+    if (wasTaken(e.nativeEvent) || isTyping(e.target)) return;
+    if (lockedOut) {
+      void commands.quickFocusOverlay(markupOwner);
+      return;
+    }
     e.currentTarget.setPointerCapture(e.pointerId);
     const p = toLocal(e);
     const hit = selection ? hitTest(selection, p, HANDLE_TOLERANCE * scale) : null;
@@ -271,9 +361,12 @@ export function OverlayApp() {
     setDrag(null);
   };
 
-  const onDoubleClick = () => {
+  const onDoubleClick = (e: { nativeEvent: Event }) => {
+    if (wasTaken(e.nativeEvent)) return;
+    // In quick edit only with the Select tool: otherwise it's a drawing gesture.
+    if (quickEdit && tool !== "select") return;
     if (selection && pointer && hitTest(selection, pointer, 0)?.kind === "inside") {
-      commitSelection();
+      void done();
     }
   };
 
@@ -298,8 +391,7 @@ export function OverlayApp() {
   else if (!drag && selection && pointer)
     cursor = cursorFor(hitTest(selection, pointer, HANDLE_TOLERANCE * scale));
 
-  const creating = drag?.mode === "create";
-  const showBar = quickEdit && !!selection && !creating;
+  const showBar = quickActive;
   const placement =
     showBar && size && barSize
       ? toolbarPlacement(
@@ -320,6 +412,7 @@ export function OverlayApp() {
     <div
       className={styles.root}
       style={{ cursor, ["--dim" as string]: load?.dimOpacity ?? 0.4 }}
+      onPointerDownCapture={onPointerDownCapture}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -336,6 +429,18 @@ export function OverlayApp() {
         </>
       )}
 
+      {quickEdit && selection && size && (
+        <MarkupLayer
+          width={css(size.width)}
+          height={css(size.height)}
+          scale={1 / scale}
+          offset={{ x: 0, y: 0 }}
+          clip={selection}
+          interactive={quickActive && !drag}
+          emptyPress="pass"
+        />
+      )}
+
       {selection && (
         <div
           className={styles.selection}
@@ -346,8 +451,25 @@ export function OverlayApp() {
             height: css(selection.height),
           }}
         >
-          {!creating &&
-            HANDLES.map((h) => <span key={h} className={`${styles.handle} ${styles[h]}`} />)}
+          {!creating && (
+            <>
+              {quickEdit &&
+                EDGES.map((edge) => (
+                  <span
+                    key={edge}
+                    data-grip
+                    className={`${styles.grip} ${styles[`grip_${edge}`]}`}
+                  />
+                ))}
+              {HANDLES.map((h) => (
+                <span
+                  key={h}
+                  data-grip={quickEdit || undefined}
+                  className={`${styles.handle} ${styles[h]} ${quickEdit ? styles.handleLive : ""}`}
+                />
+              ))}
+            </>
+          )}
           {showDimensions && (
             <span className={css(selection.y) < 32 ? styles.sizeInside : styles.sizeAbove}>
               {selection.width} × {selection.height}
@@ -370,7 +492,7 @@ export function OverlayApp() {
         />
       )}
 
-      {load && focused && !drag && (
+      {load && focused && !drag && !lockedOut && (
         <HintBar
           hasSelection={!!selection}
           quick={quickEdit}
@@ -382,3 +504,5 @@ export function OverlayApp() {
 }
 
 const HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
+/** Grab strips along the edges (quick edit, where the markup covers the rest). */
+const EDGES = ["n", "e", "s", "w"] as const;

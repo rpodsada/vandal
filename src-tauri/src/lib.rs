@@ -42,6 +42,9 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::commit_selection,
             commands::cancel_capture,
             commands::quick_output,
+            commands::quick_done,
+            commands::quick_markup_changed,
+            commands::quick_focus_overlay,
             commands::get_settings,
             commands::update_settings,
             commands::open_settings,
@@ -64,6 +67,7 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             session::OverlayLoad,
             session::OverlayShown,
             session::OverlayClearSelection,
+            session::OverlayMarkupOwner,
             settings::SettingsChanged,
         ])
         .typ::<geometry::MonitorInfo>()

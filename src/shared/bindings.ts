@@ -22,6 +22,9 @@ export const commands = {
 	showDimensions: boolean,
 	/**  Show the quick-edit toolbar on a region selection (`quickEdit.enabled`). */
 	quickEdit: boolean,
+	/**  Where quick edit POSTs its annotation and highlight layers. */
+	layerUrl: string,
+	highlightsUrl: string,
 } | null>("overlay_pending_load", { monitorIndex }),
 	/**  Overlay finished drawing its frame. */
 	overlayReady: (captureId: number, report: OverlayReport) => __TAURI_INVOKE<void>("overlay_ready", { captureId, report }),
@@ -34,7 +37,13 @@ export const commands = {
 	/**  Esc / right-click on an overlay. */
 	cancelCapture: (captureId: number) => __TAURI_INVOKE<void>("cancel_capture", { captureId }),
 	/**  Quick edit's Copy / Save on the selection; may close quick edit. */
-	quickOutput: (captureId: number, rect: PhysicalRect, action: QuickAction) => typedError<QuickOutcome, string>(__TAURI_INVOKE("quick_output", { captureId, rect, action })),
+	quickOutput: (captureId: number, rect: PhysicalRect, action: QuickAction, markup: QuickMarkup) => typedError<QuickOutcome, string>(__TAURI_INVOKE("quick_output", { captureId, rect, action, markup })),
+	/**  Quick edit's Done (Enter): deliver the selection with its markup. */
+	quickDone: (captureId: number, rect: PhysicalRect, markup: QuickMarkup) => typedError<null, string>(__TAURI_INVOKE("quick_done", { captureId, rect, markup })),
+	/**  Quick edit: this overlay's selection now has markup (or no longer has). */
+	quickMarkupChanged: (captureId: number, monitorIndex: number, has: boolean) => __TAURI_INVOKE<void>("quick_markup_changed", { captureId, monitorIndex, has }),
+	/**  Quick edit: bring the overlay with the markup back to the front. */
+	quickFocusOverlay: (monitorIndex: number) => __TAURI_INVOKE<void>("quick_focus_overlay", { monitorIndex }),
 	getSettings: () => __TAURI_INVOKE<Settings>("get_settings"),
 	/**
 	 *  Validate, save and apply. Returns the settings as stored (values may be
@@ -113,6 +122,7 @@ export const commands = {
 export const events = {
 	overlayClearSelection: makeEvent<OverlayClearSelection>("overlay-clear-selection"),
 	overlayLoad: makeEvent<OverlayLoad>("overlay-load"),
+	overlayMarkupOwner: makeEvent<OverlayMarkupOwner>("overlay-markup-owner"),
 	overlayShown: makeEvent<OverlayShown>("overlay-shown"),
 	settingsChanged: makeEvent<SettingsChanged>("settings-changed"),
 };
@@ -261,6 +271,18 @@ export type OverlayLoad = {
 	showDimensions: boolean,
 	/**  Show the quick-edit toolbar on a region selection (`quickEdit.enabled`). */
 	quickEdit: boolean,
+	/**  Where quick edit POSTs its annotation and highlight layers. */
+	layerUrl: string,
+	highlightsUrl: string,
+};
+
+/**
+ *  Rust → overlays: the overlay on `owner` has quick-edit markup (None: none
+ *  has). The others stop starting selections, so it can't be thrown away.
+ */
+export type OverlayMarkupOwner = {
+	captureId: number,
+	owner: number | null,
 };
 
 /**  Overlay → Rust: frame drawn, with the overlay-side timing. */
@@ -309,6 +331,16 @@ export type QuickEditSettings = {
 	closeOnCopy?: boolean,
 	/**  Ctrl+S / Save also closes quick edit. */
 	closeOnSave?: boolean,
+};
+
+/**
+ *  Quick edit's markup, as the page describes it with each action: which
+ *  layers it just uploaded, and its revision.
+ */
+export type QuickMarkup = {
+	layer: boolean,
+	highlights: boolean,
+	revision: number,
 };
 
 /**  What a quick-edit action did. */

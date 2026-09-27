@@ -291,3 +291,73 @@
     color: #ff99a4;
   }
 }
+
+/* ---- quick edit: selection grips above the markup ---- */
+
+/* The markup layer covers the screen, so in quick edit the handles and these
+   strips take the pointer themselves (the selection box itself doesn't). */
+.handleLive {
+  pointer-events: auto;
+}
+
+.nw.handleLive,
+.se.handleLive {
+  cursor: nwse-resize;
+}
+
+.ne.handleLive,
+.sw.handleLive {
+  cursor: nesw-resize;
+}
+
+.n.handleLive,
+.s.handleLive {
+  cursor: ns-resize;
+}
+
+.e.handleLive,
+.w.handleLive {
+  cursor: ew-resize;
+}
+
+.grip {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.grip_n,
+.grip_s {
+  left: 0;
+  right: 0;
+  height: 12px;
+  cursor: ns-resize;
+}
+
+.grip_e,
+.grip_w {
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  cursor: ew-resize;
+}
+
+.grip_n {
+  top: -6px;
+}
+
+.grip_s {
+  bottom: -6px;
+}
+
+.grip_e {
+  right: -6px;
+}
+
+.grip_w {
+  left: -6px;
+}
+
+.quickOptions {
+  padding: 0 6px;
+  box-shadow: inset 0 1px 0 var(--border);
+}

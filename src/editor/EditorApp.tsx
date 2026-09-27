@@ -3,7 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { docStore, hasUnsavedChanges } from "../markup/model/store";
 import { useMarkupKeys } from "../markup/useMarkupKeys";
 import { emptyDoc } from "../markup/model/types";
-import { commands, events, type EditorInit, type ExportAction, type Settings } from "../shared/ipc";
+import { commands, type EditorInit, type ExportAction, type Settings } from "../shared/ipc";
 import { alreadyDone, exportImage } from "./actions";
 import { CommandBar } from "./CommandBar";
 import { CropOptions } from "./CropOptions";
@@ -14,7 +14,7 @@ import { StatusBar, type Notice } from "./StatusBar";
 import { useViewStore } from "./viewStore";
 import { isTyping } from "../shared/dom";
 import { useHintSources } from "../markup/hints";
-import { useStyleConfig } from "../markup/styles";
+import { useStyleSettings } from "../markup/useStyleSettings";
 import { flushToolStyles, startToolStylesSync } from "./toolStylesSync";
 import { ToolOptions } from "../markup/ToolOptions";
 import styles from "./EditorApp.module.css";
@@ -72,22 +72,9 @@ export function EditorApp() {
   }, [status.kind]);
 
   // Settings decide what closing does, and give the style pickers.
-  useEffect(() => {
-    const apply = (s: Settings) => {
-      settingsRef.current = s;
-      useStyleConfig.setState({
-        styles: s.styles,
-        shareColor: s.editor.shareColor,
-        showShortcutHints: s.editor.showShortcutHints,
-        drawingToolsSelect: s.editor.drawingToolsSelect,
-      });
-    };
-    void commands.getSettings().then((s) => apply(s as Settings));
-    // The font picker's list (DirectWrite, cached in Rust).
-    void commands.listFonts().then((fonts) => useStyleConfig.setState({ fonts }));
-    const unlisten = events.settingsChanged.listen(({ payload }) => apply(payload as Settings));
-    return () => void unlisten.then((f) => f());
-  }, []);
+  useStyleSettings((s) => {
+    settingsRef.current = s;
+  });
 
   // Tool styles carry over between windows (PLAN 2A.6d).
   useEffect(() => startToolStylesSync(), []);
