@@ -37,6 +37,8 @@ export const commands = {
 	 *  normalized), or a message to show the user.
 	 */
 	updateSettings: (settings: Settings) => typedError<Settings, string>(__TAURI_INVOKE("update_settings", { settings })),
+	/**  Open (or focus) the settings window, e.g. from the editor's status bar. */
+	openSettings: () => __TAURI_INVOKE<void>("open_settings"),
 	/**
 	 *  Folder picker, modal to the calling window. Paths under the user profile
 	 *  come back as `%USERPROFILE%\...`.

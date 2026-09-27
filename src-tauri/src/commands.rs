@@ -131,6 +131,13 @@ pub fn get_settings(app: AppHandle) -> Settings {
     app.state::<AppState>().settings.read().unwrap().clone()
 }
 
+/// Open (or focus) the settings window, e.g. from the editor's status bar.
+#[tauri::command]
+#[specta::specta]
+pub fn open_settings(app: AppHandle) {
+    crate::settings_window::open(&app);
+}
+
 /// Validate, save and apply. Returns the settings as stored (values may be
 /// normalized), or a message to show the user.
 #[tauri::command]

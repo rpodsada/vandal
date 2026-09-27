@@ -43,6 +43,7 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::cancel_capture,
             commands::get_settings,
             commands::update_settings,
+            commands::open_settings,
             commands::pick_folder,
             commands::preview_filename,
             commands::open_folder,
