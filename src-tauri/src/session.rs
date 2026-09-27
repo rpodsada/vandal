@@ -142,13 +142,15 @@ impl QuickDone {
 }
 
 /// Quick edit's markup, as the page describes it with each action: which
-/// layers it just uploaded, and its revision.
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, Type)]
+/// layers it just uploaded, its revision, and the annotations themselves (a
+/// JSON array in virtual-desktop px) in case the editor takes over.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct QuickMarkup {
     pub layer: bool,
     pub highlights: bool,
     pub revision: u32,
+    pub annotations: String,
 }
 
 /// An overlay's selection gained or lost its last markup: record it and tell
@@ -205,7 +207,7 @@ pub fn set_layer<R: tauri::Runtime>(
 fn quick_image(
     capture: &Capture,
     rect: PhysicalRect,
-    markup: QuickMarkup,
+    markup: &QuickMarkup,
     layer: Option<&[u8]>,
     highlights: Option<&[u8]>,
 ) -> Result<compose::RgbaImage, String> {
@@ -386,7 +388,9 @@ pub fn capture_fullscreen(app: &AppHandle) {
         return;
     };
     let capture = state.frames.lock().unwrap().insert(frames);
-    finish(app, &capture, virtual_bounds(&monitors), started);
+    // With quick edit on, full-screen captures go to the editor (PLAN 2B).
+    let to_editor = state.settings.read().unwrap().quick_edit.enabled;
+    finish(app, &capture, virtual_bounds(&monitors), started, to_editor);
     if layout_changed {
         *state.monitors.write().unwrap() = monitors.clone();
         let app = app.clone();
@@ -557,6 +561,10 @@ pub fn commit(app: &AppHandle, capture_id: CaptureId, target: CaptureTarget) {
         return;
     };
     let monitors: Vec<MonitorInfo> = capture.frames.iter().map(|f| f.monitor.clone()).collect();
+    // F / A with quick edit on open the editor (PLAN 2B); regions don't get
+    // here in quick edit, and without it everything is as in Phase 1.
+    let whole_screens_to_editor = !matches!(target, CaptureTarget::Region { .. })
+        && state.settings.read().unwrap().quick_edit.enabled;
     let rect = match target {
         CaptureTarget::Region { rect } => rect,
         CaptureTarget::MonitorUnderCursor => overlay::cursor_position()
@@ -567,7 +575,7 @@ pub fn commit(app: &AppHandle, capture_id: CaptureId, target: CaptureTarget) {
             .unwrap_or_default(),
         CaptureTarget::AllMonitors => virtual_bounds(&monitors),
     };
-    finish(app, &capture, rect, started);
+    finish(app, &capture, rect, started, whole_screens_to_editor);
 }
 
 /// Quick edit's Done (Enter): deliver the region with its markup, minus what
@@ -591,14 +599,14 @@ pub fn quick_done(
         .ok_or("This capture is no longer in memory.")?;
     let open_editor = state.settings.read().unwrap().after_capture.open_editor;
     if open_editor {
-        // The document handoff (markup kept editable) comes with 2B.3.
-        editor::open_capture(app, &capture, rect);
+        // The markup goes along, still editable; the editor finishes the job.
+        editor::open_capture(app, &capture, rect, Some(markup.annotations));
         return Ok(());
     }
     let image = quick_image(
         &capture,
         rect,
-        markup,
+        &markup,
         session.layer.as_deref(),
         session.highlights.as_deref(),
     )?;
@@ -634,7 +642,7 @@ pub fn quick_output(
     let image = quick_image(
         &capture,
         rect,
-        markup,
+        &markup,
         layer.as_deref(),
         highlights.as_deref(),
     )?;
@@ -666,10 +674,39 @@ pub fn quick_output(
     })
 }
 
+/// Quick edit's "Open in editor": the selection and its markup move to an
+/// editor window. No after-capture actions run; the editor's own do.
+pub fn quick_open_editor(
+    app: &AppHandle,
+    capture_id: CaptureId,
+    rect: PhysicalRect,
+    annotations: String,
+) -> Result<(), String> {
+    if end(app, capture_id).is_none() {
+        return Err("This capture has already closed.".into());
+    }
+    let capture = app
+        .state::<AppState>()
+        .frames
+        .lock()
+        .unwrap()
+        .get(capture_id)
+        .ok_or("This capture is no longer in memory.")?;
+    editor::open_capture(app, &capture, rect, Some(annotations));
+    Ok(())
+}
+
 /// Hand `rect` of a capture to the editor or the after-capture actions. When
-/// the editor opens, the actions are held back: the editor's own copy/save
-/// (and on-close actions) finish the job (PLAN Phase 2).
-fn finish(app: &AppHandle, capture: &Capture, rect: PhysicalRect, started: Instant) {
+/// the editor opens (`afterCapture.openEditor`, or `to_editor`), the actions
+/// are held back: the editor's own copy/save (and on-close actions) finish
+/// the job (PLAN Phase 2).
+fn finish(
+    app: &AppHandle,
+    capture: &Capture,
+    rect: PhysicalRect,
+    started: Instant,
+    to_editor: bool,
+) {
     let open_editor = app
         .state::<AppState>()
         .settings
@@ -677,8 +714,8 @@ fn finish(app: &AppHandle, capture: &Capture, rect: PhysicalRect, started: Insta
         .unwrap()
         .after_capture
         .open_editor;
-    if open_editor {
-        editor::open_capture(app, capture, rect);
+    if open_editor || to_editor {
+        editor::open_capture(app, capture, rect, None);
         return;
     }
     let frames: Vec<&MonitorFrame> = capture.frames.iter().map(|f| f.as_ref()).collect();

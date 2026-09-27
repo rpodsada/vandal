@@ -14,16 +14,17 @@ interface Props {
   notice: { text: string; error?: boolean } | null;
   onCopy: () => void;
   onSave: () => void;
+  onOpenEditor: () => void;
   onExit: () => void;
 }
 
 /**
- * Quick edit's toolbar card on the selection (PLAN 2B.1–2, mockup "Main"):
- * the tools and undo/redo, Copy, Save (the accent button) and Exit, with the
- * current tool's options as a second row ("Open in editor" joins in 2B.3).
+ * Quick edit's toolbar card on the selection (PLAN 2B, mockup "Main"): the
+ * tools and undo/redo, Copy, Save (the accent button), Open in editor and
+ * Exit, with the current tool's options as a second row.
  */
 export const QuickBar = forwardRef<HTMLDivElement, Props>(function QuickBar(
-  { x, y, busy, notice, onCopy, onSave, onExit },
+  { x, y, busy, notice, onCopy, onSave, onOpenEditor, onExit },
   ref,
 ) {
   // The options row shows when there's something to style (hidden with Select
@@ -72,6 +73,20 @@ export const QuickBar = forwardRef<HTMLDivElement, Props>(function QuickBar(
           Save
         </button>
         <span className={styles.quickDivider} />
+        <button
+          type="button"
+          className={styles.quickIcon}
+          aria-label="Open in editor (Ctrl+E)"
+          title="Open in editor (Ctrl+E)"
+          disabled={busy}
+          onClick={onOpenEditor}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden>
+            <path d="M14 4h6v6" />
+            <path d="M20 4l-8 8" />
+            <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+          </svg>
+        </button>
         <button
           type="button"
           className={styles.quickIcon}

@@ -40,6 +40,11 @@ export const commands = {
 	quickOutput: (captureId: number, rect: PhysicalRect, action: QuickAction, markup: QuickMarkup) => typedError<QuickOutcome, string>(__TAURI_INVOKE("quick_output", { captureId, rect, action, markup })),
 	/**  Quick edit's Done (Enter): deliver the selection with its markup. */
 	quickDone: (captureId: number, rect: PhysicalRect, markup: QuickMarkup) => typedError<null, string>(__TAURI_INVOKE("quick_done", { captureId, rect, markup })),
+	/**
+	 *  Quick edit's "Open in editor": hand the selection and its annotations (a
+	 *  JSON array in virtual-desktop px) to a new editor window.
+	 */
+	quickOpenEditor: (captureId: number, rect: PhysicalRect, annotations: string) => typedError<null, string>(__TAURI_INVOKE("quick_open_editor", { captureId, rect, annotations })),
 	/**  Quick edit: this overlay's selection now has markup (or no longer has). */
 	quickMarkupChanged: (captureId: number, monitorIndex: number, has: boolean) => __TAURI_INVOKE<void>("quick_markup_changed", { captureId, monitorIndex, has }),
 	/**  Quick edit: bring the overlay with the markup back to the front. */
@@ -88,6 +93,8 @@ export const commands = {
 	layerUrl: string,
 	/**  Where to POST the highlight layer before an export. */
 	highlightsUrl: string,
+	/**  Annotations from quick edit, if it handed the capture over. */
+	markup: HandoffMarkup | null,
 } | null>("editor_init"),
 	/**  Editor page painted its image; show the window. */
 	editorReady: () => __TAURI_INVOKE<void>("editor_ready"),
@@ -160,6 +167,8 @@ export type EditorInit = {
 	layerUrl: string,
 	/**  Where to POST the highlight layer before an export. */
 	highlightsUrl: string,
+	/**  Annotations from quick edit, if it handed the capture over. */
+	markup: HandoffMarkup | null,
 };
 
 export type EditorOnClose = {
@@ -219,6 +228,18 @@ export type FontControl = "dropdown" |
 
 /**  Every installed font, or the user's own list in their order. */
 export type FontPicker = { source: "system"; control: FontControl } | { source: "custom"; fonts: string[]; control: FontControl };
+
+/**
+ *  Quick edit's annotations, handed to the editor still editable (PLAN 2B.3).
+ *  The page's own JSON: Rust only carries it and says how to shift it.
+ */
+export type HandoffMarkup = {
+	/**  A JSON array of annotations, in virtual-desktop physical px. */
+	annotations: string,
+	/**  Add to the annotations' coordinates to get base-image pixels. */
+	dx: number,
+	dy: number,
+};
 
 export type History = {
 	keepFramesInMemory?: number,
@@ -335,12 +356,14 @@ export type QuickEditSettings = {
 
 /**
  *  Quick edit's markup, as the page describes it with each action: which
- *  layers it just uploaded, and its revision.
+ *  layers it just uploaded, its revision, and the annotations themselves (a
+ *  JSON array in virtual-desktop px) in case the editor takes over.
  */
 export type QuickMarkup = {
 	layer: boolean,
 	highlights: boolean,
 	revision: number,
+	annotations: string,
 };
 
 /**  What a quick-edit action did. */

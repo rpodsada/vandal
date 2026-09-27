@@ -16,6 +16,7 @@ export function HintBar({ hasSelection, quick, atBottom }: Props) {
           <Hint keys={["Enter"]} label="done" />
           <Hint keys={["Ctrl", "C"]} label="copy" />
           <Hint keys={["Ctrl", "S"]} label="save" />
+          <Hint keys={["Ctrl", "E"]} label="editor" />
           <Hint keys={["Drag"]} label="adjust" />
           <Hint keys={["Esc"]} label="exit" />
         </>

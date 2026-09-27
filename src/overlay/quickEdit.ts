@@ -4,8 +4,10 @@
 // here is reset on each load.
 
 import { renderLayer } from "../markup/export";
+import { translateAnnotation } from "../markup/geometry";
 import { docStore } from "../markup/model/store";
 import { emptyDoc } from "../markup/model/types";
+import { finishTextEdit } from "../markup/textEditing";
 import { useToolStore } from "../markup/toolStore";
 import { loadToolStyles } from "../editor/toolStylesSync";
 import { uploadPixels, type OverlayLoad, type QuickMarkup } from "../shared/ipc";
@@ -25,8 +27,21 @@ export function resetMarkup(load: OverlayLoad): void {
   void loadToolStyles();
 }
 
+/**
+ * The annotations for an editor to take over, as JSON in virtual-desktop px
+ * (the document's are this monitor's physical px). A text being typed is
+ * finished first.
+ */
+export function handoffAnnotations(load: OverlayLoad): string {
+  if (useToolStore.getState().editing) finishTextEdit();
+  const { x, y } = load.physicalBounds;
+  const annotations = docStore.getState().doc.annotations;
+  return JSON.stringify(annotations.map((a) => translateAnnotation(a, x, y)));
+}
+
 /** Render the markup over `selection` and hand it to Rust, before an action uses it. */
 export async function uploadMarkup(load: OverlayLoad, selection: Rect): Promise<QuickMarkup> {
+  const annotations = handoffAnnotations(load);
   // The layers cover the selection (source px = this monitor's physical px).
   const doc = { ...docStore.getState().doc, crop: selection };
   const layer = renderLayer(doc, "annotations");
@@ -35,5 +50,5 @@ export async function uploadMarkup(load: OverlayLoad, selection: Rect): Promise<
     layer && uploadPixels(load.layerUrl, layer),
     highlights && uploadPixels(load.highlightsUrl, highlights),
   ]);
-  return { layer: layer !== null, highlights: highlights !== null, revision };
+  return { layer: layer !== null, highlights: highlights !== null, revision, annotations };
 }

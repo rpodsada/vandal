@@ -61,6 +61,20 @@ pub struct Editor {
     pub layer: Option<Vec<u8>>,
     /// The last highlight layer (multiplied into the image): straight-alpha RGBA.
     pub highlights: Option<Vec<u8>>,
+    /// Annotations handed over from quick edit, for the page to load.
+    pub markup: Option<HandoffMarkup>,
+}
+
+/// Quick edit's annotations, handed to the editor still editable (PLAN 2B.3).
+/// The page's own JSON: Rust only carries it and says how to shift it.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct HandoffMarkup {
+    /// A JSON array of annotations, in virtual-desktop physical px.
+    pub annotations: String,
+    /// Add to the annotations' coordinates to get base-image pixels.
+    pub dx: i32,
+    pub dy: i32,
 }
 
 /// Which uploaded layer.
@@ -121,6 +135,8 @@ pub struct EditorInit {
     pub layer_url: String,
     /// Where to POST the highlight layer before an export.
     pub highlights_url: String,
+    /// Annotations from quick edit, if it handed the capture over.
+    pub markup: Option<HandoffMarkup>,
 }
 
 /// What to do with the finished image.
@@ -163,8 +179,14 @@ pub fn id_from_label(label: &str) -> Option<EditorId> {
 }
 
 /// Open an editor on part of a capture. The base image is every monitor the
-/// selection touches, composed; `rect` is in virtual-desktop pixels.
-pub fn open_capture(app: &AppHandle, capture: &Capture, rect: PhysicalRect) {
+/// selection touches, composed; `rect` is in virtual-desktop pixels, and so
+/// are the coordinates in `annotations` (quick edit's JSON, if any).
+pub fn open_capture(
+    app: &AppHandle,
+    capture: &Capture,
+    rect: PhysicalRect,
+    annotations: Option<String>,
+) {
     let touched: Vec<&MonitorFrame> = capture
         .frames
         .iter()
@@ -178,7 +200,17 @@ pub fn open_capture(app: &AppHandle, capture: &Capture, rect: PhysicalRect) {
         eprintln!("[editor] nothing to open for {rect:?}");
         return;
     };
-    open(app, Arc::new(image), crop.relative_to(bounds.origin()));
+    let markup = annotations.map(|annotations| HandoffMarkup {
+        annotations,
+        dx: -bounds.x,
+        dy: -bounds.y,
+    });
+    open(
+        app,
+        Arc::new(image),
+        crop.relative_to(bounds.origin()),
+        markup,
+    );
 }
 
 /// Open an editor on a delivered image (the notification's Edit action).
@@ -198,10 +230,10 @@ pub fn open_recent(app: &AppHandle, image_id: u32) {
         return;
     };
     let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
-    open(app, image, crop);
+    open(app, image, crop, None);
 }
 
-fn open(app: &AppHandle, image: Arc<RgbaImage>, crop: PhysicalRect) {
+fn open(app: &AppHandle, image: Arc<RgbaImage>, crop: PhysicalRect, markup: Option<HandoffMarkup>) {
     let remembered = load_window_state(app);
     let state = app.state::<AppState>();
     let id = state.editors.lock().unwrap().insert(Editor {
@@ -210,6 +242,7 @@ fn open(app: &AppHandle, image: Arc<RgbaImage>, crop: PhysicalRect) {
         maximized: remembered.maximized,
         layer: None,
         highlights: None,
+        markup,
     });
 
     let monitors = state.monitors.read().unwrap().clone();
@@ -288,6 +321,7 @@ pub fn init(app: &AppHandle, window_label: &str) -> Option<EditorInit> {
         url: protocol::editor_url(id),
         layer_url: protocol::editor_layer_url(id, LayerKind::Annotations),
         highlights_url: protocol::editor_layer_url(id, LayerKind::Highlights),
+        markup: e.markup.clone(),
     })
 }
 

@@ -21,7 +21,7 @@ import { useMarkupKeys } from "../markup/useMarkupKeys";
 import { useStyleSettings } from "../markup/useStyleSettings";
 import { startToolStylesSync } from "../editor/toolStylesSync";
 import { isTyping } from "../shared/dom";
-import { resetMarkup, uploadMarkup } from "./quickEdit";
+import { handoffAnnotations, resetMarkup, uploadMarkup } from "./quickEdit";
 import { QuickBar } from "./QuickBar";
 import { toolbarPlacement, type Size } from "./toolbarPlacement";
 import {
@@ -220,6 +220,23 @@ export function OverlayApp() {
     }
   }, [load, selection, quickEdit, busy, commitSelection]);
 
+  /** Quick edit's "Open in editor": the selection and its markup move to an editor window. */
+  const openInEditor = useCallback(async () => {
+    if (!load || !selection || busy) return;
+    const { x, y } = load.physicalBounds;
+    setBusy(true);
+    try {
+      const r = await commands.quickOpenEditor(
+        load.captureId,
+        { ...selection, x: selection.x + x, y: selection.y + y },
+        handoffAnnotations(load),
+      );
+      if (r.status === "error") setNotice({ text: r.error, error: true });
+    } finally {
+      setBusy(false);
+    }
+  }, [load, selection, busy]);
+
   useEffect(() => {
     if (!notice) return;
     const id = setTimeout(() => setNotice(null), notice.error ? 2 * NOTICE_MS : NOTICE_MS);
@@ -240,6 +257,11 @@ export function OverlayApp() {
         if (e.code === "KeyC" || e.code === "KeyS") {
           e.preventDefault();
           if (!e.repeat) void quickOutput(e.code === "KeyC" ? "copy" : "save");
+          return;
+        }
+        if (e.code === "KeyE") {
+          e.preventDefault();
+          if (!e.repeat) void openInEditor();
           return;
         }
       }
@@ -277,7 +299,19 @@ export function OverlayApp() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("contextmenu", onContextMenu);
     };
-  }, [load, selection, size, drag, cancel, done, quickEdit, quickOutput, hasMarkup, lockedOut]);
+  }, [
+    load,
+    selection,
+    size,
+    drag,
+    cancel,
+    done,
+    quickEdit,
+    quickOutput,
+    openInEditor,
+    hasMarkup,
+    lockedOut,
+  ]);
 
   // ---- pointer ----
 
@@ -488,6 +522,7 @@ export function OverlayApp() {
           notice={notice}
           onCopy={() => void quickOutput("copy")}
           onSave={() => void quickOutput("save")}
+          onOpenEditor={() => void openInEditor()}
           onExit={cancel}
         />
       )}

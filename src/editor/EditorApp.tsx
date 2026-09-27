@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { docStore, hasUnsavedChanges } from "../markup/model/store";
 import { useMarkupKeys } from "../markup/useMarkupKeys";
 import { emptyDoc } from "../markup/model/types";
+import { initialDoc } from "./handoff";
 import { commands, type EditorInit, type ExportAction, type Settings } from "../shared/ipc";
 import { alreadyDone, exportImage } from "./actions";
 import { CommandBar } from "./CommandBar";
@@ -50,7 +51,12 @@ export function EditorApp() {
         if (cancelled) return;
         // The whole frame, so the crop can grow back (the stage clips it).
         paintFrame(canvasRef.current!, init, pixels);
-        docStore.getState().load(emptyDoc({ width: init.width, height: init.height }, init.crop));
+        docStore.getState().load(initialDoc(init));
+        // Markup handed over from quick edit hasn't been copied or saved yet.
+        if (init.markup)
+          docStore.setState({
+            baseline: emptyDoc({ width: init.width, height: init.height }, init.crop),
+          });
         initRef.current = init;
         setStatus({ kind: "ready", init });
       } catch (e) {

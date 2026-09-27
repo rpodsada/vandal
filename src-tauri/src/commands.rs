@@ -74,6 +74,19 @@ pub async fn quick_done(
     session::quick_done(&app, capture_id, rect, markup)
 }
 
+/// Quick edit's "Open in editor": hand the selection and its annotations (a
+/// JSON array in virtual-desktop px) to a new editor window.
+#[tauri::command]
+#[specta::specta]
+pub fn quick_open_editor(
+    app: AppHandle,
+    capture_id: CaptureId,
+    rect: PhysicalRect,
+    annotations: String,
+) -> Result<(), String> {
+    session::quick_open_editor(&app, capture_id, rect, annotations)
+}
+
 /// Quick edit: this overlay's selection now has markup (or no longer has).
 #[tauri::command]
 #[specta::specta]
