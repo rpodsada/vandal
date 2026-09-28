@@ -4,6 +4,7 @@
 // kind of control, add an item type to `Item` below and a component to the
 // registry in `controls/index.ts` (TypeScript will insist on both).
 import type { ComponentType } from "react";
+import type { ToolId } from "../markup/toolStore";
 import type { Settings } from "../shared/ipc";
 import type { PathOf } from "./path";
 
@@ -67,6 +68,20 @@ export interface NumberPickerItem extends BaseItem {
   lines?: boolean;
 }
 
+/** A color palette (PLAN 2C.2): up to 10 colors in the user's order. */
+export interface PaletteItem extends BaseItem {
+  kind: "palette";
+  path: PathOf<Settings, string[]>;
+}
+
+/** One tool's own colors and widths, instead of the shared ones (PLAN 2C.2). */
+export interface ToolStyleItem extends BaseItem {
+  kind: "toolStyle";
+  tool: ToolId;
+  /** The tool draws lines, so a width override applies. */
+  widths: boolean;
+}
+
 /** Read-only value, for things not editable yet or informational. */
 export interface InfoItem extends BaseItem {
   kind: "info";
@@ -74,7 +89,15 @@ export interface InfoItem extends BaseItem {
 }
 
 export type Item =
-  ToggleItem | TextItem | FolderItem | SliderItem | ChoiceItem | NumberPickerItem | InfoItem;
+  | ToggleItem
+  | TextItem
+  | FolderItem
+  | SliderItem
+  | ChoiceItem
+  | NumberPickerItem
+  | PaletteItem
+  | ToolStyleItem
+  | InfoItem;
 export type ItemKind = Item["kind"];
 
 export interface Group {

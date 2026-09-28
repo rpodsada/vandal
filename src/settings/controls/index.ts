@@ -6,8 +6,10 @@ import { Choice } from "./Choice";
 import { FolderInput } from "./FolderInput";
 import { Info } from "./Info";
 import { NumberPickerSetting } from "./NumberPickerEditor";
+import { PaletteSetting } from "./PaletteEditor";
 import { Slider } from "./Slider";
 import { TextInput } from "./TextInput";
+import { ToolStyleSetting } from "./ToolStyleEditor";
 import { Toggle } from "./Toggle";
 
 export interface ControlProps<I extends Item> {
@@ -31,6 +33,8 @@ export const controls: Registry = {
   info: { component: Info, layout: "inline" },
   choice: { component: Choice, layout: "inline" },
   numberPicker: { component: NumberPickerSetting, layout: "stacked" },
+  palette: { component: PaletteSetting, layout: "stacked" },
+  toolStyle: { component: ToolStyleSetting, layout: "stacked" },
   text: { component: TextInput, layout: "stacked" },
   folder: { component: FolderInput, layout: "stacked" },
 };

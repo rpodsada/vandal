@@ -339,3 +339,88 @@
   gap: 12px;
   min-height: 36px;
 }
+
+/* ---- palette ---- */
+
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.paletteSwatch,
+.paletteAdd {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.paletteSwatch {
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25);
+  transition: transform 120ms ease;
+  touch-action: none;
+}
+
+.paletteSwatch:hover:not(:disabled) {
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.25),
+    0 0 0 2px var(--control-border);
+}
+
+.paletteSwatch[aria-pressed="true"] {
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.25),
+    0 0 0 2px var(--accent);
+}
+
+/* The dragged swatch follows the pointer exactly, above the others. */
+.paletteSwatch[data-dragging] {
+  position: relative;
+  z-index: 1;
+  transition: none;
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.25),
+    0 4px 12px rgb(0 0 0 / 0.35);
+}
+
+.paletteAdd {
+  display: grid;
+  place-items: center;
+  background: var(--button-bg);
+  box-shadow: inset 0 0 0 1px var(--control-border);
+  color: var(--text);
+  font-size: 16px;
+}
+
+.paletteAdd:hover:not(:disabled) {
+  background: var(--button-bg-hover);
+}
+
+.paletteAdd[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.paletteNew {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+}
+
+/* ---- per-tool overrides ---- */
+
+.overrideSwitches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+}
+
+.overrideSwitch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text);
+}

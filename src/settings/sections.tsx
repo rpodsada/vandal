@@ -294,6 +294,20 @@ export const sections: Section[] = [
         ],
       },
       {
+        title: "Colors",
+        items: [
+          {
+            id: "styles-palette",
+            kind: "palette",
+            path: "styles.palette",
+            label: "Color presets",
+            description:
+              "The colors the tools offer, in order. Ctrl+1–9 and Ctrl+0 pick them while you draw. Click a color to change or remove it; drag it to reorder.",
+            keywords: ["color", "colour", "palette", "preset", "swatch", "reorder"],
+          },
+        ],
+      },
+      {
         title: "Line width",
         items: [
           {
@@ -315,6 +329,69 @@ export const sections: Section[] = [
               "slider",
               "buttons",
             ],
+          },
+        ],
+      },
+      {
+        title: "Per-tool styles",
+        description:
+          "Give a tool its own colors or widths instead of the ones above. The highlighter comes with its own.",
+        items: [
+          {
+            id: "tool-style-pen",
+            kind: "toolStyle",
+            tool: "pen",
+            label: "Pen",
+            widths: true,
+            keywords: ["own", "custom", "override", "per tool", "palette", "color", "width"],
+          },
+          {
+            id: "tool-style-highlighter",
+            kind: "toolStyle",
+            tool: "highlighter",
+            label: "Highlighter",
+            widths: true,
+            keywords: ["own", "custom", "override", "per tool", "palette", "color", "width"],
+          },
+          {
+            id: "tool-style-line",
+            kind: "toolStyle",
+            tool: "line",
+            label: "Line",
+            widths: true,
+            keywords: ["own", "custom", "override", "per tool", "palette", "color", "width"],
+          },
+          {
+            id: "tool-style-arrow",
+            kind: "toolStyle",
+            tool: "arrow",
+            label: "Arrow",
+            widths: true,
+            keywords: ["own", "custom", "override", "per tool", "palette", "color", "width"],
+          },
+          {
+            id: "tool-style-rect",
+            kind: "toolStyle",
+            tool: "rect",
+            label: "Rectangle",
+            widths: true,
+            keywords: ["own", "custom", "override", "per tool", "palette", "color", "width"],
+          },
+          {
+            id: "tool-style-ellipse",
+            kind: "toolStyle",
+            tool: "ellipse",
+            label: "Ellipse",
+            widths: true,
+            keywords: ["own", "custom", "override", "per tool", "palette", "color", "width"],
+          },
+          {
+            id: "tool-style-text",
+            kind: "toolStyle",
+            tool: "text",
+            label: "Text",
+            widths: false,
+            keywords: ["own", "custom", "override", "per tool", "palette", "color"],
           },
         ],
       },
