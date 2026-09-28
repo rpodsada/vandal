@@ -1,6 +1,6 @@
 import { CustomColor } from "./CustomColor";
 import { hint } from "./HintLine";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Dropdown } from "./Dropdown";
 import { useDoc } from "./model/store";
 import { FontPickerControl } from "./FontPickerControl";
@@ -19,6 +19,7 @@ import {
 import { fontChoices, paletteFor, useStyleConfig, widthPickerFor } from "./styles";
 import { useToolStore, type ToolId } from "./toolStore";
 import { useHeldKeys } from "./useHeldKeys";
+import { useLineStarts } from "./useLineStarts";
 import styles from "./options.module.css";
 
 const HEADS: { id: ArrowHead; label: string; icon: ReactNode }[] = [
@@ -87,6 +88,9 @@ export function ToolOptions() {
   const selection = useDoc((s) => s.selection);
   const tool = useToolStore((s) => s.tool);
   const editing = useToolStore((s) => s.editing?.id ?? null);
+  // The groups wrap to more rows when the bar is narrow (PLAN 2C).
+  const rootRef = useRef<HTMLDivElement>(null);
+  useLineStarts(rootRef);
   // Re-render when a tool's remembered style or the settings change.
   useToolStore((s) => s.sharedColor);
   useToolStore((s) => s.colors);
@@ -144,13 +148,14 @@ export function ToolOptions() {
     // Clicks here must not take focus: text being typed keeps it, and Space
     // keeps panning instead of pressing a button.
     <div
+      ref={rootRef}
       className={styles.options}
       onMouseDown={(e) => {
         if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
       }}
     >
       {show.text && text && (
-        <>
+        <div className={styles.section}>
           <span className={styles.hintArea} {...hint("font")}>
             <FontPickerControl
               picker={config.styles.font}
@@ -174,12 +179,11 @@ export function ToolOptions() {
               onDragEnd={endStyleDrag}
             />
           </span>
-        </>
+        </div>
       )}
 
       {show.width && values.width !== null && (
-        <>
-          <span className={styles.sep} />
+        <div className={styles.section}>
           <span className={styles.hintArea} {...hint("width")}>
             <NumberPickerControl
               picker={widthPicker}
@@ -194,12 +198,11 @@ export function ToolOptions() {
               onDragEnd={endStyleDrag}
             />
           </span>
-        </>
+        </div>
       )}
 
       {show.fill && values.fill !== null && (
-        <>
-          <span className={styles.sep} />
+        <div className={styles.section}>
           <div className={styles.group} {...hint("fill")}>
             {FILLS.map((f) => (
               <button
@@ -217,75 +220,76 @@ export function ToolOptions() {
               </button>
             ))}
           </div>
-        </>
+        </div>
       )}
 
       {show.text && text && (
         <>
-          <span className={styles.sep} />
-          <div className={styles.group}>
-            <button
-              type="button"
-              className={`${styles.toggle} ${styles.letter}`}
-              aria-pressed={text.bold}
-              {...hint("bold")}
-              aria-label="Bold"
-              title={`Bold${hints ? " (Ctrl+B)" : ""}`}
-              onClick={() => applyStyle({ bold: !text.bold })}
-            >
-              <b>B</b>
-            </button>
-            <button
-              type="button"
-              className={`${styles.toggle} ${styles.letter}`}
-              aria-pressed={text.italic}
-              {...hint("italic")}
-              aria-label="Italic"
-              title={`Italic${hints ? " (Ctrl+I)" : ""}`}
-              onClick={() => applyStyle({ italic: !text.italic })}
-            >
-              <i>I</i>
-            </button>
-          </div>
-          <span className={styles.sep} />
-          <div className={styles.group}>
-            <button
-              type="button"
-              className={styles.toggle}
-              aria-pressed={text.background}
-              {...hint("box")}
-              aria-label="Background box"
-              title="Background box"
-              onClick={() => applyStyle({ background: !text.background })}
-            >
-              <svg viewBox="0 0 24 24" aria-hidden>
-                <rect x="3" y="5" width="18" height="14" rx="2" className={styles.tint} />
-                <path d="M8 16l4-9 4 9M9.5 13h5" />
-              </svg>
-            </button>
-            {ALIGNS.map((al) => (
+          <div className={styles.section}>
+            <div className={styles.group}>
               <button
-                key={al.id}
+                type="button"
+                className={`${styles.toggle} ${styles.letter}`}
+                aria-pressed={text.bold}
+                {...hint("bold")}
+                aria-label="Bold"
+                title={`Bold${hints ? " (Ctrl+B)" : ""}`}
+                onClick={() => applyStyle({ bold: !text.bold })}
+              >
+                <b>B</b>
+              </button>
+              <button
+                type="button"
+                className={`${styles.toggle} ${styles.letter}`}
+                aria-pressed={text.italic}
+                {...hint("italic")}
+                aria-label="Italic"
+                title={`Italic${hints ? " (Ctrl+I)" : ""}`}
+                onClick={() => applyStyle({ italic: !text.italic })}
+              >
+                <i>I</i>
+              </button>
+            </div>
+          </div>
+          <div className={styles.section}>
+            <div className={styles.group}>
+              <button
                 type="button"
                 className={styles.toggle}
-                aria-pressed={text.align === al.id}
-                {...hint("align")}
-                aria-label={al.label}
-                title={al.label}
-                onClick={() => applyStyle({ align: al.id })}
+                aria-pressed={text.background}
+                {...hint("box")}
+                aria-label="Background box"
+                title="Background box"
+                onClick={() => applyStyle({ background: !text.background })}
               >
                 <svg viewBox="0 0 24 24" aria-hidden>
-                  <path d={al.path} />
+                  <rect x="3" y="5" width="18" height="14" rx="2" className={styles.tint} />
+                  <path d="M8 16l4-9 4 9M9.5 13h5" />
                 </svg>
               </button>
-            ))}
+              {ALIGNS.map((al) => (
+                <button
+                  key={al.id}
+                  type="button"
+                  className={styles.toggle}
+                  aria-pressed={text.align === al.id}
+                  {...hint("align")}
+                  aria-label={al.label}
+                  title={al.label}
+                  onClick={() => applyStyle({ align: al.id })}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden>
+                    <path d={al.path} />
+                  </svg>
+                </button>
+              ))}
+            </div>
           </div>
         </>
       )}
 
       {show.head && values.head !== null && (
-        <>
-          <span className={styles.sep} />
+        <div className={styles.section}>
           <span className={styles.hintArea} {...hint("head")}>
             <HeadPicker head={values.head} />
           </span>
@@ -324,13 +328,12 @@ export function ToolOptions() {
               </svg>
             </button>
           </div>
-        </>
+        </div>
       )}
 
       {/* Last, so the chip appearing (border + fill, text box) moves nothing
           else from under the pointer. */}
-      <span className={styles.sep} />
-      <div className={styles.swatches}>
+      <div className={`${styles.section} ${styles.swatches}`}>
         {twoColors && (
           <div className={styles.chip} {...hint(show.text ? "chip.box" : "chip.fill")}>
             <button

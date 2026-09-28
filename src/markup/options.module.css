@@ -3,9 +3,12 @@
 .options {
   --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  align-content: center;
   gap: 10px;
-  height: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
   padding: 0 4px;
   font-size: 13px;
   color: var(--text);
@@ -47,6 +50,39 @@
 .group {
   display: flex;
   gap: 2px;
+}
+
+/* ---- sections: the options bar's groups, which wrap as units ---- */
+
+/* A bar of sections: wraps between them when narrow, a separator in each gap. */
+.options:has(> .section) {
+  gap: 8px 21px;
+  /* One row still comes to 44px (min-height); wrapped rows get room too. */
+  padding: 6px 4px;
+}
+
+.section {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Drawn in the gap, taking no space: hiding it at a line start (see
+   useLineStarts) can't reflow anything. */
+.section + .section::before {
+  content: "";
+  position: absolute;
+  left: -11px;
+  top: 50%;
+  width: 1px;
+  height: 24px;
+  margin-top: -12px;
+  background: var(--border);
+}
+
+.section[data-line-start]::before {
+  display: none;
 }
 
 /* ---- slot-number badges ---- */

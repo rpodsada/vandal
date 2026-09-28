@@ -179,6 +179,10 @@
 .quickBar {
   position: absolute;
   z-index: 10;
+  /* As wide as its contents, but never wider than the screen: the options
+     row wraps instead (the first row doesn't). */
+  width: max-content;
+  max-width: calc(100vw - 16px);
   display: flex;
   flex-direction: column;
   border-radius: 8px;

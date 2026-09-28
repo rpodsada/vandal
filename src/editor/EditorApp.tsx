@@ -13,6 +13,7 @@ import { Stage } from "./Stage";
 import { useCropKeys } from "./useCropKeys";
 import { StatusBar, type Notice } from "./StatusBar";
 import { useViewStore } from "./viewStore";
+import { useStickyHeight } from "./useStickyHeight";
 import { isTyping } from "../shared/dom";
 import { useHintSources } from "../markup/hints";
 import { useStyleSettings } from "../markup/useStyleSettings";
@@ -33,6 +34,8 @@ export function EditorApp() {
   const initRef = useRef<EditorInit | null>(null);
   const busyRef = useRef(false);
   const settingsRef = useRef<Settings | null>(null);
+  const optionsBarRef = useRef<HTMLDivElement>(null);
+  useStickyHeight(optionsBarRef);
   useMarkupKeys();
   useCropKeys();
   const cropping = useCropStore((s) => s.draft !== null);
@@ -205,7 +208,9 @@ export function EditorApp() {
         onSave={() => void run("save")}
         onSaveAs={() => void run("saveAs")}
       />
-      <div className={styles.optionsBar}>{cropping ? <CropOptions /> : <ToolOptions />}</div>
+      <div ref={optionsBarRef} className={styles.optionsBar}>
+        {cropping ? <CropOptions /> : <ToolOptions />}
+      </div>
       <Stage canvasRef={canvasRef} message={status.kind === "error" ? status.message : undefined} />
       <StatusBar notice={notice} onReveal={(path) => void commands.revealFile(path)} />
     </div>
