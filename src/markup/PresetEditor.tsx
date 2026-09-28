@@ -4,6 +4,7 @@ import { ColorPicker } from "./ColorPicker";
 import { hasOwnPalette } from "./styles";
 import { KEEPS_TEXT_EDITING, refocusTextEditor } from "./TextEditor";
 import { useToolStore, type ToolId } from "./toolStore";
+import { boxOf, useMenuPlacement } from "./menuPlacement";
 import { usePopover } from "./usePopover";
 import styles from "./options.module.css";
 
@@ -31,6 +32,11 @@ export function PresetEditor({ palette, index, tool, color, onChange, left, onCl
   const original = palette[index];
   const [error, setError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  // Under the preset: `left` into the swatch row.
+  useMenuPlacement(true, rootRef, () => {
+    const row = boxOf(rootRef.current?.parentElement);
+    return row && { ...row, left: row.left + left, width: 0 };
+  });
 
   const finish = () => {
     onClose();
@@ -51,7 +57,6 @@ export function PresetEditor({ palette, index, tool, color, onChange, left, onCl
     <div
       ref={rootRef}
       className={`${styles.menu} ${styles.colorMenu}`}
-      style={{ left }}
       role="dialog"
       aria-label={`Preset ${index + 1}`}
       {...{ [KEEPS_TEXT_EDITING]: "" }}

@@ -6,6 +6,7 @@ import { beginStyleDrag, cancelStyleDrag, endStyleDrag } from "./restyle";
 import { KEEPS_TEXT_EDITING, refocusTextEditor } from "./TextEditor";
 import { paletteKey, setCustomColor } from "./styles";
 import { useToolStore, type ToolId, type ToolState } from "./toolStore";
+import { boxOf, useMenuPlacement } from "./menuPlacement";
 import { usePopover } from "./usePopover";
 import { MAX_PRESETS } from "./pickers";
 import styles from "./options.module.css";
@@ -35,6 +36,9 @@ export function CustomColor({ value, palette, tool, selected, onPick }: Props) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const swatchRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useMenuPlacement(open, menuRef, () => boxOf(swatchRef.current));
   const original = useRef(value);
   const onPickRef = useRef(onPick);
   useEffect(() => {
@@ -108,6 +112,7 @@ export function CustomColor({ value, palette, tool, selected, onPick }: Props) {
       {...{ [KEEPS_TEXT_EDITING]: "" }}
     >
       <button
+        ref={swatchRef}
         type="button"
         className={styles.customSwatch}
         {...hint("customColor")}
@@ -132,6 +137,7 @@ export function CustomColor({ value, palette, tool, selected, onPick }: Props) {
       />
       {open && (
         <div
+          ref={menuRef}
           className={`${styles.menu} ${styles.colorMenu}`}
           role="dialog"
           aria-label="Custom color"
