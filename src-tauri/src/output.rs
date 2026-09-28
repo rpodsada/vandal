@@ -165,6 +165,20 @@ pub fn copy_to_clipboard(image: &RgbaImage) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// The image on the clipboard ("New from clipboard").
+pub fn paste_image() -> Result<RgbaImage, String> {
+    let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+    let data = clipboard.get_image().map_err(|e| match e {
+        arboard::Error::ContentNotAvailable => "The clipboard has no image.".to_string(),
+        e => e.to_string(),
+    })?;
+    Ok(RgbaImage {
+        width: data.width as u32,
+        height: data.height as u32,
+        rgba: data.bytes.into_owned(),
+    })
+}
+
 // ---------- files ----------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

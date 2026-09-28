@@ -156,6 +156,10 @@ export function EditorApp() {
           if (e.shiftKey) return;
           void commands.editorNewCapture();
           break;
+        case "KeyO":
+          if (e.shiftKey) return;
+          void commands.editorOpenImage();
+          break;
         case "Equal":
         case "NumpadAdd":
           view.zoomStep(1);
@@ -186,6 +190,7 @@ export function EditorApp() {
         onCrop={() => (cropping ? applyCrop() : status.kind === "ready" && beginCrop())}
         onPickTool={applyCrop}
         onNewCapture={() => void commands.editorNewCapture()}
+        onOpen={() => void commands.editorOpenImage()}
         onCopy={() => void run("copy")}
         onSave={() => void run("save")}
         onSaveAs={() => void run("saveAs")}

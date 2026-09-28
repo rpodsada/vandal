@@ -44,6 +44,7 @@ export const CONTROL_HINTS = {
   "ends.one": "Click again to flip the arrow",
   "ends.both": "Heads on both ends",
   newCapture: "[Ctrl+N] New capture",
+  open: "[Ctrl+O] Open an image file · or drop one on the window",
   copy: "[Ctrl+C] Copy the image with its markup",
   save: "[Ctrl+S] Save · [Ctrl+Shift+S] Save as",
   zoom: "[Ctrl]+wheel Zoom at the pointer · [Ctrl+=] [Ctrl+−] Zoom in and out",

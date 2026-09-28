@@ -235,6 +235,38 @@ pub fn open_file(app: &AppHandle, path: &Path) {
     });
 }
 
+/// Ask for image files and open each in its own editor (Ctrl+O in an editor,
+/// the tray). Modal to `parent` if given. Blocks: call off the main thread.
+pub fn ask_open(app: &AppHandle, parent: Option<&WebviewWindow>) {
+    let mut dialog = app
+        .dialog()
+        .file()
+        .set_title("Open image")
+        .add_filter("Images", decode::EXTENSIONS)
+        .add_filter("All files", &["*"]);
+    if let Some(parent) = parent {
+        dialog = dialog.set_parent(parent);
+    }
+    for path in dialog.blocking_pick_files().unwrap_or_default() {
+        match path.into_path() {
+            Ok(path) => open_file(app, &path),
+            Err(e) => eprintln!("[editor] can't open a picked file: {e}"),
+        }
+    }
+}
+
+/// The clipboard's image in a new editor ("New from clipboard").
+pub fn open_clipboard(app: &AppHandle) {
+    match output::paste_image() {
+        Ok(image) => {
+            let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
+            let title = format!("Clipboard image — {}", crate::product_name(app));
+            open(app, Arc::new(image), crop, None, title);
+        }
+        Err(message) => output::notify_error(app, "Nothing to open", &message),
+    }
+}
+
 /// A capture's window title: the name it would be saved under.
 fn capture_title(app: &AppHandle) -> String {
     let save = app

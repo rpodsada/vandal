@@ -24,6 +24,13 @@ use windows::Win32::System::Variant::VT_UI2;
 
 use crate::compose::RgbaImage;
 
+/// What the Open dialog offers. Anything else WIC can decode still opens
+/// (dropped, or through "All files").
+pub const EXTENSIONS: &[&str] = &[
+    "png", "jpg", "jpeg", "jpe", "jfif", "bmp", "dib", "gif", "tif", "tiff", "ico", "webp", "heic",
+    "heif", "avif",
+];
+
 /// Larger images are refused: 100 MP is 400 MB as RGBA, before the editor's
 /// own copies.
 pub const MAX_PIXELS: u64 = 100_000_000;

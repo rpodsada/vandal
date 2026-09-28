@@ -9,7 +9,7 @@ use tauri::{AppHandle, Wry};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::settings::{self, Settings};
-use crate::{session, settings_window};
+use crate::{editor, session, settings_window};
 
 const TRAY_ID: &str = "main";
 
@@ -29,6 +29,20 @@ fn build_menu(app: &AppHandle, s: &Settings) -> tauri::Result<Menu<Wry>> {
         "Capture full screen",
         true,
         hk.fullscreen.as_deref(),
+    )?)?;
+    menu.append(&MenuItem::with_id(
+        app,
+        "open",
+        "Open image…",
+        true,
+        None::<&str>,
+    )?)?;
+    menu.append(&MenuItem::with_id(
+        app,
+        "clipboard",
+        "New from clipboard",
+        true,
+        None::<&str>,
     )?)?;
     menu.append(&PredefinedMenuItem::separator(app)?)?;
     if s.tray.show_auto_save_toggle {
@@ -86,6 +100,12 @@ pub fn create(app: &AppHandle, s: &Settings) -> tauri::Result<()> {
                         "region" => session::start_region(app),
                         "fullscreen" => session::capture_fullscreen(app),
                         "settings" => settings_window::open(app),
+                        "open" => {
+                            // The dialog blocks; keep the tray responsive.
+                            let app = app.clone();
+                            std::thread::spawn(move || editor::ask_open(&app, None));
+                        }
+                        "clipboard" => editor::open_clipboard(app),
                         "quit" => app.exit(0),
                         _ => {}
                     }

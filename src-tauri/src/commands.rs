@@ -170,6 +170,13 @@ pub fn editor_new_capture(app: AppHandle, window: WebviewWindow) {
     editor::new_capture(&app, &window);
 }
 
+/// Ctrl+O / "Open": pick image files, each opening in a new editor.
+#[tauri::command]
+#[specta::specta]
+pub async fn editor_open_image(app: AppHandle, window: WebviewWindow) {
+    editor::ask_open(&app, Some(&window));
+}
+
 /// Show a file selected in Explorer.
 #[tauri::command]
 #[specta::specta]

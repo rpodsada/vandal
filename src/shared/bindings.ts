@@ -45,6 +45,8 @@ export const commands = {
 	 *  JSON array in virtual-desktop px) to a new editor window.
 	 */
 	quickOpenEditor: (captureId: number, rect: PhysicalRect, annotations: string) => typedError<null, string>(__TAURI_INVOKE("quick_open_editor", { captureId, rect, annotations })),
+	/**  Ctrl+O / "Open": pick image files, each opening in a new editor. */
+	editorOpenImage: () => __TAURI_INVOKE<void>("editor_open_image"),
 	/**  Quick edit: this overlay's selection now has markup (or no longer has). */
 	quickMarkupChanged: (captureId: number, monitorIndex: number, has: boolean) => __TAURI_INVOKE<void>("quick_markup_changed", { captureId, monitorIndex, has }),
 	/**  Quick edit: bring the overlay with the markup back to the front. */

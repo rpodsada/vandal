@@ -12,6 +12,7 @@ interface Props {
   /** Picking a tool while cropping applies the crop first. */
   onPickTool: () => void;
   onNewCapture: () => void;
+  onOpen: () => void;
   onCopy: () => void;
   onSave: () => void;
   onSaveAs: () => void;
@@ -24,6 +25,7 @@ export function CommandBar({
   onCrop,
   onPickTool,
   onNewCapture,
+  onOpen,
   onCopy,
   onSave,
   onSaveAs,
@@ -63,6 +65,18 @@ export function CommandBar({
           <path d="M12 9v6M9 12h6" />
         </svg>
         New capture
+      </button>
+      <button
+        type="button"
+        className={styles.button}
+        {...hint("open")}
+        title="Open image (Ctrl+O)"
+        onClick={onOpen}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden>
+          <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        </svg>
+        Open
       </button>
       <button
         type="button"

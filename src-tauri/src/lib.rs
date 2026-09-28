@@ -46,6 +46,7 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::quick_output,
             commands::quick_done,
             commands::quick_open_editor,
+            commands::editor_open_image,
             commands::quick_markup_changed,
             commands::quick_focus_overlay,
             commands::get_settings,
@@ -211,6 +212,14 @@ pub fn run() {
                 editor::closing(window.app_handle(), window);
             }
             WindowEvent::Destroyed => editor::destroyed(window.app_handle(), window.label()),
+            // Files dropped on an editor open in editors of their own.
+            WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. })
+                if editor::id_from_label(window.label()).is_some() =>
+            {
+                for path in paths {
+                    editor::open_file(window.app_handle(), path);
+                }
+            }
             _ => {}
         })
         .build(tauri::generate_context!())
