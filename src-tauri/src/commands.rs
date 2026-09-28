@@ -89,6 +89,29 @@ pub fn hotkeys_resume(app: AppHandle) {
     crate::hotkeys::resume(&app);
 }
 
+/// Whether a just-recorded shortcut can be ours; the reason if not.
+#[tauri::command]
+#[specta::specta]
+pub fn hotkey_check(app: AppHandle, hotkey: String) -> Option<String> {
+    crate::hotkeys::check(&app, &hotkey).err()
+}
+
+/// Whether Windows keeps PrintScreen for its own screen capture.
+#[tauri::command]
+#[specta::specta]
+pub fn print_screen_opens_snipping() -> bool {
+    crate::hotkeys::print_screen_opens_snipping()
+}
+
+/// Windows Settings › Accessibility › Keyboard (the Print Screen switch).
+#[tauri::command]
+#[specta::specta]
+pub fn open_keyboard_settings() {
+    let _ = std::process::Command::new("explorer.exe")
+        .arg("ms-settings:easeofaccess-keyboard")
+        .spawn();
+}
+
 /// The default settings, for "Reset" buttons.
 #[tauri::command]
 #[specta::specta]

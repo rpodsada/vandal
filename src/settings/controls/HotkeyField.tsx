@@ -32,6 +32,8 @@ export function HotkeyField({ item, id, disabled }: ControlProps<HotkeyItem>) {
   const [held, setHeld] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [initial, setInitial] = useState<string | null | undefined>(undefined);
+  // Windows 11 keeps PrintScreen for its own screen capture unless turned off.
+  const [snipping, setSnipping] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
   // Read when a combination completes, without restarting the recording.
   const latest = useRef({ hotkeys, value, setValue });
@@ -47,20 +49,32 @@ export function HotkeyField({ item, id, disabled }: ControlProps<HotkeyItem>) {
     if (!recording) return;
     const key = item.path.split(".").pop()!;
     void commands.hotkeysPause();
+    void commands.printScreenOpensSnipping().then(setSnipping);
     boxRef.current?.focus();
+    // The modifiers held now, for when Windows takes the rest of the shortcut.
+    let heldNow = "";
+    const hold = (label: string) => {
+      heldNow = label;
+      setHeld(label);
+    };
 
     const finish = (result: { combo: string } | { error: string } | null) => {
-      setHeld("");
+      hold("");
       useRecording.setState({ path: null });
       if (!result) return;
       if ("error" in result) return setError(result.error);
-      const { hotkeys, value, setValue } = latest.current;
+      const { hotkeys, value } = latest.current;
       const clash = Object.entries(hotkeys).find(
         ([k, v]) => k !== key && k in ACTIONS && v?.toLowerCase() === result.combo.toLowerCase(),
       );
       if (clash) return setError(`${result.combo} already does "${ACTIONS[clash[0]]}".`);
       setError(null);
-      if (result.combo !== value) setValue(result.combo);
+      if (result.combo === value) return;
+      // Another app (or Windows) may hold it: then keep the old one.
+      void commands.hotkeyCheck(result.combo).then((problem) => {
+        if (problem) setError(problem);
+        else latest.current.setValue(result.combo);
+      });
     };
 
     // Every key goes to the recorder while it listens: nothing else reacts.
@@ -68,7 +82,7 @@ export function HotkeyField({ item, id, disabled }: ControlProps<HotkeyItem>) {
       e.preventDefault();
       e.stopPropagation();
       if (e.repeat) return;
-      if (isModifier(e.code)) return setHeld(modsLabel(modsOf(e)));
+      if (isModifier(e.code)) return hold(modsLabel(modsOf(e)));
       const mods = modsOf(e);
       if (e.code === "Escape" && !modsLabel(mods)) return finish(null);
       const name = keyName(e.code);
@@ -80,10 +94,20 @@ export function HotkeyField({ item, id, disabled }: ControlProps<HotkeyItem>) {
       e.stopPropagation();
       // Windows only sends PrintScreen's release to windows.
       if (e.code === "PrintScreen") return finish(combo(modsOf(e), "PrintScreen"));
-      if (isModifier(e.code)) setHeld(modsLabel(modsOf(e)));
+      if (isModifier(e.code)) hold(modsLabel(modsOf(e)));
     };
-    // Leaving the window ends it: the keys are the user's again.
-    const onBlur = () => finish(null);
+    // Leaving the window ends it: the keys are the user's again. With
+    // modifiers held, Windows or another app most likely acted on the keys
+    // (Win+E opens Explorer) and took the focus.
+    const onBlur = () => {
+      const took = heldNow;
+      finish(null);
+      if (took) {
+        setError(
+          `Windows or another app already uses that ${took}+… shortcut and took the keys. Pick another one.`,
+        );
+      }
+    };
     window.addEventListener("keydown", onKeyDown, true);
     window.addEventListener("keyup", onKeyUp, true);
     window.addEventListener("blur", onBlur);
@@ -164,6 +188,20 @@ export function HotkeyField({ item, id, disabled }: ControlProps<HotkeyItem>) {
         </p>
       )}
       {error && <p className={styles.fieldError}>{error}</p>}
+      {(recording || error?.includes("PrintScreen")) && snipping && (
+        <p className={styles.help}>
+          PrintScreen opens Windows&rsquo; own screen capture right now. To use it here, turn off
+          &ldquo;Use the Print screen key to open screen capture&rdquo;.{" "}
+          <button
+            type="button"
+            className={styles.button}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => void commands.openKeyboardSettings()}
+          >
+            Open Windows settings
+          </button>
+        </p>
+      )}
     </div>
   );
 }

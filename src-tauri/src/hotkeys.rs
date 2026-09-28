@@ -56,6 +56,74 @@ pub fn resume(app: &AppHandle) {
     register(app, &hotkeys);
 }
 
+/// Whether `hotkey` can be ours: it parses and no other app (or Windows)
+/// holds it. Registers it for a moment, so call it while ours are paused.
+pub fn check(app: &AppHandle, hotkey: &str) -> Result<(), String> {
+    use tauri_plugin_global_shortcut::Shortcut;
+    let shortcut: Shortcut = to_accelerator(hotkey)
+        .parse()
+        .map_err(|_| format!("{hotkey} can't be a shortcut. Pick another one."))?;
+    let gs = app.global_shortcut();
+    match gs.register(shortcut) {
+        Ok(()) => {
+            let _ = gs.unregister(shortcut);
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("[hotkeys] check {hotkey}: {e}");
+            if hotkey.to_ascii_lowercase().contains("printscreen") && print_screen_opens_snipping()
+            {
+                Err(format!(
+                    "Windows uses {hotkey} to open its own screen capture. \
+                     Turn that off in Windows Settings, or pick another shortcut."
+                ))
+            } else {
+                Err(format!(
+                    "{hotkey} is already used by Windows or another app. Pick another one."
+                ))
+            }
+        }
+    }
+}
+
+/// Windows 11's "Use the Print Screen key to open screen capture" (on unless
+/// turned off; Windows 10 leaves the value unset, and the key free).
+pub fn print_screen_opens_snipping() -> bool {
+    use windows::core::w;
+    use windows::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
+    let mut value = 0u32;
+    let mut size = std::mem::size_of::<u32>() as u32;
+    let result = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            w!("Control Panel\\Keyboard"),
+            w!("PrintScreenKeyForSnippingEnabled"),
+            RRF_RT_REG_DWORD,
+            None,
+            Some(&mut value as *mut u32 as *mut _),
+            Some(&mut size),
+        )
+    };
+    if result.is_ok() {
+        value != 0
+    } else {
+        windows_11()
+    }
+}
+
+fn windows_11() -> bool {
+    use windows::Win32::System::SystemInformation::OSVERSIONINFOW;
+    #[link(name = "ntdll")]
+    extern "system" {
+        fn RtlGetVersion(info: *mut OSVERSIONINFOW) -> i32;
+    }
+    let mut info = OSVERSIONINFOW {
+        dwOSVersionInfoSize: std::mem::size_of::<OSVERSIONINFOW>() as u32,
+        ..Default::default()
+    };
+    unsafe { RtlGetVersion(&mut info) == 0 && info.dwBuildNumber >= 22000 }
+}
+
 /// (Re)register all hotkeys. Failures are reported in one notification.
 pub fn register(app: &AppHandle, hotkeys: &Hotkeys) {
     let gs = app.global_shortcut();

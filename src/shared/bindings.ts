@@ -59,6 +59,12 @@ export const commands = {
 	hotkeysPause: () => __TAURI_INVOKE<void>("hotkeys_pause"),
 	/**  Recording finished: our shortcuts again, as settings have them now. */
 	hotkeysResume: () => __TAURI_INVOKE<void>("hotkeys_resume"),
+	/**  Whether a just-recorded shortcut can be ours; the reason if not. */
+	hotkeyCheck: (hotkey: string) => __TAURI_INVOKE<string | null>("hotkey_check", { hotkey }),
+	/**  Whether Windows keeps PrintScreen for its own screen capture. */
+	printScreenOpensSnipping: () => __TAURI_INVOKE<boolean>("print_screen_opens_snipping"),
+	/**  Windows Settings › Accessibility › Keyboard (the Print Screen switch). */
+	openKeyboardSettings: () => __TAURI_INVOKE<void>("open_keyboard_settings"),
 	/**  The default settings, for "Reset" buttons. */
 	defaultSettings: () => __TAURI_INVOKE<Settings>("default_settings"),
 	/**  Quick edit: this overlay's selection now has markup (or no longer has). */
