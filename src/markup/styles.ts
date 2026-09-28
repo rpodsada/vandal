@@ -34,7 +34,7 @@ export const DEFAULT_STYLE_CONFIG: StyleConfig = {
       "#ffffff",
     ],
     width: { control: "buttons", values: [2, 4, 6, 10] },
-    font: { source: "system", control: "dropdown" },
+    font: { source: "system", fonts: [], control: "dropdown" },
     fontSize: { control: "dropdown", values: [8, 10, 12, 14, 16, 18, 20, 36, 48, 72] },
     tools: {
       highlighter: {
@@ -104,7 +104,8 @@ export function fontChoices(cfg = useStyleConfig.getState()): string[] {
   return cfg.fonts.length ? cfg.fonts : [DEFAULT_FONT];
 }
 
-const DEFAULT_FONT = "Segoe UI";
+/** The text tool's font when nothing else says. */
+export const DEFAULT_FONT = "Segoe UI";
 const DEFAULT_FONT_SIZE = 20;
 /** The default box color behind text. */
 export const DEFAULT_TEXT_BACKGROUND = "#ffffff";

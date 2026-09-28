@@ -17,6 +17,7 @@ import { getIn } from "../path";
 import type { ControlProps } from "./index";
 import { Segmented, type ChoiceOption } from "./Segmented";
 import { useDraft } from "./useDraft";
+import markup from "../../markup/options.module.css";
 import styles from "./controls.module.css";
 
 const CONTROLS: ChoiceOption<PickerControl>[] = [
@@ -107,7 +108,8 @@ export function NumberPickerEditor({
           onChange={(values) => onChange({ control: picker.control, values })}
         />
       )}
-      <div className={styles.pickerPreview}>
+      {/* The options bar's context, which the editor's pickers are styled for. */}
+      <div className={`${styles.pickerPreview} ${markup.options}`}>
         <span className={styles.help}>Preview</span>
         <NumberPickerControl
           picker={picker}

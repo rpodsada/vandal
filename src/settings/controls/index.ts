@@ -4,6 +4,7 @@ import type { ComponentType } from "react";
 import type { Item, ItemKind } from "../schema";
 import { Choice } from "./Choice";
 import { FolderInput } from "./FolderInput";
+import { FontPickerSetting } from "./FontPickerEditor";
 import { Info } from "./Info";
 import { NumberPickerSetting } from "./NumberPickerEditor";
 import { PaletteSetting } from "./PaletteEditor";
@@ -35,6 +36,7 @@ export const controls: Registry = {
   numberPicker: { component: NumberPickerSetting, layout: "stacked" },
   palette: { component: PaletteSetting, layout: "stacked" },
   toolStyle: { component: ToolStyleSetting, layout: "stacked" },
+  fontPicker: { component: FontPickerSetting, layout: "stacked" },
   text: { component: TextInput, layout: "stacked" },
   folder: { component: FolderInput, layout: "stacked" },
 };

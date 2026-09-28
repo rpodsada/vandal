@@ -82,6 +82,11 @@ export interface ToolStyleItem extends BaseItem {
   widths: boolean;
 }
 
+/** The text tool's fonts (`styles.font`, PLAN 2C.3). */
+export interface FontPickerItem extends BaseItem {
+  kind: "fontPicker";
+}
+
 /** Read-only value, for things not editable yet or informational. */
 export interface InfoItem extends BaseItem {
   kind: "info";
@@ -97,6 +102,7 @@ export type Item =
   | NumberPickerItem
   | PaletteItem
   | ToolStyleItem
+  | FontPickerItem
   | InfoItem;
 export type ItemKind = Item["kind"];
 

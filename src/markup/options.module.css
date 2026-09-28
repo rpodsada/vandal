@@ -11,7 +11,9 @@
   color: var(--text);
 }
 
-.options svg {
+/* Popovers style their own icons too: Settings hosts them outside `.options`. */
+.options svg,
+.menu svg {
   width: 18px;
   height: 18px;
   fill: none;
@@ -247,6 +249,7 @@
 }
 
 .menu {
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
@@ -652,7 +655,8 @@
   background: var(--button-bg-hover);
 }
 
-.options .eyedropper svg {
+.options .eyedropper svg,
+.menu .eyedropper svg {
   width: 16px;
   height: 16px;
 }

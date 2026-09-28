@@ -56,41 +56,64 @@ pub enum FontControl {
     Stepped,
 }
 
-/// Every installed font, or the user's own list in their order.
+/// Where the font picker's fonts come from.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum FontSource {
+    /// Every installed font.
+    #[default]
+    System,
+    /// The user's own list, in their order.
+    Custom,
+}
+
+/// The text tool's font picker. The user's list is kept while `source` is
+/// `System`, so switching back brings it back (Richard's call, 2C.3). Files
+/// from before 2C.3 (`{"source":"system",...}` without `fonts`) load as is.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
-#[serde(tag = "source", rename_all = "camelCase")]
-pub enum FontPicker {
-    System {
-        control: FontControl,
-    },
-    Custom {
-        fonts: Vec<String>,
-        control: FontControl,
-    },
+#[serde(default, rename_all = "camelCase")]
+pub struct FontPicker {
+    pub source: FontSource,
+    pub fonts: Vec<String>,
+    /// Kept as chosen: the page shows a dropdown whenever a stepped slider
+    /// doesn't fit (the system list, or more than 10 fonts).
+    pub control: FontControl,
+}
+
+impl Default for FontPicker {
+    fn default() -> Self {
+        Self {
+            source: FontSource::System,
+            fonts: Vec::new(),
+            control: FontControl::Dropdown,
+        }
+    }
 }
 
 impl FontPicker {
-    fn normalized(self) -> Option<Self> {
-        match self {
-            // The whole system list is too long for a slider.
-            Self::System { .. } => Some(Self::System {
-                control: FontControl::Dropdown,
-            }),
-            Self::Custom { fonts, control } => {
-                let mut out: Vec<String> = Vec::new();
-                for f in fonts.iter().map(|f| f.trim()).filter(|f| !f.is_empty()) {
-                    if !out.iter().any(|o| o.eq_ignore_ascii_case(f)) {
-                        out.push(f.to_string());
-                    }
-                }
-                if control == FontControl::Stepped {
-                    out.truncate(MAX_PRESETS);
-                }
-                (!out.is_empty()).then_some(Self::Custom {
-                    fonts: out,
-                    control,
-                })
+    /// Names trimmed, duplicates (ignoring case) and blanks dropped; an empty
+    /// custom list means every installed font.
+    fn normalized(self) -> Self {
+        let mut fonts: Vec<String> = Vec::new();
+        for f in self
+            .fonts
+            .iter()
+            .map(|f| f.trim())
+            .filter(|f| !f.is_empty())
+        {
+            if !fonts.iter().any(|o| o.eq_ignore_ascii_case(f)) {
+                fonts.push(f.to_string());
             }
+        }
+        let source = if fonts.is_empty() {
+            FontSource::System
+        } else {
+            self.source
+        };
+        Self {
+            source,
+            fonts,
+            control: self.control,
         }
     }
 }
@@ -129,9 +152,7 @@ impl Default for Styles {
             width: NumberPicker::Buttons {
                 values: vec![2.0, 4.0, 6.0, 10.0],
             },
-            font: FontPicker::System {
-                control: FontControl::Dropdown,
-            },
+            font: FontPicker::default(),
             font_size: NumberPicker::Dropdown {
                 values: vec![8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 36.0, 48.0, 72.0],
             },
@@ -190,7 +211,7 @@ impl Styles {
         Self {
             palette: normalize_palette(self.palette).unwrap_or(defaults.palette),
             width: self.width.normalized().unwrap_or(defaults.width),
-            font: self.font.normalized().unwrap_or(defaults.font),
+            font: self.font.normalized(),
             font_size: self.font_size.normalized().unwrap_or(defaults.font_size),
             tools: self
                 .tools
@@ -352,42 +373,59 @@ mod tests {
 
     #[test]
     fn font_pickers_are_normalized() {
-        let system_slider = FontPicker::System {
-            control: FontControl::Stepped,
-        };
-        assert_eq!(
-            system_slider.normalized(),
-            Some(FontPicker::System {
-                control: FontControl::Dropdown
-            })
-        );
-        let custom = FontPicker::Custom {
+        let custom = FontPicker {
+            source: FontSource::Custom,
             fonts: vec![
                 " Arial ".into(),
                 "arial".into(),
                 "".into(),
                 "Georgia".into(),
             ],
-            control: FontControl::Dropdown,
+            control: FontControl::Stepped,
         };
         assert_eq!(
             custom.normalized(),
-            Some(FontPicker::Custom {
+            FontPicker {
+                source: FontSource::Custom,
                 fonts: vec!["Arial".into(), "Georgia".into()],
-                control: FontControl::Dropdown
-            })
+                control: FontControl::Stepped,
+            }
         );
-        let empty = FontPicker::Custom {
-            fonts: vec![],
+        // No fonts left: every installed font.
+        let empty = FontPicker {
+            source: FontSource::Custom,
+            fonts: vec![" ".into()],
             control: FontControl::Stepped,
         };
-        assert!(empty.normalized().is_none());
+        assert_eq!(empty.normalized().source, FontSource::System);
+        // The list is kept while the system fonts are in use.
+        let parked = FontPicker {
+            source: FontSource::System,
+            fonts: vec!["Georgia".into()],
+            control: FontControl::Dropdown,
+        };
+        assert_eq!(parked.clone().normalized(), parked);
+
         let v = serde_json::to_value(Styles::default()).unwrap();
         assert_eq!(
             v["font"],
-            json!({ "source": "system", "control": "dropdown" })
+            json!({ "source": "system", "fonts": [], "control": "dropdown" })
         );
         assert_eq!(v["fontSize"]["values"][6], 20.0);
+    }
+
+    #[test]
+    fn font_pickers_from_before_2c3_load() {
+        let system: FontPicker =
+            serde_json::from_value(json!({ "source": "system", "control": "dropdown" })).unwrap();
+        assert_eq!(system, FontPicker::default());
+        let custom: FontPicker = serde_json::from_value(
+            json!({ "source": "custom", "fonts": ["Georgia"], "control": "stepped" }),
+        )
+        .unwrap();
+        assert_eq!(custom.source, FontSource::Custom);
+        assert_eq!(custom.fonts, ["Georgia"]);
+        assert_eq!(custom.control, FontControl::Stepped);
     }
 
     #[test]

@@ -242,8 +242,27 @@ export type FontControl = "dropdown" |
 /**  A stepped slider with the name under it (custom lists of up to 10). */
 "stepped";
 
-/**  Every installed font, or the user's own list in their order. */
-export type FontPicker = { source: "system"; control: FontControl } | { source: "custom"; fonts: string[]; control: FontControl };
+/**
+ *  The text tool's font picker. The user's list is kept while `source` is
+ *  `System`, so switching back brings it back (Richard's call, 2C.3). Files
+ *  from before 2C.3 (`{"source":"system",...}` without `fonts`) load as is.
+ */
+export type FontPicker = {
+	source?: FontSource,
+	fonts?: string[],
+	/**
+	 *  Kept as chosen: the page shows a dropdown whenever a stepped slider
+	 *  doesn't fit (the system list, or more than 10 fonts).
+	 */
+	control?: FontControl,
+};
+
+/**  Where the font picker's fonts come from. */
+export type FontSource = 
+/**  Every installed font. */
+"system" | 
+/**  The user's own list, in their order. */
+"custom";
 
 /**
  *  Quick edit's annotations, handed to the editor still editable (PLAN 2B.3).

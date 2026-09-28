@@ -333,6 +333,28 @@ export const sections: Section[] = [
         ],
       },
       {
+        title: "Text",
+        items: [
+          {
+            id: "styles-fonts",
+            kind: "fontPicker",
+            label: "Fonts",
+            description:
+              "The fonts the text tool offers. With your own list, Alt+1–9 and Alt+0 pick them while you type.",
+            keywords: ["font", "typeface", "family", "text", "list", "installed"],
+          },
+          {
+            id: "styles-font-size",
+            kind: "numberPicker",
+            path: "styles.fontSize",
+            label: "Font sizes",
+            description: "The sizes the text tool offers, in points. Keys 1–9 and 0 pick them.",
+            unit: "pt",
+            keywords: ["font", "size", "text", "points", "pt", "picker"],
+          },
+        ],
+      },
+      {
         title: "Per-tool styles",
         description:
           "Give a tool its own colors or widths instead of the ones above. The highlighter comes with its own.",
