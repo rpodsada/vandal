@@ -74,6 +74,13 @@ pub async fn quick_done(
     session::quick_done(&app, capture_id, rect, markup)
 }
 
+/// The Windows accent color, for the accent setting's "Windows" choice.
+#[tauri::command]
+#[specta::specta]
+pub fn windows_accent() -> Option<crate::appearance::WindowsAccent> {
+    crate::appearance::windows_accent()
+}
+
 /// Quick edit's "Open in editor": hand the selection and its annotations (a
 /// JSON array in virtual-desktop px) to a new editor window.
 #[tauri::command]

@@ -2,6 +2,7 @@
 // schema.ts without registering it here is a type error.
 import type { ComponentType } from "react";
 import type { Item, ItemKind } from "../schema";
+import { AccentPicker } from "./AccentPicker";
 import { Choice } from "./Choice";
 import { FolderInput } from "./FolderInput";
 import { FontPickerSetting } from "./FontPickerEditor";
@@ -37,6 +38,7 @@ export const controls: Registry = {
   palette: { component: PaletteSetting, layout: "stacked" },
   toolStyle: { component: ToolStyleSetting, layout: "stacked" },
   fontPicker: { component: FontPickerSetting, layout: "stacked" },
+  accent: { component: AccentPicker, layout: "stacked" },
   text: { component: TextInput, layout: "stacked" },
   folder: { component: FolderInput, layout: "stacked" },
 };

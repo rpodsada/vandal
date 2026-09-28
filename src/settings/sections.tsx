@@ -30,6 +30,15 @@ export const sections: Section[] = [
             ],
             keywords: ["dark mode", "light mode", "color", "theme", "appearance", "night"],
           },
+          {
+            id: "accent",
+            kind: "accent",
+            path: "appearance.accent",
+            label: "Accent color",
+            description:
+              "Used for selected buttons, switches and the Save button. Follows your Windows accent color unless you pick one.",
+            keywords: ["accent", "color", "colour", "highlight", "theme", "windows"],
+          },
         ],
       },
       {

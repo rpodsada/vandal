@@ -569,3 +569,33 @@
   color: var(--text-2);
   font-size: 12px;
 }
+
+/* ---- accent color ---- */
+
+.paletteSwatch[aria-checked="true"] {
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.25),
+    0 0 0 2px var(--bg),
+    0 0 0 4px var(--text);
+}
+
+/* The markup custom swatch, used as a radio here. */
+.palette [aria-checked="true"][data-custom] {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.accentWindows {
+  display: grid;
+  place-items: center;
+}
+
+.accentWindows svg {
+  width: 14px;
+  height: 14px;
+  fill: #fff;
+}
+
+.accentGap {
+  width: 6px;
+}

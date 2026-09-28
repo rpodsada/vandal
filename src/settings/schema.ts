@@ -87,6 +87,12 @@ export interface FontPickerItem extends BaseItem {
   kind: "fontPicker";
 }
 
+/** The accent color: the Windows accent, a preset or a custom color (PLAN 3A.2). */
+export interface AccentItem extends BaseItem {
+  kind: "accent";
+  path: PathOf<Settings, string>;
+}
+
 /** Read-only value, for things not editable yet or informational. */
 export interface InfoItem extends BaseItem {
   kind: "info";
@@ -103,6 +109,7 @@ export type Item =
   | PaletteItem
   | ToolStyleItem
   | FontPickerItem
+  | AccentItem
   | InfoItem;
 export type ItemKind = Item["kind"];
 

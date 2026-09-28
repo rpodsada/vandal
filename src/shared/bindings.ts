@@ -47,6 +47,11 @@ export const commands = {
 	quickOpenEditor: (captureId: number, rect: PhysicalRect, annotations: string) => typedError<null, string>(__TAURI_INVOKE("quick_open_editor", { captureId, rect, annotations })),
 	/**  Ctrl+O / "Open": pick image files, each opening in a new editor. */
 	editorOpenImage: () => __TAURI_INVOKE<void>("editor_open_image"),
+	/**  The Windows accent color, for the accent setting's "Windows" choice. */
+	windowsAccent: () => __TAURI_INVOKE<{
+	light: string,
+	dark: string,
+} | null>("windows_accent"),
 	/**  Quick edit: this overlay's selection now has markup (or no longer has). */
 	quickMarkupChanged: (captureId: number, monitorIndex: number, has: boolean) => __TAURI_INVOKE<void>("quick_markup_changed", { captureId, monitorIndex, has }),
 	/**  Quick edit: bring the overlay with the markup back to the front. */
@@ -140,6 +145,7 @@ export const events = {
 	overlayMarkupOwner: makeEvent<OverlayMarkupOwner>("overlay-markup-owner"),
 	overlayShown: makeEvent<OverlayShown>("overlay-shown"),
 	settingsChanged: makeEvent<SettingsChanged>("settings-changed"),
+	windowsAccentChanged: makeEvent<WindowsAccentChanged>("windows-accent-changed"),
 };
 
 /* Types */
@@ -155,6 +161,8 @@ export type AfterCapture = {
 
 export type Appearance = {
 	theme?: ThemeMode,
+	/**  `"windows"` (the Windows accent color) or a `#rrggbb` the user picked. */
+	accent?: string,
 };
 
 /**  What the user chose on the overlay. */
@@ -479,6 +487,19 @@ export type TraySettings = {
 	/**  Show "Save captures to file" (auto-save) as a checkbox in the tray menu. */
 	showAutoSaveToggle?: boolean,
 };
+
+/**
+ *  The Windows accent color as Windows 11 apps use it: a darker shade on
+ *  light backgrounds, a lighter one on dark (WinUI's AccentDark1 and
+ *  AccentLight2), as `#rrggbb`.
+ */
+export type WindowsAccent = {
+	light: string,
+	dark: string,
+};
+
+/**  Rust → pages: the Windows accent changed (None: not available). */
+export type WindowsAccentChanged = WindowsAccent | null;
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

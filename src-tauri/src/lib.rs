@@ -49,6 +49,7 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::quick_done,
             commands::quick_open_editor,
             commands::editor_open_image,
+            commands::windows_accent,
             commands::quick_markup_changed,
             commands::quick_focus_overlay,
             commands::get_settings,
@@ -74,6 +75,7 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             session::OverlayShown,
             session::OverlayClearSelection,
             session::OverlayMarkupOwner,
+            appearance::WindowsAccentChanged,
             settings::SettingsChanged,
         ])
         .typ::<geometry::MonitorInfo>()
@@ -181,6 +183,7 @@ pub fn run() {
 
             overlay::create_pool(app.handle(), &monitors)?;
             overlay::watch_displays(app.handle());
+            appearance::watch_windows_accent(app.handle());
             if bench {
                 bench::maybe_start(app.handle());
                 return Ok(());

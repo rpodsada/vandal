@@ -173,7 +173,7 @@ impl Default for Styles {
 }
 
 /// `#rgb` or `#rrggbb` (any case) as lowercase `#rrggbb`.
-fn normalize_color(c: &str) -> Option<String> {
+pub fn normalize_color(c: &str) -> Option<String> {
     let hex = c.trim().strip_prefix('#')?;
     if !hex.chars().all(|ch| ch.is_ascii_hexdigit()) {
         return None;

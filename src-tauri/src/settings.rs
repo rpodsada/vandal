@@ -71,10 +71,24 @@ pub enum ThemeMode {
     Dark,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Appearance {
     pub theme: ThemeMode,
+    /// `"windows"` (the Windows accent color) or a `#rrggbb` the user picked.
+    pub accent: String,
+}
+
+/// Follow the Windows accent color.
+pub const WINDOWS_ACCENT: &str = "windows";
+
+impl Default for Appearance {
+    fn default() -> Self {
+        Self {
+            theme: ThemeMode::System,
+            accent: WINDOWS_ACCENT.into(),
+        }
+    }
 }
 
 /// Human-readable accelerators, e.g. `"Win+Shift+F12"`. `None` = unassigned.
@@ -311,6 +325,8 @@ pub fn validate(mut s: Settings) -> Result<Settings, String> {
     s.overlay.dim_opacity = s.overlay.dim_opacity.clamp(0.0, 0.9);
     s.history.keep_frames_in_memory = s.history.keep_frames_in_memory.clamp(1, 20);
     s.styles = s.styles.normalized();
+    s.appearance.accent = crate::styles::normalize_color(&s.appearance.accent)
+        .unwrap_or_else(|| WINDOWS_ACCENT.into());
     Ok(s)
 }
 
@@ -576,6 +592,16 @@ mod tests {
         );
         assert_eq!(check_raw(b"{not json"), Repair::Quarantine);
         assert_eq!(check_raw(b"\xEF\xBB\xBF{not json"), Repair::Quarantine);
+    }
+
+    #[test]
+    fn accent_is_windows_or_a_color() {
+        let mut s = Settings::default();
+        assert_eq!(s.appearance.accent, WINDOWS_ACCENT);
+        s.appearance.accent = "#ABC".into();
+        assert_eq!(validate(s.clone()).unwrap().appearance.accent, "#aabbcc");
+        s.appearance.accent = "blue".into();
+        assert_eq!(validate(s).unwrap().appearance.accent, WINDOWS_ACCENT);
     }
 
     #[test]
