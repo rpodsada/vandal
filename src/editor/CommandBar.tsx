@@ -57,6 +57,7 @@ export function CommandBar({
         type="button"
         className={styles.button}
         {...hint("newCapture")}
+        aria-label="New capture (Ctrl+N)"
         title="New capture (Ctrl+N)"
         onClick={onNewCapture}
       >
@@ -64,24 +65,26 @@ export function CommandBar({
           <rect x="3" y="5" width="18" height="14" rx="2" strokeDasharray="3 2.5" />
           <path d="M12 9v6M9 12h6" />
         </svg>
-        New capture
+        <span className={styles.label}>New capture</span>
       </button>
       <button
         type="button"
         className={styles.button}
         {...hint("open")}
+        aria-label="Open image (Ctrl+O)"
         title="Open image (Ctrl+O)"
         onClick={onOpen}
       >
         <svg viewBox="0 0 24 24" aria-hidden>
           <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
         </svg>
-        Open
+        <span className={styles.label}>Open</span>
       </button>
       <button
         type="button"
         className={styles.button}
         {...hint("copy")}
+        aria-label="Copy (Ctrl+C)"
         title="Copy (Ctrl+C)"
         disabled={busy}
         onClick={onCopy}
@@ -90,7 +93,7 @@ export function CommandBar({
           <rect x="8" y="8" width="12" height="12" rx="2" />
           <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
         </svg>
-        Copy
+        <span className={styles.label}>Copy</span>
       </button>
       <SaveButton busy={busy} onSave={onSave} onSaveAs={onSaveAs} />
     </div>
@@ -133,6 +136,7 @@ function SaveButton({
       <button
         type="button"
         className={styles.splitMain}
+        aria-label="Save (Ctrl+S)"
         title="Save (Ctrl+S)"
         disabled={busy}
         onClick={onSave}
@@ -142,7 +146,7 @@ function SaveButton({
           <path d="M8 4v5h7V4" />
           <path d="M8 20v-6h8v6" />
         </svg>
-        Save
+        <span className={styles.label}>Save</span>
       </button>
       <button
         type="button"

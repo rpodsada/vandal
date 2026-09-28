@@ -233,6 +233,19 @@
   height: 48px;
   flex-shrink: 0;
   padding: 0 8px;
+  container-type: inline-size;
+}
+
+/* Narrow windows: the action buttons drop their labels (tooltips remain). */
+@container (max-width: 960px) {
+  .label {
+    display: none;
+  }
+
+  .commandBar .button,
+  .commandBar .splitMain {
+    padding: 0 8px;
+  }
 }
 
 .commandBar svg {
