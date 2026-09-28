@@ -112,7 +112,8 @@ export function EditorApp() {
   }, []);
 
   // Closing (X, Alt+F4, Ctrl+W) runs the on-close actions not already done
-  // since the last change, or asks before losing changes (PLAN Phase 2).
+  // since the last change, or asks before losing changes (PLAN Phase 2). An
+  // image file always asks instead (PLAN 2D).
   useEffect(() => {
     const unlisten = getCurrentWindow().onCloseRequested(async (event) => {
       const init = initRef.current;
@@ -121,6 +122,15 @@ export function EditorApp() {
       applyCrop();
       await flushToolStyles();
       try {
+        if (init.file) {
+          if (!hasUnsavedChanges(docStore.getState())) return;
+          const choice = await commands.editorConfirmClose();
+          if (choice === "cancel") event.preventDefault();
+          // Save can still be cancelled (the overwrite warning, Save As).
+          if (choice === "save" && (await exportImage(init, "save")).kind === "cancelled")
+            event.preventDefault();
+          return;
+        }
         if (onClose.copy && !alreadyDone("copy")) await exportImage(init, "copy");
         if (onClose.save && !alreadyDone("save")) await exportImage(init, "save");
         if (!onClose.copy && !onClose.save && hasUnsavedChanges(docStore.getState())) {

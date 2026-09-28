@@ -12,6 +12,7 @@ const init: EditorInit = {
   layerUrl: "",
   highlightsUrl: "",
   markup: null,
+  file: null,
 };
 
 const style = { color: "#e53935", width: 4, opacity: 1 };

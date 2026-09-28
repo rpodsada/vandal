@@ -225,6 +225,20 @@ export const sections: Section[] = [
         ],
       },
       {
+        title: "Image files",
+        items: [
+          {
+            id: "editor-confirm-overwrite",
+            kind: "toggle",
+            path: "editor.confirmOverwrite",
+            label: "Warn before saving over an opened image",
+            description:
+              "Save writes the markup into the original file. Off: Save replaces it without asking.",
+            keywords: ["overwrite", "replace", "original", "file", "open", "warning", "confirm"],
+          },
+        ],
+      },
+      {
         title: "Drawing",
         items: [
           {

@@ -14,7 +14,7 @@
 //! Rust.
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -34,10 +34,11 @@ use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWMAXIMIZED};
 
 use crate::capture::MonitorFrame;
 use crate::compose::{self, RgbaImage};
+use crate::encode::{self, FileFormat};
 use crate::frames::Capture;
 use crate::geometry::{monitor_at, virtual_bounds, MonitorInfo, PhysicalRect};
 use crate::state::AppState;
-use crate::{decode, output, overlay, protocol, session};
+use crate::{decode, output, overlay, protocol, session, settings};
 
 pub type EditorId = u32;
 
@@ -64,6 +65,10 @@ pub struct Editor {
     pub highlights: Option<Vec<u8>>,
     /// Annotations handed over from quick edit, for the page to load.
     pub markup: Option<HandoffMarkup>,
+    /// The image file this editor works on (PLAN 2D); None for captures.
+    pub file: Option<PathBuf>,
+    /// Saving over `file` was confirmed (or it was just chosen in Save As).
+    pub overwrite_confirmed: bool,
 }
 
 /// Quick edit's annotations, handed to the editor still editable (PLAN 2B.3).
@@ -138,6 +143,10 @@ pub struct EditorInit {
     pub highlights_url: String,
     /// Annotations from quick edit, if it handed the capture over.
     pub markup: Option<HandoffMarkup>,
+    /// The name of the image file being edited; None for captures. Files
+    /// ask before closing with unsaved changes instead of running the
+    /// capture on-close actions.
+    pub file: Option<String>,
 }
 
 /// What to do with the finished image.
@@ -213,6 +222,7 @@ pub fn open_capture(
         crop.relative_to(bounds.origin()),
         markup,
         title,
+        None,
     );
 }
 
@@ -224,12 +234,8 @@ pub fn open_file(app: &AppHandle, path: &Path) {
     std::thread::spawn(move || match decode::decode_file(&path) {
         Ok(image) => {
             let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
-            let name = path.file_name().map_or_else(
-                || path.display().to_string(),
-                |n| n.to_string_lossy().into_owned(),
-            );
-            let title = format!("{name} — {}", crate::product_name(&app));
-            open(&app, Arc::new(image), crop, None, title);
+            let title = file_title(&app, &path);
+            open(&app, Arc::new(image), crop, None, title, Some(path));
         }
         Err(message) => output::notify_error(&app, "Couldn't open the image", &message),
     });
@@ -261,10 +267,22 @@ pub fn open_clipboard(app: &AppHandle) {
         Ok(image) => {
             let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
             let title = format!("Clipboard image — {}", crate::product_name(app));
-            open(app, Arc::new(image), crop, None, title);
+            open(app, Arc::new(image), crop, None, title, None);
         }
         Err(message) => output::notify_error(app, "Nothing to open", &message),
     }
+}
+
+fn file_name(path: &Path) -> String {
+    path.file_name().map_or_else(
+        || path.display().to_string(),
+        |n| n.to_string_lossy().into_owned(),
+    )
+}
+
+/// A file's window title: its name.
+fn file_title(app: &AppHandle, path: &Path) -> String {
+    format!("{} — {}", file_name(path), crate::product_name(app))
 }
 
 /// A capture's window title: the name it would be saved under.
@@ -301,7 +319,7 @@ pub fn open_recent(app: &AppHandle, image_id: u32) {
     };
     let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
     let title = capture_title(app);
-    open(app, image, crop, None, title);
+    open(app, image, crop, None, title, None);
 }
 
 fn open(
@@ -310,6 +328,7 @@ fn open(
     crop: PhysicalRect,
     markup: Option<HandoffMarkup>,
     title: String,
+    file: Option<PathBuf>,
 ) {
     let remembered = load_window_state(app);
     let state = app.state::<AppState>();
@@ -320,6 +339,8 @@ fn open(
         layer: None,
         highlights: None,
         markup,
+        file,
+        overwrite_confirmed: false,
     });
 
     let monitors = state.monitors.read().unwrap().clone();
@@ -393,6 +414,7 @@ pub fn init(app: &AppHandle, window_label: &str) -> Option<EditorInit> {
         layer_url: protocol::editor_layer_url(id, LayerKind::Annotations),
         highlights_url: protocol::editor_layer_url(id, LayerKind::Highlights),
         markup: e.markup.clone(),
+        file: e.file.as_deref().map(file_name),
     })
 }
 
@@ -410,7 +432,7 @@ pub fn export(
 ) -> Result<ExportOutcome, String> {
     let started = Instant::now();
     let id = id_from_label(window.label()).ok_or("not an editor window")?;
-    let (base, layer, highlights) = {
+    let (base, layer, highlights, file) = {
         let state = app.state::<AppState>();
         let mut editors = state.editors.lock().unwrap();
         let e = editors.open.get_mut(&id).ok_or("this editor is closed")?;
@@ -421,7 +443,7 @@ pub fn export(
         } else {
             None
         };
-        (e.image.clone(), layer, highlights)
+        (e.image.clone(), layer, highlights, e.file.clone())
     };
     let mut image = compose::crop_rgba(&base, crop).ok_or("the crop is empty")?;
     if with_highlights {
@@ -439,27 +461,29 @@ pub fn export(
             output::copy_to_clipboard(&image)?;
             ExportOutcome::Copied
         }
-        ExportAction::Save => {
-            let save = app
-                .state::<AppState>()
-                .settings
-                .read()
-                .unwrap()
-                .save
-                .clone();
-            let path = output::save_with_template(&save, &image)?;
-            ExportOutcome::Saved {
-                path: path.to_string_lossy().into_owned(),
+        ExportAction::Save => match &file {
+            Some(file) => save_over(app, window, id, &image, file)?,
+            None => {
+                let save = app
+                    .state::<AppState>()
+                    .settings
+                    .read()
+                    .unwrap()
+                    .save
+                    .clone();
+                let path = output::save_with_template(&save, &image)?;
+                saved(&path)
             }
-        }
-        ExportAction::SaveAs => match ask_save_path(app, window) {
-            Some(path) => {
-                output::write_png(&image, &path)?;
-                ExportOutcome::Saved {
-                    path: path.to_string_lossy().into_owned(),
+        },
+        ExportAction::SaveAs => match &file {
+            Some(file) => save_file_as(app, window, id, &image, file)?,
+            None => match ask_save_path(app, window) {
+                Some(path) => {
+                    output::write_png(&image, &path)?;
+                    saved(&path)
                 }
-            }
-            None => ExportOutcome::Cancelled,
+                None => ExportOutcome::Cancelled,
+            },
         },
     };
     let layer = layer_ms.map_or(String::new(), |ms| {
@@ -473,6 +497,148 @@ pub fn export(
         started.elapsed().as_secs_f64() * 1000.0
     );
     Ok(outcome)
+}
+
+fn saved(path: &Path) -> ExportOutcome {
+    ExportOutcome::Saved {
+        path: path.to_string_lossy().into_owned(),
+    }
+}
+
+/// Save over the editor's file (PLAN 2D), in its own format, after a warning
+/// the first time in this window (unless turned off). A format we can't
+/// write goes to Save As instead.
+fn save_over(
+    app: &AppHandle,
+    window: &WebviewWindow,
+    id: EditorId,
+    image: &RgbaImage,
+    file: &Path,
+) -> Result<ExportOutcome, String> {
+    let Some(format) = FileFormat::for_path(file) else {
+        return save_file_as(app, window, id, image, file);
+    };
+    if !confirm_overwrite(app, window, id, file) {
+        return Ok(ExportOutcome::Cancelled);
+    }
+    encode::write_file(image, file, format)?;
+    Ok(saved(file))
+}
+
+/// Save As for a file: a new file, in the format its extension names. The
+/// editor then works on that file.
+fn save_file_as(
+    app: &AppHandle,
+    window: &WebviewWindow,
+    id: EditorId,
+    image: &RgbaImage,
+    file: &Path,
+) -> Result<ExportOutcome, String> {
+    let Some(path) = ask_file_save_path(window, file) else {
+        return Ok(ExportOutcome::Cancelled);
+    };
+    let format = FileFormat::for_path(&path).unwrap_or(FileFormat::Png);
+    encode::write_file(image, &path, format)?;
+    if let Some(e) = app
+        .state::<AppState>()
+        .editors
+        .lock()
+        .unwrap()
+        .open
+        .get_mut(&id)
+    {
+        e.file = Some(path.clone());
+        // The dialog already asked about replacing an existing file.
+        e.overwrite_confirmed = true;
+    }
+    let _ = window.set_title(&file_title(app, &path));
+    Ok(saved(&path))
+}
+
+/// "Save over the original?" once per window, unless turned off in Settings
+/// (which the dialog's second button does).
+fn confirm_overwrite(app: &AppHandle, window: &WebviewWindow, id: EditorId, file: &Path) -> bool {
+    let state = app.state::<AppState>();
+    let confirmed = state
+        .editors
+        .lock()
+        .unwrap()
+        .open
+        .get(&id)
+        .is_some_and(|e| e.overwrite_confirmed);
+    if confirmed || !state.settings.read().unwrap().editor.confirm_overwrite {
+        return true;
+    }
+    const SAVE: &str = "Save";
+    const ALWAYS: &str = "Save, don't ask again";
+    let result = window
+        .dialog()
+        .message(format!(
+            "Saving replaces {} with the edited image. The markup becomes part of the picture for good.",
+            file_name(file)
+        ))
+        .title("Save over the original?")
+        .kind(MessageDialogKind::Warning)
+        .parent(window)
+        .buttons(MessageDialogButtons::YesNoCancelCustom(
+            SAVE.into(),
+            ALWAYS.into(),
+            "Cancel".into(),
+        ))
+        .blocking_show_with_result();
+    let always = match result {
+        MessageDialogResult::Yes => false,
+        MessageDialogResult::No => true,
+        MessageDialogResult::Custom(label) if label == SAVE => false,
+        MessageDialogResult::Custom(label) if label == ALWAYS => true,
+        _ => return false,
+    };
+    if always {
+        if let Err(e) = settings::modify(app, |s| s.editor.confirm_overwrite = false) {
+            eprintln!("[editor] couldn't turn off the overwrite warning: {e}");
+        }
+    }
+    if let Some(e) = state.editors.lock().unwrap().open.get_mut(&id) {
+        e.overwrite_confirmed = true;
+    }
+    true
+}
+
+/// Save As for a file, modal to the editor: its folder and name, its format
+/// first (PNG for formats we can't write), and the others we can. The
+/// returned path always has an extension we can write.
+fn ask_file_save_path(window: &WebviewWindow, file: &Path) -> Option<PathBuf> {
+    let original = FileFormat::for_path(file);
+    let first = original.unwrap_or(FileFormat::Png);
+    let name = match original {
+        Some(_) => file_name(file),
+        None => format!(
+            "{}.png",
+            file.file_stem().unwrap_or_default().to_string_lossy()
+        ),
+    };
+    let mut dialog = window
+        .dialog()
+        .file()
+        .set_title("Save image as")
+        .set_parent(window)
+        .set_file_name(&name);
+    if let Some(dir) = file.parent().filter(|d| d.is_dir()) {
+        dialog = dialog.set_directory(dir);
+    }
+    for format in std::iter::once(first).chain(FileFormat::ALL.into_iter().filter(|f| *f != first))
+    {
+        let (label, extensions) = format.filter();
+        dialog = dialog.add_filter(label, extensions);
+    }
+    let mut path = dialog.blocking_save_file()?.into_path().ok()?;
+    if FileFormat::for_path(&path).is_none() {
+        let mut name = path.file_name().unwrap_or_default().to_os_string();
+        name.push(".");
+        name.push(first.filter().1[0]);
+        path.set_file_name(name);
+    }
+    Some(path)
 }
 
 /// Save As dialog, modal to the editor, starting in the save folder with the
@@ -511,10 +677,20 @@ fn ask_save_path(app: &AppHandle, window: &WebviewWindow) -> Option<std::path::P
 }
 
 /// "Save changes before closing?", modal to the editor.
-pub fn confirm_close(window: &WebviewWindow) -> CloseChoice {
+pub fn confirm_close(app: &AppHandle, window: &WebviewWindow) -> CloseChoice {
+    let is_file = id_from_label(window.label()).is_some_and(|id| {
+        let state = app.state::<AppState>();
+        let editors = state.editors.lock().unwrap();
+        editors.open.get(&id).is_some_and(|e| e.file.is_some())
+    });
+    let message = if is_file {
+        "This image has changes that haven't been saved."
+    } else {
+        "This screenshot has changes that haven't been copied or saved."
+    };
     let result = window
         .dialog()
-        .message("This screenshot has changes that haven't been copied or saved.")
+        .message(message)
         .title("Save before closing?")
         .kind(MessageDialogKind::Warning)
         .parent(window)

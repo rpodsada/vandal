@@ -36,7 +36,9 @@ export async function exportImage(init: EditorInit, action: ExportAction): Promi
   const outcome = result.data;
   if (outcome.kind === "copied") lastOutput.copied = doc;
   if (outcome.kind === "saved") lastOutput.saved = doc;
-  if (outcome.kind !== "cancelled") docStore.getState().markOutput(doc);
+  // A file's changes are only safe once saved; a capture's once copied or saved.
+  if (outcome.kind === "saved" || (outcome.kind === "copied" && !init.file))
+    docStore.getState().markOutput(doc);
   return outcome;
 }
 

@@ -5,6 +5,7 @@ mod commands;
 mod compose;
 mod decode;
 mod editor;
+mod encode;
 mod fonts;
 // Some of these APIs are first used by the editor (Phase 2) and window snap (Phase 4).
 #[allow(dead_code)]

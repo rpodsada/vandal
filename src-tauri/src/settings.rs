@@ -200,6 +200,8 @@ pub struct EditorSettings {
     /// New windows start with the tools' styles as last used (colors, widths,
     /// fonts...), also after a restart. Off: they start from the defaults.
     pub remember_tool_styles: bool,
+    /// Warn before the first save over an opened image file (PLAN 2D).
+    pub confirm_overwrite: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -230,6 +232,7 @@ impl Default for EditorSettings {
             show_shortcut_hints: true,
             drawing_tools_select: true,
             remember_tool_styles: true,
+            confirm_overwrite: true,
         }
     }
 }

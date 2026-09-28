@@ -97,6 +97,12 @@ export const commands = {
 	highlightsUrl: string,
 	/**  Annotations from quick edit, if it handed the capture over. */
 	markup: HandoffMarkup | null,
+	/**
+	 *  The name of the image file being edited; None for captures. Files
+	 *  ask before closing with unsaved changes instead of running the
+	 *  capture on-close actions.
+	 */
+	file: string | null,
 } | null>("editor_init"),
 	/**  Editor page painted its image; show the window. */
 	editorReady: () => __TAURI_INVOKE<void>("editor_ready"),
@@ -171,6 +177,12 @@ export type EditorInit = {
 	highlightsUrl: string,
 	/**  Annotations from quick edit, if it handed the capture over. */
 	markup: HandoffMarkup | null,
+	/**
+	 *  The name of the image file being edited; None for captures. Files
+	 *  ask before closing with unsaved changes instead of running the
+	 *  capture on-close actions.
+	 */
+	file: string | null,
 };
 
 export type EditorOnClose = {
@@ -210,6 +222,8 @@ export type EditorSettings = {
 	 *  fonts...), also after a restart. Off: they start from the defaults.
 	 */
 	rememberToolStyles?: boolean,
+	/**  Warn before the first save over an opened image file (PLAN 2D). */
+	confirmOverwrite?: boolean,
 };
 
 /**  What to do with the finished image. */

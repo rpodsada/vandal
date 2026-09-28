@@ -157,8 +157,8 @@ pub async fn editor_export(
 /// Ask whether to save unsaved changes before the editor closes.
 #[tauri::command]
 #[specta::specta]
-pub async fn editor_confirm_close(window: WebviewWindow) -> CloseChoice {
-    tauri::async_runtime::spawn_blocking(move || editor::confirm_close(&window))
+pub async fn editor_confirm_close(app: AppHandle, window: WebviewWindow) -> CloseChoice {
+    tauri::async_runtime::spawn_blocking(move || editor::confirm_close(&app, &window))
         .await
         .unwrap_or(CloseChoice::Cancel)
 }
