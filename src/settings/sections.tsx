@@ -13,8 +13,25 @@ export const sections: Section[] = [
     id: "general",
     title: "General",
     icon: GeneralIcon,
-    description: "How the app starts, its notifications and its tray menu.",
+    description: "How the app looks and starts, its notifications and its tray menu.",
     groups: [
+      {
+        title: "Appearance",
+        items: [
+          {
+            id: "theme",
+            kind: "choice",
+            path: "appearance.theme",
+            label: "Theme",
+            options: [
+              { value: "system", label: "Follow Windows" },
+              { value: "light", label: "Light" },
+              { value: "dark", label: "Dark" },
+            ],
+            keywords: ["dark mode", "light mode", "color", "theme", "appearance", "night"],
+          },
+        ],
+      },
       {
         title: "Startup",
         items: [

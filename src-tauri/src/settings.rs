@@ -33,6 +33,8 @@ pub struct Settings {
     pub overlay: OverlaySettings,
     pub quick_edit: QuickEditSettings,
     pub editor: EditorSettings,
+    /// How the app looks (PLAN 3A).
+    pub appearance: Appearance,
     /// Style pickers for the markup tools.
     pub styles: Styles,
     pub startup: Startup,
@@ -50,12 +52,29 @@ impl Default for Settings {
             overlay: OverlaySettings::default(),
             quick_edit: QuickEditSettings::default(),
             editor: EditorSettings::default(),
+            appearance: Appearance::default(),
             styles: Styles::default(),
             startup: Startup::default(),
             history: History::default(),
             tray: TraySettings::default(),
         }
     }
+}
+
+/// Light, dark, or following Windows.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ThemeMode {
+    #[default]
+    System,
+    Light,
+    Dark,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Type)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Appearance {
+    pub theme: ThemeMode,
 }
 
 /// Human-readable accelerators, e.g. `"Win+Shift+F12"`. `None` = unassigned.
@@ -182,7 +201,6 @@ pub struct EditorSettings {
     #[specta(type = Vec<specta_typescript::Unknown>)]
     pub tool_presets: Vec<Value>,
     pub default_tool: String,
-    pub theme: String,
     /// Show an "Edit" button on capture notifications. Clicking the
     /// notification itself opens the editor either way.
     pub notification_edit_button: bool,
@@ -225,7 +243,6 @@ impl Default for EditorSettings {
         Self {
             tool_presets: Vec::new(),
             default_tool: "arrow".into(),
-            theme: "system".into(),
             notification_edit_button: true,
             on_close: EditorOnClose::default(),
             share_color: false,
@@ -322,6 +339,9 @@ pub fn update(app: &AppHandle<Wry>, new: Settings) -> Result<Settings, String> {
             .lock()
             .unwrap()
             .set_capacity(new.history.keep_frames_in_memory as usize);
+    }
+    if old.appearance.theme != new.appearance.theme {
+        crate::appearance::apply(app, new.appearance.theme);
     }
     crate::tray::refresh(app, &new);
 

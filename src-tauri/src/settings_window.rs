@@ -19,7 +19,9 @@ pub fn open(app: &AppHandle) {
     // on Windows, so build it elsewhere.
     let app = app.clone();
     std::thread::spawn(move || {
-        let built = WebviewWindowBuilder::new(&app, LABEL, WebviewUrl::App("settings.html".into()))
+        let builder =
+            WebviewWindowBuilder::new(&app, LABEL, WebviewUrl::App("settings.html".into()));
+        let built = crate::appearance::themed(&app, builder)
             .title(format!("{} Settings", crate::product_name(&app)))
             .inner_size(920.0, 680.0)
             .min_inner_size(640.0, 460.0)

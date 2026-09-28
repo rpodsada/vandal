@@ -202,13 +202,7 @@
 }
 
 .noticeError {
-  color: #c42b1c;
-}
-
-@media (prefers-color-scheme: dark) {
-  .noticeError {
-    color: #ff99a4;
-  }
+  color: var(--error-text);
 }
 
 .linkButton {

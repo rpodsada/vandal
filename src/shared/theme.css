@@ -1,7 +1,9 @@
-/* Design tokens shared by all windows. Light by default, dark via the OS
-   setting. Values follow Windows 11's Fluent palette. */
+/* Design tokens shared by all windows: light, dark, or following Windows
+   (Settings › General › Appearance). Values follow Windows 11's Fluent palette. */
 
 :root {
+  /* Follow Windows unless the setting says otherwise (data-theme, see
+     src/shared/appearance.ts). Every color token is light-dark(light, dark). */
   color-scheme: light dark;
   font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   font-size: 14px;
@@ -10,65 +12,43 @@
   /* Fixed accent for the capture overlay (drawn over arbitrary screenshots). */
   --overlay-accent: #4c8dff;
 
-  --accent: #1f6fe5;
-  --on-accent: #fff;
-  --focus: #1b1b1b;
+  --accent: light-dark(#1f6fe5, #6aa7ff);
+  --on-accent: light-dark(#fff, #0b1a33);
+  --focus: light-dark(#1b1b1b, #fff);
 
-  --bg: #f3f3f3;
+  --bg: light-dark(#f3f3f3, #202020);
   --bg-nav: var(--bg);
-  --surface: #fbfbfb;
+  --surface: light-dark(#fbfbfb, #2b2b2b);
   /* Editor backdrop around the image. */
-  --canvas: #e4e4e4;
-  --border: rgb(0 0 0 / 0.07);
-  --hover: rgb(0 0 0 / 0.04);
-  --selected: rgb(0 0 0 / 0.06);
+  --canvas: light-dark(#e4e4e4, #171717);
+  --border: light-dark(rgb(0 0 0 / 0.07), rgb(255 255 255 / 0.06));
+  --hover: light-dark(rgb(0 0 0 / 0.04), rgb(255 255 255 / 0.05));
+  --selected: light-dark(rgb(0 0 0 / 0.06), rgb(255 255 255 / 0.07));
 
-  --text: #1b1b1b;
-  --text-2: #5d5d5d;
-  --text-3: #c4c4c4;
+  --text: light-dark(#1b1b1b, #fff);
+  --text-2: light-dark(#5d5d5d, #c5c5c5);
+  --text-3: light-dark(#c4c4c4, #5a5a5a);
 
-  --control-bg: #fff;
-  --control-bg-hover: #f9f9f9;
-  --control-bg-focus: #fff;
-  --control-border: rgb(0 0 0 / 0.14);
-  --button-bg: #fbfbfb;
-  --button-bg-hover: #f6f6f6;
-  --button-bg-active: #f0f0f0;
-  --thumb-ring: #fff;
+  --control-bg: light-dark(#fff, rgb(255 255 255 / 0.06));
+  --control-bg-hover: light-dark(#f9f9f9, rgb(255 255 255 / 0.08));
+  --control-bg-focus: light-dark(#fff, #1f1f1f);
+  --control-border: light-dark(rgb(0 0 0 / 0.14), rgb(255 255 255 / 0.1));
+  --button-bg: light-dark(#fbfbfb, rgb(255 255 255 / 0.06));
+  --button-bg-hover: light-dark(#f6f6f6, rgb(255 255 255 / 0.09));
+  --button-bg-active: light-dark(#f0f0f0, rgb(255 255 255 / 0.04));
+  --thumb-ring: light-dark(#fff, #454545);
 
-  --error-bg: #fde7e9;
-  --error-border: rgb(196 43 28 / 0.25);
+  --error-bg: light-dark(#fde7e9, #442726);
+  --error-text: light-dark(#c42b1c, #ff99a4);
+  --error-border: light-dark(rgb(196 43 28 / 0.25), rgb(255 153 164 / 0.25));
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --accent: #6aa7ff;
-    --on-accent: #0b1a33;
-    --focus: #fff;
+:root[data-theme="light"] {
+  color-scheme: light;
+}
 
-    --bg: #202020;
-    --surface: #2b2b2b;
-    --canvas: #171717;
-    --border: rgb(255 255 255 / 0.06);
-    --hover: rgb(255 255 255 / 0.05);
-    --selected: rgb(255 255 255 / 0.07);
-
-    --text: #fff;
-    --text-2: #c5c5c5;
-    --text-3: #5a5a5a;
-
-    --control-bg: rgb(255 255 255 / 0.06);
-    --control-bg-hover: rgb(255 255 255 / 0.08);
-    --control-bg-focus: #1f1f1f;
-    --control-border: rgb(255 255 255 / 0.1);
-    --button-bg: rgb(255 255 255 / 0.06);
-    --button-bg-hover: rgb(255 255 255 / 0.09);
-    --button-bg-active: rgb(255 255 255 / 0.04);
-    --thumb-ring: #454545;
-
-    --error-bg: #442726;
-    --error-border: rgb(255 153 164 / 0.25);
-  }
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 html,

@@ -31,21 +31,23 @@ pub fn create_pool(app: &AppHandle, monitors: &[MonitorInfo]) -> tauri::Result<(
 }
 
 fn create(app: &AppHandle, m: &MonitorInfo) -> tauri::Result<()> {
-    let window = tauri::WebviewWindowBuilder::new(
+    let builder = tauri::WebviewWindowBuilder::new(
         app,
         label(m.index),
         WebviewUrl::App("overlay.html".into()),
-    )
-    .title("capture-app overlay")
-    .decorations(false)
-    .resizable(false)
-    .shadow(false)
-    .skip_taskbar(true)
-    .always_on_top(true)
-    .visible(false)
-    .focused(false)
-    .background_color(Color(0, 0, 0, 255))
-    .build()?;
+    );
+    // Quick edit's toolbar card follows the theme.
+    let window = crate::appearance::themed(app, builder)
+        .title("capture-app overlay")
+        .decorations(false)
+        .resizable(false)
+        .shadow(false)
+        .skip_taskbar(true)
+        .always_on_top(true)
+        .visible(false)
+        .focused(false)
+        .background_color(Color(0, 0, 0, 255))
+        .build()?;
     place(&window, m.physical_bounds)
 }
 

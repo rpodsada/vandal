@@ -153,6 +153,10 @@ export type AfterCapture = {
 	autoSave?: boolean,
 };
 
+export type Appearance = {
+	theme?: ThemeMode,
+};
+
 /**  What the user chose on the overlay. */
 export type CaptureTarget = 
 /**  Virtual-desktop physical pixels. */
@@ -194,7 +198,6 @@ export type EditorSettings = {
 	/**  Shape defined in Phase 3. */
 	toolPresets?: unknown[],
 	defaultTool?: string,
-	theme?: string,
 	/**
 	 *  Show an "Edit" button on capture notifications. Clicking the
 	 *  notification itself opens the editor either way.
@@ -427,6 +430,8 @@ export type Settings = {
 	overlay?: OverlaySettings,
 	quickEdit?: QuickEditSettings,
 	editor?: EditorSettings,
+	/**  How the app looks (PLAN 3A). */
+	appearance?: Appearance,
 	/**  Style pickers for the markup tools. */
 	styles?: Styles,
 	startup?: Startup,
@@ -453,6 +458,9 @@ export type Styles = {
 	/**  Per-tool overrides, keyed by tool id (`"highlighter"`, ...). */
 	tools?: { [key in string]: ToolStyles },
 };
+
+/**  Light, dark, or following Windows. */
+export type ThemeMode = "system" | "light" | "dark";
 
 /**  A tool's own palette and/or width picker, used instead of the global ones. */
 export type ToolStyles = {

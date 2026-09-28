@@ -620,14 +620,8 @@
 }
 
 .colorError {
-  color: #c42b1c;
+  color: var(--error-text);
   font-size: 12px;
-}
-
-@media (prefers-color-scheme: dark) {
-  .colorError {
-    color: #ff99a4;
-  }
 }
 
 .colorActions {

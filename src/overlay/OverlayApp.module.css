@@ -287,13 +287,7 @@
 }
 
 .quickNoticeError {
-  color: #c42b1c;
-}
-
-@media (prefers-color-scheme: dark) {
-  .quickNoticeError {
-    color: #ff99a4;
-  }
+  color: var(--error-text);
 }
 
 /* ---- quick edit: selection grips above the markup ---- */

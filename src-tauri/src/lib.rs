@@ -1,3 +1,4 @@
+mod appearance;
 mod bench;
 mod capture;
 mod cli;

@@ -363,12 +363,14 @@ fn open(
     // on Windows, so build it elsewhere.
     let app = app.clone();
     std::thread::spawn(move || {
-        let built =
-            WebviewWindowBuilder::new(&app, label(id), WebviewUrl::App("editor.html".into()))
-                .title(title)
-                .min_inner_size(MIN_SIZE.0, MIN_SIZE.1)
-                .visible(false)
-                .build();
+        let built = crate::appearance::themed(
+            &app,
+            WebviewWindowBuilder::new(&app, label(id), WebviewUrl::App("editor.html".into())),
+        )
+        .title(title)
+        .min_inner_size(MIN_SIZE.0, MIN_SIZE.1)
+        .visible(false)
+        .build();
         let window = match built {
             Ok(w) => w,
             Err(e) => {
