@@ -293,6 +293,31 @@ export const sections: Section[] = [
           },
         ],
       },
+      {
+        title: "Line width",
+        items: [
+          {
+            id: "styles-width",
+            kind: "numberPicker",
+            path: "styles.width",
+            label: "Width choices",
+            description:
+              "The widths the drawing tools offer, in pixels. Keys 1–9 and 0 pick them while you draw.",
+            unit: "px",
+            lines: true,
+            keywords: [
+              "line",
+              "width",
+              "thickness",
+              "stroke",
+              "size",
+              "picker",
+              "slider",
+              "buttons",
+            ],
+          },
+        ],
+      },
     ],
   },
   {

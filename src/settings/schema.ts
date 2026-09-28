@@ -49,13 +49,32 @@ export interface SliderItem extends BaseItem {
   format?: (value: number) => string;
 }
 
+/** One of a fixed set of strings: joined buttons (default) or a dropdown. */
+export interface ChoiceItem extends BaseItem {
+  kind: "choice";
+  path: PathOf<Settings, string>;
+  options: readonly { value: string; label: string }[];
+  control?: "segmented" | "select";
+}
+
+/** A number picker spec (PLAN 2C): its control type and values. */
+export interface NumberPickerItem extends BaseItem {
+  kind: "numberPicker";
+  /** Picker specs are objects, so these aren't typed leaf paths. */
+  path: "styles.width" | "styles.fontSize";
+  unit: "px" | "pt";
+  /** Preview the values as lines of that thickness. */
+  lines?: boolean;
+}
+
 /** Read-only value, for things not editable yet or informational. */
 export interface InfoItem extends BaseItem {
   kind: "info";
   value: (s: Settings) => string;
 }
 
-export type Item = ToggleItem | TextItem | FolderItem | SliderItem | InfoItem;
+export type Item =
+  ToggleItem | TextItem | FolderItem | SliderItem | ChoiceItem | NumberPickerItem | InfoItem;
 export type ItemKind = Item["kind"];
 
 export interface Group {

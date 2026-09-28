@@ -2,8 +2,10 @@
 // schema.ts without registering it here is a type error.
 import type { ComponentType } from "react";
 import type { Item, ItemKind } from "../schema";
+import { Choice } from "./Choice";
 import { FolderInput } from "./FolderInput";
 import { Info } from "./Info";
+import { NumberPickerSetting } from "./NumberPickerEditor";
 import { Slider } from "./Slider";
 import { TextInput } from "./TextInput";
 import { Toggle } from "./Toggle";
@@ -27,6 +29,8 @@ export const controls: Registry = {
   toggle: { component: Toggle, layout: "inline" },
   slider: { component: Slider, layout: "inline" },
   info: { component: Info, layout: "inline" },
+  choice: { component: Choice, layout: "inline" },
+  numberPicker: { component: NumberPickerSetting, layout: "stacked" },
   text: { component: TextInput, layout: "stacked" },
   folder: { component: FolderInput, layout: "stacked" },
 };
