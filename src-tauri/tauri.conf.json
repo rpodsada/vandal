@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "capture-app",
+  "productName": "Vandal",
   "version": "../package.json",
-  "identifier": "com.captureapp.desktop",
+  "identifier": "com.vandal.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -36,7 +36,9 @@
       "nsis": {
         "installMode": "currentUser",
         "installerHooks": "./windows/hooks.nsh",
-        "installerIcon": "icons/icon.ico"
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "./windows/nsis-header.bmp",
+        "sidebarImage": "./windows/nsis-sidebar.bmp"
       }
     }
   }

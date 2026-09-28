@@ -38,7 +38,7 @@ fn create(app: &AppHandle, m: &MonitorInfo) -> tauri::Result<()> {
     );
     // Quick edit's toolbar card follows the theme.
     let window = crate::appearance::themed(app, builder)
-        .title("capture-app overlay")
+        .title("Vandal overlay")
         .decorations(false)
         .resizable(false)
         .shadow(false)

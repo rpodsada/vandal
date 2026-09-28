@@ -103,8 +103,8 @@ fn export_bindings() {
         .expect("failed to export TS bindings");
 }
 
-/// User-facing app name (`productName`), e.g. "capture-app" or, for dev
-/// builds, "capture-app-dev".
+/// User-facing app name (`productName`), e.g. "Vandal" or, for dev
+/// builds, "Vandal Dev".
 pub(crate) fn product_name(app: &tauri::AppHandle) -> String {
     app.config()
         .product_name

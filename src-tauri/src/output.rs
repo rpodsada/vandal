@@ -323,7 +323,7 @@ pub fn write_png(image: &RgbaImage, path: &Path) -> Result<(), String> {
 
 /// A temp copy for the toast thumbnail when the capture wasn't saved.
 fn write_preview(image: &RgbaImage) -> Result<PathBuf, String> {
-    let dir = std::env::temp_dir().join("capture-app");
+    let dir = std::env::temp_dir().join("vandal");
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join("last-capture.png");
     write_png(image, &path)?;
@@ -529,7 +529,7 @@ mod tests {
             height: 1,
             rgba: vec![255, 0, 0, 255, 0, 0, 255, 128],
         };
-        let dir = std::env::temp_dir().join("capture-app-test");
+        let dir = std::env::temp_dir().join("vandal-test");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("rt.png");
         write_png(&image, &path).unwrap();

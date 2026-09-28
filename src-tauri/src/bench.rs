@@ -119,7 +119,7 @@ fn ms(d: Duration) -> f64 {
 type Alignment = (TransferFormat, u32, (usize, usize, Option<(u32, u32)>));
 
 fn print_summary(records: &[PerfRecord], alignment: &[Alignment]) {
-    println!("\n==== capture-app bench ({} runs) ====", records.len());
+    println!("\n==== Vandal bench ({} runs) ====", records.len());
     for format in [TransferFormat::Rgba, TransferFormat::Bmp] {
         let rs: Vec<&PerfRecord> = records.iter().filter(|r| r.format == format).collect();
         if rs.is_empty() {

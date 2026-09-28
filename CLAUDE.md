@@ -1,4 +1,4 @@
-# capture-app
+# Vandal
 
 Tray-resident Windows screen capture + markup tool. Tauri 2 (Rust) + React/TS (Vite).
 **Read `docs/PLAN.md` before starting work** (its Status section says where we are). Work only on the
@@ -55,8 +55,8 @@ Run Node tooling from PowerShell. Git Bash on this machine has an old nvm Node 1
 - Hotkeys (defaults): `Win+F12` region, `Win+Shift+F12` full screen. Overlay keys: Enter/double-click
   confirm, F this screen, A all screens, arrows nudge, Ctrl+arrows resize from the bottom-right (Shift = 10px),
   Esc/right-click cancel.
-- Settings files: `%APPDATA%\com.captureapp.desktop\settings.json` (installed) and
-  `%APPDATA%\com.captureapp.desktop.dev\` (dev builds). `capture-app --settings` opens Settings.
+- Settings files: `%APPDATA%\com.vandal.desktop\settings.json` (installed) and
+  `%APPDATA%\com.vandal.desktop.dev\` (dev builds). `vandal --settings` opens Settings.
 - Dev builds use Ctrl-prefixed hotkeys (`Ctrl+Win+F12`...) so they don't clash with an installed copy.
 - Synthetic-input testing from PowerShell: pass coordinates as `[int]` params. A bare `-100`
   command argument is a _string_, and `"-100" + 10` concatenates. Send arrow keys with
@@ -64,7 +64,7 @@ Run Node tooling from PowerShell. Git Bash on this machine has an old nvm Node 1
   Pass real scan codes too (e.g. `keybd_event(0x57, 0x11, ...)` for W): with scan code 0 the
   webview sees an empty `KeyboardEvent.code`, and our shortcuts match on `code`.
 - Benchmark + pixel-alignment check: `npm run tauri build -- --no-bundle`, then
-  `CAPTURE_BENCH=10 src-tauri/target/release/capture-app.exe`. Record results in `docs/perf.md`.
+  `CAPTURE_BENCH=10 src-tauri/target/release/vandal.exe`. Record results in `docs/perf.md`.
 - `CAPTURE_TRANSFER=bmp` switches the overlay transfer format.
 - Rust unit tests must stay on pure modules. Test binaries that link the Tauri runtime crash on
   Windows (see the PLAN decisions log).

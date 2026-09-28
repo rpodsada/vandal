@@ -126,11 +126,35 @@ pub fn create(app: &AppHandle, s: &Settings) -> tauri::Result<()> {
                 session::start_region(tray.app_handle());
             }
         });
-    if let Some(icon) = app.default_window_icon() {
-        builder = builder.icon(icon.clone());
-    }
+    builder = builder.icon(tray_icon()?);
     builder.build(app)?;
     Ok(())
+}
+
+/// Tray art pre-scaled to each small-icon size Windows uses (16px at 100%
+/// scaling up to 48px at 300%), so the shell never has to shrink it itself.
+const TRAY_ICONS: [(i32, &[u8]); 7] = [
+    (16, include_bytes!("../icons/tray/16.png")),
+    (20, include_bytes!("../icons/tray/20.png")),
+    (24, include_bytes!("../icons/tray/24.png")),
+    (28, include_bytes!("../icons/tray/28.png")),
+    (32, include_bytes!("../icons/tray/32.png")),
+    (40, include_bytes!("../icons/tray/40.png")),
+    (48, include_bytes!("../icons/tray/48.png")),
+];
+
+/// The tray art for the system DPI: the smallest size at least as big as the
+/// shell's small icon, or the largest we have.
+fn tray_icon() -> tauri::Result<tauri::image::Image<'static>> {
+    use windows::Win32::UI::HiDpi::{GetDpiForSystem, GetSystemMetricsForDpi};
+    use windows::Win32::UI::WindowsAndMessaging::SM_CXSMICON;
+
+    let want = unsafe { GetSystemMetricsForDpi(SM_CXSMICON, GetDpiForSystem()) };
+    let (_, bytes) = TRAY_ICONS
+        .iter()
+        .find(|(size, _)| *size >= want)
+        .unwrap_or(&TRAY_ICONS[TRAY_ICONS.len() - 1]);
+    tauri::image::Image::from_bytes(bytes)
 }
 
 /// Rebuild the menu and tooltip from `s`.

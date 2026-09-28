@@ -1,12 +1,12 @@
 ; Installer hooks (Tauri `bundle.windows.nsis.installerHooks`).
 ;
-; "Open with" for image files (PLAN 2D): capture-app is offered for these types
+; "Open with" for image files (PLAN 2D): Vandal is offered for these types
 ; (Explorer's Open with menu and list) but never made their default app.
 ; Tauri's own `fileAssociations` sets the extension's default class, which can
 ; take over types the user never explicitly assigned, so we register only
 ; OpenWithProgids and the Applications entry. Uninstall removes it all.
 
-!define CAPTURE_PROGID "CaptureApp.Image"
+!define CAPTURE_PROGID "Vandal.Image"
 
 !macro CAPTURE_OPEN_WITH EXT
   WriteRegStr SHCTX "Software\Classes\.${EXT}\OpenWithProgids" "${CAPTURE_PROGID}" ""

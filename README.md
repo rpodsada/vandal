@@ -1,4 +1,4 @@
-# capture-app
+# Vandal
 
 Tray-resident screen capture and markup tool for Windows. See [docs/PLAN.md](docs/PLAN.md).
 

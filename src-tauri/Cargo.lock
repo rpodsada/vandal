@@ -427,29 +427,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "capture-app"
-version = "0.2.0"
-dependencies = [
- "arboard",
- "png 0.18.1",
- "serde",
- "serde_json",
- "specta",
- "specta-typescript",
- "tauri",
- "tauri-build",
- "tauri-plugin-autostart",
- "tauri-plugin-dialog",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-single-instance",
- "tauri-plugin-store",
- "tauri-specta",
- "tauri-winrt-notification",
- "webview2-com",
- "windows",
-]
-
-[[package]]
 name = "cargo-platform"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4479,6 +4456,29 @@ dependencies = [
  "js-sys",
  "serde_core",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "vandal"
+version = "0.2.0"
+dependencies = [
+ "arboard",
+ "png 0.18.1",
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-autostart",
+ "tauri-plugin-dialog",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-single-instance",
+ "tauri-plugin-store",
+ "tauri-specta",
+ "tauri-winrt-notification",
+ "webview2-com",
+ "windows",
 ]
 
 [[package]]
