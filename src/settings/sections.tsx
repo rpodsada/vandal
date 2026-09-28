@@ -1,7 +1,11 @@
 // Every setting in the settings window, declared as data. See schema.ts.
+//
+// Pages follow the capture flow (PLAN §4.7): General (the app itself),
+// Capture (taking the shot), Copy & save (where the image goes), Markup (tools
+// and styles, shared by quick edit and the editor), About.
 import pkg from "../../package.json";
 import { commands } from "../shared/ipc";
-import { AboutIcon, CaptureIcon, EditorIcon, GeneralIcon, SaveIcon } from "./icons";
+import { AboutIcon, CaptureIcon, GeneralIcon, MarkupIcon, SaveIcon } from "./icons";
 import type { Section } from "./schema";
 
 export const sections: Section[] = [
@@ -9,6 +13,7 @@ export const sections: Section[] = [
     id: "general",
     title: "General",
     icon: GeneralIcon,
+    description: "How the app starts, its notifications and its tray menu.",
     groups: [
       {
         title: "Startup",
@@ -23,13 +28,70 @@ export const sections: Section[] = [
           },
         ],
       },
+      {
+        title: "Notifications",
+        items: [
+          {
+            id: "notification-save-button",
+            kind: "toggle",
+            path: "save.notificationSaveButton",
+            label: "Save button on notifications",
+            description:
+              "When a capture isn't saved automatically, save it from the notification with one click.",
+            keywords: ["toast", "popup"],
+          },
+          {
+            id: "notification-edit-button",
+            kind: "toggle",
+            path: "editor.notificationEditButton",
+            label: "Edit button on notifications",
+            description:
+              "Open a capture in the editor from its notification. Clicking the notification itself does this too.",
+            keywords: ["toast", "popup", "editor", "markup"],
+          },
+        ],
+      },
+      {
+        title: "Tray menu",
+        items: [
+          {
+            id: "tray-auto-save-toggle",
+            kind: "toggle",
+            path: "tray.showAutoSaveToggle",
+            label: "Auto-save switch in the tray menu",
+            description: "Turn automatic saving on or off from the tray icon's menu.",
+            keywords: ["tray", "menu", "auto-save", "autosave"],
+          },
+        ],
+      },
     ],
   },
   {
     id: "capture",
     title: "Capture",
     icon: CaptureIcon,
+    description: "Taking a screenshot: shortcuts, the selection screen and quick edit.",
     groups: [
+      {
+        title: "Keyboard shortcuts",
+        description: "Changing shortcuts is coming in a later update.",
+        items: [
+          {
+            id: "hotkey-region",
+            kind: "info",
+            label: "Capture a region",
+            value: (s) => s.hotkeys.region ?? "Not set",
+            keywords: ["hotkey", "shortcut"],
+          },
+          {
+            id: "hotkey-fullscreen",
+            kind: "info",
+            label: "Capture the full screen",
+            value: (s) => s.hotkeys.fullscreen ?? "Not set",
+            keywords: ["hotkey", "shortcut", "all monitors"],
+          },
+        ],
+      },
       {
         title: "Selection screen",
         items: [
@@ -87,35 +149,17 @@ export const sections: Section[] = [
           },
         ],
       },
-      {
-        title: "Keyboard shortcuts",
-        description: "Changing shortcuts is coming in a later update.",
-        items: [
-          {
-            id: "hotkey-region",
-            kind: "info",
-            label: "Capture a region",
-            value: (s) => s.hotkeys.region ?? "Not set",
-            keywords: ["hotkey", "shortcut"],
-          },
-          {
-            id: "hotkey-fullscreen",
-            kind: "info",
-            label: "Capture the full screen",
-            value: (s) => s.hotkeys.fullscreen ?? "Not set",
-            keywords: ["hotkey", "shortcut", "all monitors"],
-          },
-        ],
-      },
     ],
   },
   {
-    id: "saving",
-    title: "Saving",
+    id: "copy-save",
+    title: "Copy & save",
     icon: SaveIcon,
+    description:
+      "What happens to your image after a capture or when you close the editor, and where files go.",
     groups: [
       {
-        title: "After you capture",
+        title: "After a capture",
         items: [
           {
             id: "copy-to-clipboard",
@@ -144,6 +188,28 @@ export const sections: Section[] = [
         ],
       },
       {
+        title: "When you close the editor",
+        description: "Skipped if you already copied or saved since your last change.",
+        items: [
+          {
+            id: "editor-close-copy",
+            kind: "toggle",
+            path: "editor.onClose.copy",
+            label: "Copy to clipboard",
+            keywords: ["close", "exit", "paste", "editor"],
+          },
+          {
+            id: "editor-close-save",
+            kind: "toggle",
+            path: "editor.onClose.save",
+            label: "Save to a file",
+            description:
+              "Uses the folder and file name below. With neither option on, you're asked before unsaved changes are lost.",
+            keywords: ["close", "exit", "auto-save", "autosave", "editor"],
+          },
+        ],
+      },
+      {
         title: "Where to save",
         items: [
           {
@@ -165,67 +231,7 @@ export const sections: Section[] = [
         ],
       },
       {
-        title: "Quick access",
-        items: [
-          {
-            id: "notification-save-button",
-            kind: "toggle",
-            path: "save.notificationSaveButton",
-            label: "Save button on notifications",
-            description:
-              "When a capture isn't saved automatically, save it from the notification with one click.",
-            keywords: ["toast", "popup"],
-          },
-          {
-            id: "notification-edit-button",
-            kind: "toggle",
-            path: "editor.notificationEditButton",
-            label: "Edit button on notifications",
-            description:
-              "Open a capture in the editor from its notification. Clicking the notification itself does this too.",
-            keywords: ["toast", "popup", "editor", "markup"],
-          },
-          {
-            id: "tray-auto-save-toggle",
-            kind: "toggle",
-            path: "tray.showAutoSaveToggle",
-            label: "Auto-save switch in the tray menu",
-            description: "Turn automatic saving on or off from the tray icon's menu.",
-            keywords: ["tray", "menu", "auto-save", "autosave"],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "editor",
-    title: "Editor",
-    icon: EditorIcon,
-    groups: [
-      {
-        title: "When you close the editor",
-        description: "Skipped if you already copied or saved since your last change.",
-        items: [
-          {
-            id: "editor-close-copy",
-            kind: "toggle",
-            path: "editor.onClose.copy",
-            label: "Copy to clipboard",
-            keywords: ["close", "exit", "paste"],
-          },
-          {
-            id: "editor-close-save",
-            kind: "toggle",
-            path: "editor.onClose.save",
-            label: "Save to a file",
-            description:
-              "Uses the folder and file name from Saving. With neither option on, you're asked before unsaved changes are lost.",
-            keywords: ["close", "exit", "auto-save", "autosave"],
-          },
-        ],
-      },
-      {
-        title: "Image files",
+        title: "Opened images",
         items: [
           {
             id: "editor-confirm-overwrite",
@@ -238,8 +244,16 @@ export const sections: Section[] = [
           },
         ],
       },
+    ],
+  },
+  {
+    id: "markup",
+    title: "Markup",
+    icon: MarkupIcon,
+    description: "Tools and styles for quick edit and the editor.",
+    groups: [
       {
-        title: "Drawing",
+        title: "Behavior",
         items: [
           {
             id: "editor-drawing-tools-select",

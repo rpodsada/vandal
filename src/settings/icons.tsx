@@ -40,7 +40,7 @@ export function SaveIcon() {
   );
 }
 
-export function EditorIcon() {
+export function MarkupIcon() {
   return (
     <svg {...props}>
       <path d="M3 13l2.6-.6 7-7-2-2-7 7z" />
