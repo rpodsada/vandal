@@ -291,6 +291,15 @@ export const sections: Section[] = [
               "font",
             ],
           },
+          {
+            id: "editor-shortcut-hints",
+            kind: "toggle",
+            path: "editor.showShortcutHints",
+            label: "Show shortcut hints on the pickers",
+            description:
+              "Slot numbers on the widths, sizes, colors and fonts while you hold a number key, Ctrl or Alt, and the keys in their tooltips. The shortcuts work either way.",
+            keywords: ["shortcut", "hint", "badge", "number", "keyboard", "tooltip", "digit"],
+          },
         ],
       },
       {
