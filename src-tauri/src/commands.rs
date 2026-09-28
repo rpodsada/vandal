@@ -74,6 +74,28 @@ pub async fn quick_done(
     session::quick_done(&app, capture_id, rect, markup)
 }
 
+/// Settings is recording a new shortcut: pause ours, so pressing one is
+/// recorded instead of starting a capture.
+#[tauri::command]
+#[specta::specta]
+pub fn hotkeys_pause(app: AppHandle) {
+    crate::hotkeys::pause(&app);
+}
+
+/// Recording finished: our shortcuts again, as settings have them now.
+#[tauri::command]
+#[specta::specta]
+pub fn hotkeys_resume(app: AppHandle) {
+    crate::hotkeys::resume(&app);
+}
+
+/// The default settings, for "Reset" buttons.
+#[tauri::command]
+#[specta::specta]
+pub fn default_settings() -> crate::settings::Settings {
+    crate::settings::Settings::default()
+}
+
 /// The Windows accent color, for the accent setting's "Windows" choice.
 #[tauri::command]
 #[specta::specta]

@@ -12,6 +12,7 @@ function isBrowserShortcut(e: KeyboardEvent): boolean {
   switch (e.code) {
     case "F5":
     case "F3":
+    case "F7": // caret browsing: its prompt blocks the page until answered
     case "BrowserBack":
     case "BrowserForward":
     case "BrowserRefresh":

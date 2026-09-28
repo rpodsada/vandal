@@ -48,6 +48,7 @@ fn create(app: &AppHandle, m: &MonitorInfo) -> tauri::Result<()> {
         .focused(false)
         .background_color(Color(0, 0, 0, 255))
         .build()?;
+    crate::browser_keys::disable(&window);
     place(&window, m.physical_bounds)
 }
 

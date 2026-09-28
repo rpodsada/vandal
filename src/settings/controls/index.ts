@@ -5,6 +5,7 @@ import type { Item, ItemKind } from "../schema";
 import { AccentPicker } from "./AccentPicker";
 import { Choice } from "./Choice";
 import { FolderInput } from "./FolderInput";
+import { HotkeyField } from "./HotkeyField";
 import { FontPickerSetting } from "./FontPickerEditor";
 import { Info } from "./Info";
 import { NumberPickerSetting } from "./NumberPickerEditor";
@@ -39,6 +40,7 @@ export const controls: Registry = {
   toolStyle: { component: ToolStyleSetting, layout: "stacked" },
   fontPicker: { component: FontPickerSetting, layout: "stacked" },
   accent: { component: AccentPicker, layout: "stacked" },
+  hotkey: { component: HotkeyField, layout: "stacked" },
   text: { component: TextInput, layout: "stacked" },
   folder: { component: FolderInput, layout: "stacked" },
 };

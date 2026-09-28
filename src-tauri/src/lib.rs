@@ -1,5 +1,6 @@
 mod appearance;
 mod bench;
+mod browser_keys;
 mod capture;
 mod cli;
 mod commands;
@@ -50,6 +51,9 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::quick_open_editor,
             commands::editor_open_image,
             commands::windows_accent,
+            commands::hotkeys_pause,
+            commands::hotkeys_resume,
+            commands::default_settings,
             commands::quick_markup_changed,
             commands::quick_focus_overlay,
             commands::get_settings,

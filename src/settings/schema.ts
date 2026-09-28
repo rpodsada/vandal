@@ -93,6 +93,12 @@ export interface AccentItem extends BaseItem {
   path: PathOf<Settings, string>;
 }
 
+/** A global shortcut, recorded by pressing it (PLAN 3B). */
+export interface HotkeyItem extends BaseItem {
+  kind: "hotkey";
+  path: PathOf<Settings, string | null>;
+}
+
 /** Read-only value, for things not editable yet or informational. */
 export interface InfoItem extends BaseItem {
   kind: "info";
@@ -110,6 +116,7 @@ export type Item =
   | ToolStyleItem
   | FontPickerItem
   | AccentItem
+  | HotkeyItem
   | InfoItem;
 export type ItemKind = Item["kind"];
 

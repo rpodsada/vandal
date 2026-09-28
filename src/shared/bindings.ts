@@ -52,6 +52,15 @@ export const commands = {
 	light: string,
 	dark: string,
 } | null>("windows_accent"),
+	/**
+	 *  Settings is recording a new shortcut: pause ours, so pressing one is
+	 *  recorded instead of starting a capture.
+	 */
+	hotkeysPause: () => __TAURI_INVOKE<void>("hotkeys_pause"),
+	/**  Recording finished: our shortcuts again, as settings have them now. */
+	hotkeysResume: () => __TAURI_INVOKE<void>("hotkeys_resume"),
+	/**  The default settings, for "Reset" buttons. */
+	defaultSettings: () => __TAURI_INVOKE<Settings>("default_settings"),
 	/**  Quick edit: this overlay's selection now has markup (or no longer has). */
 	quickMarkupChanged: (captureId: number, monitorIndex: number, has: boolean) => __TAURI_INVOKE<void>("quick_markup_changed", { captureId, monitorIndex, has }),
 	/**  Quick edit: bring the overlay with the markup back to the front. */

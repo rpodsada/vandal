@@ -100,21 +100,21 @@ export const sections: Section[] = [
     groups: [
       {
         title: "Keyboard shortcuts",
-        description: "Changing shortcuts is coming in a later update.",
+        description: "They work anywhere in Windows. Click Change, then press the new shortcut.",
         items: [
           {
             id: "hotkey-region",
-            kind: "info",
+            kind: "hotkey",
+            path: "hotkeys.region",
             label: "Capture a region",
-            value: (s) => s.hotkeys.region ?? "Not set",
-            keywords: ["hotkey", "shortcut"],
+            keywords: ["hotkey", "shortcut", "keyboard", "key", "printscreen"],
           },
           {
             id: "hotkey-fullscreen",
-            kind: "info",
+            kind: "hotkey",
+            path: "hotkeys.fullscreen",
             label: "Capture the full screen",
-            value: (s) => s.hotkeys.fullscreen ?? "Not set",
-            keywords: ["hotkey", "shortcut", "all monitors"],
+            keywords: ["hotkey", "shortcut", "keyboard", "key", "all monitors", "printscreen"],
           },
         ],
       },

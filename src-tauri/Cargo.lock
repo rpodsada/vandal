@@ -445,6 +445,7 @@ dependencies = [
  "tauri-plugin-store",
  "tauri-specta",
  "tauri-winrt-notification",
+ "webview2-com",
  "windows",
 ]
 

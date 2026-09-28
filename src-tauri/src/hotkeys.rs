@@ -38,6 +38,24 @@ impl Action {
     }
 }
 
+/// Unregister our shortcuts while Settings records a new one (PLAN 3B).
+pub fn pause(app: &AppHandle) {
+    let _ = app.global_shortcut().unregister_all();
+}
+
+/// Register our shortcuts again, as settings have them now.
+pub fn resume(app: &AppHandle) {
+    use tauri::Manager;
+    let hotkeys = app
+        .state::<crate::state::AppState>()
+        .settings
+        .read()
+        .unwrap()
+        .hotkeys
+        .clone();
+    register(app, &hotkeys);
+}
+
 /// (Re)register all hotkeys. Failures are reported in one notification.
 pub fn register(app: &AppHandle, hotkeys: &Hotkeys) {
     let gs = app.global_shortcut();

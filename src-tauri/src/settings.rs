@@ -325,6 +325,13 @@ pub fn validate(mut s: Settings) -> Result<Settings, String> {
     s.overlay.dim_opacity = s.overlay.dim_opacity.clamp(0.0, 0.9);
     s.history.keep_frames_in_memory = s.history.keep_frames_in_memory.clamp(1, 20);
     s.styles = s.styles.normalized();
+    if let (Some(a), Some(b)) = (&s.hotkeys.region, &s.hotkeys.fullscreen) {
+        if a.eq_ignore_ascii_case(b) {
+            return Err(format!(
+                "{a} can't capture both a region and the full screen: pick another shortcut."
+            ));
+        }
+    }
     s.appearance.accent = crate::styles::normalize_color(&s.appearance.accent)
         .unwrap_or_else(|| WINDOWS_ACCENT.into());
     Ok(s)
@@ -602,6 +609,16 @@ mod tests {
         assert_eq!(validate(s.clone()).unwrap().appearance.accent, "#aabbcc");
         s.appearance.accent = "blue".into();
         assert_eq!(validate(s).unwrap().appearance.accent, WINDOWS_ACCENT);
+    }
+
+    #[test]
+    fn one_shortcut_cant_do_two_things() {
+        let mut s = Settings::default();
+        s.hotkeys.region = Some("Ctrl+Win+F9".into());
+        s.hotkeys.fullscreen = Some("ctrl+win+f9".into());
+        assert!(validate(s.clone()).is_err());
+        s.hotkeys.fullscreen = None;
+        assert!(validate(s).is_ok());
     }
 
     #[test]

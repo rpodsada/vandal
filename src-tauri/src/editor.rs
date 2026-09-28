@@ -372,7 +372,10 @@ fn open(
         .visible(false)
         .build();
         let window = match built {
-            Ok(w) => w,
+            Ok(w) => {
+                crate::browser_keys::disable(&w);
+                w
+            }
             Err(e) => {
                 eprintln!("[editor] window failed: {e}");
                 app.state::<AppState>()

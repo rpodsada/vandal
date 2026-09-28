@@ -599,3 +599,49 @@
 .accentGap {
   width: 6px;
 }
+
+/* ---- shortcuts ---- */
+
+.hotkeyRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.hotkeyBox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 200px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: var(--control-bg);
+  box-shadow: inset 0 0 0 1px var(--control-border);
+}
+
+.hotkeyBox[data-recording] {
+  box-shadow:
+    inset 0 0 0 1px var(--control-border),
+    inset 0 -2px 0 var(--accent);
+}
+
+.keycap {
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: var(--button-bg);
+  box-shadow:
+    inset 0 0 0 1px var(--control-border),
+    inset 0 -1px 0 var(--control-border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.hotkeyPrompt {
+  color: var(--text-2);
+  font-size: 13px;
+}
