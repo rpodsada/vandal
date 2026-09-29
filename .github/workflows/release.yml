@@ -1,0 +1,104 @@
+# Builds the Windows installer (PLAN 3C.2).
+#
+# - Push a version tag (v0.3.0-beta.1): run the checks, build, and create a
+#   *draft* GitHub release with the installer, a checksum and the CHANGELOG
+#   notes. Richard installs it, then publishes it by hand.
+# - Run it by hand (Actions > Release > Run workflow): the same checks and
+#   build, with the installer kept as a workflow artifact and no release.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      # Pinned so a new stable clippy lint can't fail a release; bump it on purpose.
+      - uses: dtolnay/rust-toolchain@1.94.0
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Check the tag matches the version and has notes
+        if: env.IS_TAG == 'true'
+        run: node scripts/release.mjs check "$TAG"
+
+      - name: Frontend checks
+        run: |
+          npm run lint
+          npm test
+          npx tsc --noEmit
+
+      # The Rust crate embeds dist/ at compile time, so build it before clippy.
+      - run: npm run build
+
+      - name: Rust checks
+        working-directory: src-tauri
+        run: |
+          cargo fmt --check
+          cargo clippy --all-targets -- -D warnings
+          cargo test
+
+      - name: Build the installer
+        run: npm run tauri build
+
+      - name: Collect the installer
+        id: installer
+        run: |
+          mkdir -p out
+          cp src-tauri/target/release/bundle/nsis/*-setup.exe out/
+          cd out
+          sha256sum *-setup.exe > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Keep the installer (manual runs)
+        if: env.IS_TAG != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: vandal-installer
+          path: out/
+          retention-days: 14
+
+      - name: Create the draft release
+        if: env.IS_TAG == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/release.mjs notes "$TAG" > release-notes.md
+          prerelease=""
+          if [[ "$TAG" == *-* ]]; then prerelease="--prerelease"; fi
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            # A re-run: replace the files on the existing draft.
+            gh release upload "$TAG" out/* --clobber
+          else
+            gh release create "$TAG" out/* --draft $prerelease --verify-tag \
+              --title "Vandal $TAG" --notes-file release-notes.md
+          fi

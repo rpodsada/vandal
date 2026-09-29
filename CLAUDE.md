@@ -66,5 +66,8 @@ Run Node tooling from PowerShell. Git Bash on this machine has an old nvm Node 1
 - Benchmark + pixel-alignment check: `npm run tauri build -- --no-bundle`, then
   `CAPTURE_BENCH=10 src-tauri/target/release/vandal.exe`. Record results in `docs/perf.md`.
 - `CAPTURE_TRANSFER=bmp` switches the overlay transfer format.
+- Releasing: `npm run release:bump -- <version>`, then tag `v<version>` and push. CI builds a draft
+  GitHub release (steps in `docs/DEVELOPMENT.md` › Releasing). Add changes under `[Unreleased]`
+  in `CHANGELOG.md` as you go.
 - Rust unit tests must stay on pure modules. Test binaries that link the Tauri runtime crash on
   Windows (see the PLAN decisions log).

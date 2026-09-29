@@ -1,0 +1,8 @@
+# Check out text files with LF everywhere, including on Windows and in CI:
+# Prettier's lint check expects LF, and core.autocrlf would give CRLF.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.icns binary
+*.bmp binary
