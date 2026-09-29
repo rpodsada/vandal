@@ -2,14 +2,14 @@
 
 Tray-resident Windows screen capture + markup tool. Tauri 2 (Rust) + React/TS (Vite).
 **Read `internal/PLAN.md` before starting work** (its Status section says where we are). Work only
-on the current phase unless asked. Current phase: **3 (polish, testing with friends)**. Plan each
-sub-phase with Richard first, then build one feature per increment, confirmed by Richard and
-committed before the next one. Warn Richard before changes that restart the dev app (Rust,
+on the current phase unless asked. Current phase: **3 (polish, private beta testing)**. Plan each
+sub-phase with the user first, then build one feature per increment, confirmed by the user and
+committed before the next one. Warn the user before changes that restart the dev app (Rust,
 `Cargo.toml`, `tauri.conf.json`): he is often using it.
 
-`internal/` holds Richard's private notes (plan, test matrix, perf log, mockups). It's a separate
+`internal/` holds our private notes (plan, test matrix, perf log, mockups). It's a separate
 private git repo and is gitignored here: commit its changes in `internal/`, never in this repo. If
-it's missing, ask Richard for it rather than working without the plan.
+it's missing, ask the user for it rather than working without the plan.
 
 ## Non-negotiables (PLAN §1)
 
