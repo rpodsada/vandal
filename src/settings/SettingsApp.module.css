@@ -102,6 +102,48 @@
   outline-offset: -2px;
 }
 
+/* The open section's groups (PLAN 3D.9). */
+.subList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 2px 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.subItem {
+  width: 100%;
+  height: 28px;
+  padding: 0 12px 0 44px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.subItem:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.subItem[aria-current="location"] {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.subItem:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
 /* ---- content ---- */
 
 .nav,
@@ -134,6 +176,8 @@
 
 .group {
   margin-bottom: 24px;
+  /* Room above a heading scrolled to from the sidebar. */
+  scroll-margin-top: 12px;
 }
 
 .groupTitle {

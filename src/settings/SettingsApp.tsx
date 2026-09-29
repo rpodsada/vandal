@@ -1,4 +1,11 @@
-import { useEffect, useState, type ComponentType } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentType,
+} from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { Settings } from "../shared/ipc";
 import { controls, type ControlProps } from "./controls";
@@ -15,6 +22,47 @@ export function SettingsApp() {
   const [activeId, setActiveId] = useState(sections[0].id);
   const [query, setQuery] = useState("");
   const loaded = settings !== null;
+  const mainRef = useRef<HTMLElement>(null);
+  /** The group scrolled to, for the sidebar's highlight. */
+  const [currentGroup, setCurrentGroup] = useState<string | null>(null);
+  /** A group picked in the sidebar, scrolled to once its section is showing. */
+  const [pendingGroup, setPendingGroup] = useState<string | null>(null);
+  /** The group just picked stays highlighted until its scroll ends. */
+  const pickedRef = useRef<string | null>(null);
+
+  // Which group the page is at: the last one whose heading has reached the
+  // top, or the last one when scrolled to the bottom.
+  const trackGroup = useCallback(() => {
+    const main = mainRef.current;
+    if (!main || pickedRef.current) return;
+    const groups = [...main.querySelectorAll<HTMLElement>("section[id]")];
+    const top = main.getBoundingClientRect().top + GROUP_REACHED;
+    const atBottom = main.scrollTop + main.clientHeight >= main.scrollHeight - 2;
+    const reached = groups.filter((g) => g.getBoundingClientRect().top <= top);
+    const current =
+      atBottom && main.scrollTop > 0 ? groups[groups.length - 1] : reached[reached.length - 1];
+    setCurrentGroup(current?.id ?? groups[0]?.id ?? null);
+  }, []);
+
+  // A new section starts at its top.
+  useLayoutEffect(() => {
+    pickedRef.current = null;
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+    trackGroup();
+    // `loaded`: the page (and its groups) first appears then.
+  }, [activeId, loaded, trackGroup]);
+
+  // A group picked in the sidebar scrolls into view.
+  useLayoutEffect(() => {
+    const main = mainRef.current;
+    const target = pendingGroup && document.getElementById(pendingGroup);
+    if (!main || !target) return;
+    pickedRef.current = pendingGroup;
+    setCurrentGroup(pendingGroup);
+    main.addEventListener("scrollend", () => (pickedRef.current = null), { once: true });
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    setPendingGroup(null);
+  }, [pendingGroup]);
 
   useEffect(() => {
     void useSettingsStore.getState().init();
@@ -46,26 +94,50 @@ export function SettingsApp() {
           />
         </label>
         <ul className={styles.navList}>
-          {sections.map((section) => (
-            <li key={section.id}>
-              <button
-                type="button"
-                className={styles.navItem}
-                aria-current={!q && section.id === active.id ? "page" : undefined}
-                onClick={() => {
-                  setActiveId(section.id);
-                  setQuery("");
-                }}
-              >
-                <section.icon />
-                {section.title}
-              </button>
-            </li>
-          ))}
+          {sections.map((section) => {
+            const open = !q && section.id === active.id;
+            return (
+              <li key={section.id}>
+                <button
+                  type="button"
+                  className={styles.navItem}
+                  aria-current={open ? "page" : undefined}
+                  onClick={() => {
+                    setActiveId(section.id);
+                    setQuery("");
+                    if (open) mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                >
+                  <section.icon />
+                  {section.title}
+                </button>
+                {/* The open section's groups, as links to scroll to (PLAN 3D.9). */}
+                {open && (
+                  <ul className={styles.subList}>
+                    {shownGroups(section, settings).map((group) => {
+                      const id = groupId(section, group);
+                      return (
+                        <li key={id}>
+                          <button
+                            type="button"
+                            className={styles.subItem}
+                            aria-current={id === currentGroup ? "location" : undefined}
+                            onClick={() => setPendingGroup(id)}
+                          >
+                            {group.title}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </nav>
 
-      <main className={styles.main}>
+      <main ref={mainRef} className={styles.main} onScroll={trackGroup}>
         {error && (
           <div className={styles.error} role="alert">
             <span>{error}</span>
@@ -90,9 +162,30 @@ function SectionPage({ section, settings }: { section: Section; settings: Settin
       <h1 className={styles.title}>{section.title}</h1>
       {section.description && <p className={styles.sectionDescription}>{section.description}</p>}
       {section.groups.map((group, i) => (
-        <GroupCard key={group.title ?? i} group={group} settings={settings} />
+        <GroupCard
+          key={group.title ?? i}
+          id={group.title ? groupId(section, group) : undefined}
+          group={group}
+          settings={settings}
+        />
       ))}
     </>
+  );
+}
+
+/** Px below the top of the page at which a group's heading counts as reached. */
+const GROUP_REACHED = 40;
+
+/** A group's element id, for the sidebar's links. */
+function groupId(section: Section, group: Group): string {
+  const slug = (group.title ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return `group-${section.id}-${slug}`;
+}
+
+/** The groups the sidebar lists: titled, with something showing. */
+function shownGroups(section: Section, settings: Settings): Group[] {
+  return section.groups.filter(
+    (g) => g.title && g.items.some((item) => item.visible?.(settings) ?? true),
   );
 }
 
@@ -115,11 +208,20 @@ function SearchResults({ query, settings }: { query: string; settings: Settings 
   );
 }
 
-function GroupCard({ group, settings }: { group: Group; settings: Settings }) {
+function GroupCard({
+  id,
+  group,
+  settings,
+}: {
+  /** For the sidebar's links to this group. */
+  id?: string;
+  group: Group;
+  settings: Settings;
+}) {
   const items = group.items.filter((item) => item.visible?.(settings) ?? true);
   if (items.length === 0) return null;
   return (
-    <section className={styles.group}>
+    <section id={id} className={styles.group}>
       {group.title && <h2 className={styles.groupTitle}>{group.title}</h2>}
       {group.description && <p className={styles.groupDescription}>{group.description}</p>}
       <div className={styles.card}>

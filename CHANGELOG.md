@@ -18,6 +18,8 @@ All notable changes to Vandal are listed here. The format follows
 - Spotlight tool (S): darken everything outside a rectangle or ellipse to draw attention to it.
   Several spotlights share one darkness, set in the options bar; arrows and text stay bright.
 - Settings › Markup › Spotlight: choose the darkness levels the spotlight tool offers.
+- Settings: the open page's groups are listed under it in the sidebar. Click one to scroll to it; the
+  one you're looking at is highlighted.
 
 ### Changed
 
