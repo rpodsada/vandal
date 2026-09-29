@@ -37,6 +37,7 @@ use crate::compose::{self, RgbaImage};
 use crate::encode::{self, FileFormat};
 use crate::frames::Capture;
 use crate::geometry::{monitor_at, virtual_bounds, MonitorInfo, PhysicalRect};
+use crate::redact::{self, Redaction};
 use crate::state::AppState;
 use crate::{decode, output, overlay, protocol, session, settings};
 
@@ -441,19 +442,34 @@ pub fn init(app: &AppHandle, window_label: &str) -> Option<EditorInit> {
     })
 }
 
-/// Crop the base to `crop`, multiply in the uploaded highlights if
-/// `with_highlights`, composite the uploaded layer if `with_layer`, and copy or
-/// save. Runs dialogs and encoding, so call off the main thread.
+/// What goes onto the cropped base in an export, bottom to top.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportMarkup {
+    /// Pixelated or blurred areas, in base-image px (PLAN 3D.3).
+    pub redactions: Vec<Redaction>,
+    /// Multiply in the highlight layer POSTed to `highlightsUrl` just before.
+    pub with_highlights: bool,
+    /// Composite the annotation layer POSTed to `layerUrl` just before.
+    pub with_layer: bool,
+}
+
+/// Crop the base to `crop`, apply `markup`, and copy or save. Runs dialogs and
+/// encoding, so call off the main thread.
 pub fn export(
     app: &AppHandle,
     window: &WebviewWindow,
     crop: PhysicalRect,
-    with_layer: bool,
-    with_highlights: bool,
+    markup: ExportMarkup,
     action: ExportAction,
     layer_ms: Option<f64>,
 ) -> Result<ExportOutcome, String> {
     let started = Instant::now();
+    let ExportMarkup {
+        redactions,
+        with_highlights,
+        with_layer,
+    } = markup;
     let id = id_from_label(window.label()).ok_or("not an editor window")?;
     let (base, layer, highlights, file) = {
         let state = app.state::<AppState>();
@@ -469,6 +485,7 @@ pub fn export(
         (e.image.clone(), layer, highlights, e.file.clone())
     };
     let mut image = compose::crop_rgba(&base, crop).ok_or("the crop is empty")?;
+    redact::apply(&base, crop, &mut image, &redactions);
     if with_highlights {
         let highlights = highlights.ok_or("the highlights didn't arrive")?;
         compose::blend_multiply(&mut image, &highlights)?;

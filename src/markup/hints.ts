@@ -20,6 +20,7 @@ export const CONTROL_HINTS = {
   "tool.rect": "[R] Draw a rectangle · [Shift] square",
   "tool.ellipse": "[E] Draw an ellipse · [Shift] circle",
   "tool.text": "[T] Click to type, or drag to set a width",
+  "tool.redact": "[B] Pixelate or blur an area · always under the other markup",
   "tool.crop": "[C] Crop the image · [Ctrl+Z] undoes a crop",
   undo: "[Ctrl+Z] Undo",
   redo: "[Ctrl+Y] or [Ctrl+Shift+Z] Redo",
@@ -33,6 +34,8 @@ export const CONTROL_HINTS = {
   customColor:
     "Your custom color · Click it again, or right-click, to change it · [Esc] in the picker puts the old one back",
   width: "[1…0] Pick a width by number",
+  "redact.mode": "Pixelate or blur · the export's pixels are really changed",
+  strength: "[1…0] Pick a strength by number",
   size: "[1…0] Pick a size by number",
   font: "[Alt+1…0] Pick a font by number · Type to filter the list",
   fill: "Border only, filled, or border and fill",
@@ -95,6 +98,8 @@ function toolHint(tool: Exclude<ToolId, "select">, twoColors: boolean): string {
       return `[Shift] circle · [1…0] width · ${colors}`;
     case "text":
       return `Click to type, drag to set a width · [1…0] size · [Alt+1…0] font · ${colors}`;
+    case "redact":
+      return "Drag over what to hide · [1…0] strength";
   }
 }
 
@@ -105,7 +110,7 @@ const TYPING = "[Esc] done · [Ctrl+B] bold · [Ctrl+I] italic · [Alt+1…0] fo
 const CROP =
   "Drag edges or corners, [Shift] keeps proportions · Drag outside for a new box · [Enter] apply · [Esc] cancel · [←↑↓→] nudge, [Ctrl] resize";
 
-const IDLE = `[V] [P] [H] [L] [A] [R] [E] [T] tools · [Ctrl+Z] undo · [Ctrl+C] copy · [Ctrl+S] save · ${PAN_ZOOM}`;
+const IDLE = `[V] [P] [H] [L] [A] [R] [E] [T] [B] tools · [Ctrl+Z] undo · [Ctrl+C] copy · [Ctrl+S] save · ${PAN_ZOOM}`;
 
 export interface HintState {
   hover: ControlHint | null;

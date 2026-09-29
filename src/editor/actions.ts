@@ -2,6 +2,7 @@
 // the capture protocol, then let Rust crop, composite and output.
 
 import { renderLayer } from "../markup/export";
+import { exportRedactions } from "../markup/redact";
 import { docStore } from "../markup/model/store";
 import type { Doc } from "../markup/model/types";
 import {
@@ -27,8 +28,11 @@ export async function exportImage(init: EditorInit, action: ExportAction): Promi
   const layerMs = layer || highlights ? performance.now() - t0 : null;
   const result = await commands.editorExport(
     doc.crop,
-    layer !== null,
-    highlights !== null,
+    {
+      redactions: exportRedactions(doc),
+      withHighlights: highlights !== null,
+      withLayer: layer !== null,
+    },
     action,
     layerMs,
   );

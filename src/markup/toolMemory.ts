@@ -3,7 +3,7 @@
 // a stored value from an older or newer version restores what still makes
 // sense and ignores the rest.
 
-import type { ArrowEnds, ArrowHead, ShapeFill, TextAlign } from "./model/types";
+import type { ArrowEnds, ArrowHead, RedactMode, ShapeFill, TextAlign } from "./model/types";
 import { isTool, useToolStore, type PaletteKey, type ToolId } from "./toolStore";
 
 /** Bumped only if a field changes meaning; new fields just appear. */
@@ -26,6 +26,8 @@ export interface ToolMemory {
   textAlign: TextAlign;
   textBackground: boolean;
   textBackgroundColor: string | null;
+  redactMode: RedactMode;
+  redactStrengths: Partial<Record<RedactMode, number>>;
 }
 
 /** The tools' current memory. */
@@ -48,6 +50,8 @@ export function snapshotToolMemory(): ToolMemory {
     textAlign: t.textAlign,
     textBackground: t.textBackground,
     textBackgroundColor: t.textBackgroundColor,
+    redactMode: t.redactMode,
+    redactStrengths: t.redactStrengths,
   };
 }
 
@@ -70,6 +74,16 @@ function perTool<T, K extends string = never>(
       ([key, x]) => (isTool(key) || (extraKeys as string[]).includes(key)) && valid(x),
     ),
   ) as Partial<Record<ToolId | K, T>>;
+}
+
+const isRedactMode = oneOf<RedactMode>("pixelate", "blur");
+
+/** Each redact mode's strength, where valid. */
+function redactStrengths(v: unknown): Partial<Record<RedactMode, number>> {
+  if (!v || typeof v !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(v).filter(([mode, x]) => isRedactMode(mode) && isSize(x)),
+  ) as Partial<Record<RedactMode, number>>;
 }
 
 /** Restore what `stored` (a parsed ToolMemory, maybe from another version) validly holds. */
@@ -108,5 +122,7 @@ export function restoreToolMemory(stored: unknown): void {
       t.textBackground,
     ),
     textBackgroundColor: pick("textBackgroundColor", nullable(isColor), t.textBackgroundColor),
+    redactMode: pick("redactMode", isRedactMode, t.redactMode),
+    redactStrengths: redactStrengths(s.redactStrengths),
   });
 }

@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { docStore } from "./model/store";
-import { emptyDoc, type ShapeAnnotation, type TextAnnotation } from "./model/types";
+import {
+  emptyDoc,
+  type RedactAnnotation,
+  type ShapeAnnotation,
+  type TextAnnotation,
+} from "./model/types";
 import { applyStyle } from "./restyle";
 import { useToolStore } from "./toolStore";
 
@@ -111,5 +116,49 @@ describe("applyStyle on text", () => {
     expect(tools.textBackground).toBe(true);
     expect(tools.textBackgroundColor).toBe("#ffeb3b");
     expect(tools.textAlign).toBe("center");
+  });
+});
+
+describe("applyStyle on redactions", () => {
+  beforeEach(() => {
+    docStore.getState().load(emptyDoc({ width: 100, height: 100 }));
+    useToolStore.setState({ tool: "select", redactMode: "pixelate", redactStrengths: {} });
+  });
+
+  function addRedaction(): string {
+    const store = docStore.getState();
+    const id = store.add({
+      kind: "redact",
+      rect: { x: 0, y: 0, width: 10, height: 10 },
+      mode: "pixelate",
+      strength: 16,
+    });
+    store.select([id]);
+    return id;
+  }
+
+  const redaction = (id: string) =>
+    docStore.getState().doc.annotations.find((a) => a.id === id) as RedactAnnotation;
+
+  it("takes the new mode's strength, not the old mode's", () => {
+    const id = addRedaction();
+    useToolStore.setState({ redactStrengths: { blur: 10 } });
+    applyStyle({ redactMode: "blur" });
+    expect(redaction(id)).toMatchObject({ mode: "blur", strength: 10 });
+    expect(useToolStore.getState().redactMode).toBe("blur");
+  });
+
+  it("remembers a strength for the mode it applies to", () => {
+    const id = addRedaction();
+    applyStyle({ strength: 24 });
+    expect(redaction(id).strength).toBe(24);
+    expect(useToolStore.getState().redactStrengths).toEqual({ pixelate: 24 });
+  });
+
+  it("ignores colors", () => {
+    const id = addRedaction();
+    const before = redaction(id);
+    applyStyle({ color: "#000000" });
+    expect(redaction(id)).toEqual(before);
   });
 });

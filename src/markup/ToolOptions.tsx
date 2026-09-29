@@ -4,7 +4,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { Dropdown } from "./Dropdown";
 import { useDoc } from "./model/store";
 import { FontPickerControl } from "./FontPickerControl";
-import type { ArrowHead, ShapeFill, TextAlign } from "./model/types";
+import type { ArrowHead, RedactMode, ShapeFill, TextAlign } from "./model/types";
 import { NumberPickerControl } from "./NumberPickerControl";
 import { PresetEditor } from "./PresetEditor";
 import { slotKey } from "./pickers";
@@ -16,7 +16,13 @@ import {
   targetSections,
   targetValues,
 } from "./restyle";
-import { fontChoices, paletteFor, useStyleConfig, widthPickerFor } from "./styles";
+import {
+  fontChoices,
+  paletteFor,
+  strengthPickerFor,
+  useStyleConfig,
+  widthPickerFor,
+} from "./styles";
 import { useToolStore, type ToolId } from "./toolStore";
 import { useHeldKeys } from "./useHeldKeys";
 import { useLineStarts } from "./useLineStarts";
@@ -70,6 +76,32 @@ const FILLS: { id: ShapeFill; label: string; icon: ReactNode }[] = [
   },
 ];
 
+const REDACT_MODES: { id: RedactMode; label: string; icon: ReactNode }[] = [
+  {
+    id: "pixelate",
+    label: "Pixelate",
+    icon: (
+      <>
+        <path
+          d="M4 4h5.3v5.3H4zM14.7 4H20v5.3h-5.3zM9.3 9.3h5.4v5.4H9.3zM4 14.7h5.3V20H4zM14.7 14.7H20V20h-5.3z"
+          className={styles.solid}
+        />
+        <rect x="4" y="4" width="16" height="16" />
+      </>
+    ),
+  },
+  {
+    id: "blur",
+    label: "Blur",
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="8" className={styles.tint} />
+        <circle cx="12" cy="12" r="4.5" className={styles.solid} opacity="0.6" />
+      </>
+    ),
+  },
+];
+
 /**
  * The options for what's being drawn or selected (mockup: ToolOptions):
  * colors, line width, fill and arrow head. Shared by quick edit and the editor.
@@ -107,6 +139,8 @@ export function ToolOptions() {
   useToolStore((s) => s.textItalic);
   useToolStore((s) => s.textBackground);
   useToolStore((s) => s.textBackgroundColor);
+  useToolStore((s) => s.redactMode);
+  useToolStore((s) => s.redactStrengths);
   const config = useStyleConfig();
   const held = useHeldKeys();
   // The preset being edited (right-click on a swatch).
@@ -194,6 +228,41 @@ export function ToolOptions() {
               showKeys={hints && held.digit}
               hints={hints}
               onPick={(width) => applyStyle({ width })}
+              onDragStart={beginStyleDrag}
+              onDragEnd={endStyleDrag}
+            />
+          </span>
+        </div>
+      )}
+
+      {show.redact && values.redact && (
+        <div className={styles.section}>
+          <div className={styles.group} {...hint("redact.mode")}>
+            {REDACT_MODES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className={`${styles.toggle} ${styles.labelled}`}
+                aria-pressed={values.redact?.mode === m.id}
+                title={m.label}
+                onClick={() => applyStyle({ redactMode: m.id })}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden>
+                  {m.icon}
+                </svg>
+                <span>{m.label}</span>
+              </button>
+            ))}
+          </div>
+          <span className={styles.hintArea} {...hint("strength")}>
+            <NumberPickerControl
+              picker={strengthPickerFor(values.redact.mode, config)}
+              value={values.redact.strength}
+              unit="px"
+              label={values.redact.mode === "pixelate" ? "Block size" : "Blur radius"}
+              showKeys={hints && held.digit}
+              hints={hints}
+              onPick={(strength) => applyStyle({ strength })}
               onDragStart={beginStyleDrag}
               onDragEnd={endStyleDrag}
             />
@@ -333,78 +402,80 @@ export function ToolOptions() {
 
       {/* Last, so the chip appearing (border + fill, text box) moves nothing
           else from under the pointer. */}
-      <div className={`${styles.section} ${styles.swatches}`}>
-        {twoColors && (
-          <div className={styles.chip} {...hint(show.text ? "chip.box" : "chip.fill")}>
-            <button
-              type="button"
-              className={styles.chipBorder}
-              style={{ borderColor: values.color }}
-              aria-pressed={!editingFill}
-              aria-label={labels[0]}
-              title={`${labels[0]}${hints ? " (Ctrl+1…0)" : ""}`}
-              onClick={() => setSlot("border")}
+      {show.color && (
+        <div className={`${styles.section} ${styles.swatches}`}>
+          {twoColors && (
+            <div className={styles.chip} {...hint(show.text ? "chip.box" : "chip.fill")}>
+              <button
+                type="button"
+                className={styles.chipBorder}
+                style={{ borderColor: values.color }}
+                aria-pressed={!editingFill}
+                aria-label={labels[0]}
+                title={`${labels[0]}${hints ? " (Ctrl+1…0)" : ""}`}
+                onClick={() => setSlot("border")}
+              />
+              <button
+                type="button"
+                className={styles.chipFill}
+                style={{ background: secondColor }}
+                aria-pressed={editingFill}
+                aria-label={labels[1]}
+                title={`${labels[1]}${hints ? " (Shift+click a color, Ctrl+Shift+1…0)" : ""}`}
+                onClick={() => setSlot("fill")}
+              />
+            </div>
+          )}
+          {palette.map((preset, i) => {
+            // The preset being edited shows its draft, and is the only one ringed.
+            const editingThis = edit?.index === i;
+            const c = editingThis ? edit.color : preset;
+            return (
+              <button
+                key={i}
+                type="button"
+                className={styles.swatch}
+                {...hint(twoColors ? (show.text ? "swatch.box" : "swatch.fill") : "swatch")}
+                style={{ background: c }}
+                aria-pressed={edit ? editingThis : c.toLowerCase() === current}
+                aria-label={`Color ${i + 1}`}
+                title={`Color ${i + 1}${hints ? ` (Ctrl+${slotKey(i)})` : ""}`}
+                // Shift+click sets the fill without switching the chip.
+                onClick={(e) => pickColor(c, e.shiftKey || editingFill)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setPresetEdit({
+                    tool: target.tool,
+                    index: i,
+                    color: preset,
+                    left: e.currentTarget.offsetLeft,
+                  });
+                }}
+              >
+                {hints && held.ctrl && <span className={styles.badge}>{slotKey(i)}</span>}
+              </button>
+            );
+          })}
+          {edit && (
+            <PresetEditor
+              palette={palette}
+              index={edit.index}
+              tool={target.tool}
+              color={edit.color}
+              left={edit.left}
+              onChange={(color) => setPresetEdit({ ...edit, color })}
+              onClose={() => setPresetEdit(null)}
             />
-            <button
-              type="button"
-              className={styles.chipFill}
-              style={{ background: secondColor }}
-              aria-pressed={editingFill}
-              aria-label={labels[1]}
-              title={`${labels[1]}${hints ? " (Shift+click a color, Ctrl+Shift+1…0)" : ""}`}
-              onClick={() => setSlot("fill")}
-            />
-          </div>
-        )}
-        {palette.map((preset, i) => {
-          // The preset being edited shows its draft, and is the only one ringed.
-          const editingThis = edit?.index === i;
-          const c = editingThis ? edit.color : preset;
-          return (
-            <button
-              key={i}
-              type="button"
-              className={styles.swatch}
-              {...hint(twoColors ? (show.text ? "swatch.box" : "swatch.fill") : "swatch")}
-              style={{ background: c }}
-              aria-pressed={edit ? editingThis : c.toLowerCase() === current}
-              aria-label={`Color ${i + 1}`}
-              title={`Color ${i + 1}${hints ? ` (Ctrl+${slotKey(i)})` : ""}`}
-              // Shift+click sets the fill without switching the chip.
-              onClick={(e) => pickColor(c, e.shiftKey || editingFill)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setPresetEdit({
-                  tool: target.tool,
-                  index: i,
-                  color: preset,
-                  left: e.currentTarget.offsetLeft,
-                });
-              }}
-            >
-              {hints && held.ctrl && <span className={styles.badge}>{slotKey(i)}</span>}
-            </button>
-          );
-        })}
-        {edit && (
-          <PresetEditor
+          )}
+          <CustomColor
+            value={current}
             palette={palette}
-            index={edit.index}
+            selected={edit ? false : undefined}
             tool={target.tool}
-            color={edit.color}
-            left={edit.left}
-            onChange={(color) => setPresetEdit({ ...edit, color })}
-            onClose={() => setPresetEdit(null)}
+            onPick={(c) => pickColor(c, editingFill)}
           />
-        )}
-        <CustomColor
-          value={current}
-          palette={palette}
-          selected={edit ? false : undefined}
-          tool={target.tool}
-          onPick={(c) => pickColor(c, editingFill)}
-        />
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { docStore, hasUnsavedChanges } from "../markup/model/store";
 import { useMarkupKeys } from "../markup/useMarkupKeys";
 import { emptyDoc } from "../markup/model/types";
 import { initialDoc } from "./handoff";
+import { useRedactSource } from "../markup/redact";
 import { commands, type EditorInit, type ExportAction, type Settings } from "../shared/ipc";
 import { alreadyDone, exportImage, markDelivered } from "./actions";
 import { CommandBar } from "./CommandBar";
@@ -54,6 +55,10 @@ export function EditorApp() {
         if (cancelled) return;
         // The whole frame, so the crop can grow back (the stage clips it).
         paintFrame(canvasRef.current!, init, pixels);
+        // Redactions preview from these pixels (PLAN 3D.3).
+        useRedactSource.setState({
+          image: { x: 0, y: 0, width: init.width, height: init.height, data: pixels },
+        });
         docStore.getState().load(initialDoc(init));
         // Reopened from a notification: already delivered (PLAN 3D.1).
         if (init.delivered) markDelivered(docStore.getState().doc);

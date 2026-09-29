@@ -167,6 +167,12 @@
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
+/* A toggle with its name after the icon (redact's modes). */
+.toggle.labelled {
+  gap: 6px;
+  padding: 0 10px 0 8px;
+}
+
 .line {
   display: block;
   flex-shrink: 0;

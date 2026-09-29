@@ -1,5 +1,5 @@
 import { setDragHint, setOverObject } from "./hints";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import {
@@ -37,13 +37,17 @@ import type {
   PenAnnotation,
   Point,
   Rect,
+  RedactAnnotation,
+  ShapeAnnotation,
   TextAnnotation,
 } from "./model/types";
+import { redactPixels, redactReads, redactRect, useRedactSource } from "./redact";
 import {
   DEFAULT_TEXT_BACKGROUND,
   toolColor,
   toolFill,
   toolFont,
+  toolRedact,
   toolStroke,
   useStyleConfig,
 } from "./styles";
@@ -141,9 +145,14 @@ function isStroke(a: Annotation): a is PenAnnotation | HighlighterAnnotation {
   return a.kind === "pen" || a.kind === "highlighter";
 }
 
-/** Rects, ellipses and text get the resize/rotate transformer. */
+/** Rects, ellipses, text and redactions get the resize/rotate transformer. */
 function isBoxed(a: Annotation): boolean {
-  return a.kind === "rect" || a.kind === "ellipse" || a.kind === "text";
+  return a.kind === "rect" || a.kind === "ellipse" || a.kind === "text" || a.kind === "redact";
+}
+
+/** Shapes drawn by dragging out a box. */
+function hasRect(a: Annotation): a is ShapeAnnotation | RedactAnnotation {
+  return a.kind === "rect" || a.kind === "ellipse" || a.kind === "redact";
 }
 
 /**
@@ -172,6 +181,7 @@ export function MarkupLayer({
   const groupRef = useRef<Konva.Group>(null);
   const highlightsRef = useRef<Konva.Group>(null);
   const highlightLayerRef = useRef<Konva.Layer>(null);
+  const redactionsRef = useRef<Konva.Group>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const [marquee, setMarquee] = useState<Rect | null>(null);
   // Latest view for window-level drag handlers.
@@ -183,6 +193,7 @@ export function MarkupLayer({
   useEffect(() => {
     registerAnnotationGroup("annotations", groupRef.current);
     registerAnnotationGroup("highlights", highlightsRef.current);
+    registerAnnotationGroup("redactions", redactionsRef.current);
     // Highlights multiply with the image under them, like a real highlighter
     // (Rust does the same on export).
     const canvas = highlightLayerRef.current?.getNativeCanvasElement();
@@ -190,6 +201,7 @@ export function MarkupLayer({
     return () => {
       registerAnnotationGroup("annotations", null);
       registerAnnotationGroup("highlights", null);
+      registerAnnotationGroup("redactions", null);
     };
   }, []);
 
@@ -341,6 +353,15 @@ export function MarkupLayer({
     } else if (tool === "text") {
       store.select([]);
       drag = { mode: "text", start: p, client: { x: ev.clientX, y: ev.clientY } };
+    } else if (tool === "redact") {
+      store.select([]);
+      store.beginGesture();
+      const id = store.add({
+        kind: "redact",
+        rect: { x: p.x, y: p.y, width: 0, height: 0 },
+        ...toolRedact(),
+      });
+      drag = { mode: "draw", start: p, id };
     } else {
       const style = toolStroke(tool);
       const { arrowHead, arrowEnds } = useToolStore.getState();
@@ -400,8 +421,7 @@ export function MarkupLayer({
           const start = drag.start;
           s.update(drag.id, (a) => {
             if (hasEndpoints(a)) return { ...a, to: m.shiftKey ? snapAngle(start, q) : q };
-            if (a.kind === "rect" || a.kind === "ellipse")
-              return { ...a, rect: rectFromDrag(start, q, m.shiftKey) };
+            if (hasRect(a)) return { ...a, rect: rectFromDrag(start, q, m.shiftKey) };
             return a;
           });
           break;
@@ -560,7 +580,7 @@ export function MarkupLayer({
         );
         continue;
       }
-      if (!a || (a.kind !== "rect" && a.kind !== "ellipse")) continue;
+      if (!a || !hasRect(a)) continue;
       const w = Math.max(1, a.rect.width * Math.abs(node.scaleX()));
       const h = Math.max(1, a.rect.height * Math.abs(node.scaleY()));
       const cx = node.x();
@@ -568,16 +588,23 @@ export function MarkupLayer({
       const rotation = node.rotation();
       node.scaleX(1);
       node.scaleY(1);
+      const rect = { x: cx - w / 2, y: cy - h / 2, width: w, height: h };
       store.update(a.id, (x) =>
-        x.kind === "rect" || x.kind === "ellipse"
-          ? { ...x, rect: { x: cx - w / 2, y: cy - h / 2, width: w, height: h }, rotation }
-          : x,
+        x.kind === "redact"
+          ? { ...x, rect }
+          : x.kind === "rect" || x.kind === "ellipse"
+            ? { ...x, rect, rotation }
+            : x,
       );
     }
   };
 
   const crop = clip ?? doc.crop;
   const textSelected = doc.annotations.some((a) => a.kind === "text" && selection.includes(a.id));
+  // Redactions stay axis-aligned (Rust bakes whole-pixel rectangles).
+  const redactSelected = doc.annotations.some(
+    (a) => a.kind === "redact" && selection.includes(a.id),
+  );
   const editedText = doc.annotations.find(
     (a): a is TextAnnotation => a.kind === "text" && a.id === editing?.id,
   );
@@ -603,6 +630,16 @@ export function MarkupLayer({
         onMouseLeave={() => setOverObject(false)}
         onDblClick={onDblClick}
       >
+        {/* Under everything, whatever the z-order: redactions hide the image only. */}
+        <Layer imageSmoothingEnabled={scale < 1}>
+          <Group ref={redactionsRef} {...groupProps}>
+            {doc.annotations
+              .filter((a): a is RedactAnnotation => a.kind === "redact")
+              .map((a) => (
+                <RedactShape key={a.id} a={a} />
+              ))}
+          </Group>
+        </Layer>
         <Layer ref={highlightLayerRef}>
           <Group ref={highlightsRef} {...groupProps}>
             {doc.annotations
@@ -632,6 +669,7 @@ export function MarkupLayer({
             listening={handlesLive}
             ignoreStroke
             flipEnabled={false}
+            rotateEnabled={!redactSelected}
             // Corners resize freely; Shift keeps the proportions.
             keepRatio={false}
             enabledAnchors={textSelected ? TEXT_ANCHORS : ALL_ANCHORS}
@@ -712,8 +750,7 @@ export function MarkupLayer({
 
 /** A just-drawn annotation smaller than this on screen was a click: drop it. */
 function drawnBigEnough(a: Annotation, scale: number): boolean {
-  if (a.kind === "rect" || a.kind === "ellipse")
-    return a.rect.width * scale >= MIN_DRAWN && a.rect.height * scale >= MIN_DRAWN;
+  if (hasRect(a)) return a.rect.width * scale >= MIN_DRAWN && a.rect.height * scale >= MIN_DRAWN;
   if (hasEndpoints(a))
     return Math.hypot(a.to.x - a.from.x, a.to.y - a.from.y) * scale >= 2 * MIN_DRAWN;
   return true;
@@ -839,6 +876,64 @@ function AnnotationShape({
     />
   ) : (
     <Ellipse {...common} radiusX={rect.width / 2} radiusY={rect.height / 2} />
+  );
+}
+
+/** Shown when there's no image to preview from (it shouldn't happen): a gray box. */
+const REDACT_PLACEHOLDER = "#808080";
+
+/**
+ * A redaction's preview: the image under it, pixelated or blurred exactly as
+ * Rust will export it. Positioned about its centre like the shapes, so the
+ * transformer resizes it the same way.
+ */
+function RedactShape({ a }: { a: RedactAnnotation }) {
+  const source = useRedactSource((s) => s.image);
+  const px = redactRect(a.rect);
+  const { mode, strength } = a;
+  const preview = useMemo(() => {
+    if (!source) return null;
+    const r = redactReads(px, mode, strength, source);
+    if (!r) return null;
+    const pixels = redactPixels(source, r.region, mode, strength, r.reads);
+    const canvas = document.createElement("canvas");
+    canvas.width = r.region.width;
+    canvas.height = r.region.height;
+    canvas
+      .getContext("2d")
+      ?.putImageData(new ImageData(pixels, r.region.width, r.region.height), 0, 0);
+    return { canvas, x: r.region.x, y: r.region.y };
+    // The rounded rect decides the pixels, not its fractional edges.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source, px.x, px.y, px.width, px.height, mode, strength]);
+  const { rect } = a;
+  return (
+    <Shape
+      id={a.id}
+      name="annotation"
+      x={rect.x + rect.width / 2}
+      y={rect.y + rect.height / 2}
+      width={rect.width}
+      height={rect.height}
+      offsetX={rect.width / 2}
+      offsetY={rect.height / 2}
+      fill={REDACT_PLACEHOLDER}
+      perfectDrawEnabled={false}
+      sceneFunc={(ctx, shape) => {
+        if (preview) {
+          ctx.drawImage(preview.canvas, preview.x - rect.x, preview.y - rect.y);
+        } else {
+          ctx.beginPath();
+          ctx.rect(0, 0, rect.width, rect.height);
+          ctx.fillShape(shape);
+        }
+      }}
+      hitFunc={(ctx, shape) => {
+        ctx.beginPath();
+        ctx.rect(0, 0, rect.width, rect.height);
+        ctx.fillShape(shape);
+      }}
+    />
   );
 }
 

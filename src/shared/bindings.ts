@@ -132,12 +132,10 @@ export const commands = {
 	/**  Editor page painted its image; show the window. */
 	editorReady: () => __TAURI_INVOKE<void>("editor_ready"),
 	/**
-	 *  Copy or save `crop` of the base image. With `withHighlights`, the layer
-	 *  POSTed to `highlightsUrl` just before is multiplied in; with `withLayer`, the
-	 *  annotation layer POSTed to `layerUrl` is composited on top. `layerMs`
-	 *  (render + upload time in the page) is only for the perf log.
+	 *  Copy or save `crop` of the base image with `markup` (see [`ExportMarkup`]).
+	 *  `layerMs` (render + upload time in the page) is only for the perf log.
 	 */
-	editorExport: (crop: PhysicalRect, withLayer: boolean, withHighlights: boolean, action: ExportAction, layerMs: number | null) => typedError<ExportOutcome, string>(__TAURI_INVOKE("editor_export", { crop, withLayer, withHighlights, action, layerMs })),
+	editorExport: (crop: PhysicalRect, markup: ExportMarkup, action: ExportAction, layerMs: number | null) => typedError<ExportOutcome, string>(__TAURI_INVOKE("editor_export", { crop, markup, action, layerMs })),
 	/**  Ask whether to save unsaved changes before the editor closes. */
 	editorConfirmClose: () => __TAURI_INVOKE<CloseChoice>("editor_confirm_close"),
 	/**  Start a new region capture from the editor. */
@@ -268,6 +266,16 @@ export type ExportAction = "copy" |
 "save" | 
 /**  Ask where to save. */
 "saveAs";
+
+/**  What goes onto the cropped base in an export, bottom to top. */
+export type ExportMarkup = {
+	/**  Pixelated or blurred areas, in base-image px (PLAN 3D.3). */
+	redactions: Redaction[],
+	/**  Multiply in the highlight layer POSTed to `highlightsUrl` just before. */
+	withHighlights: boolean,
+	/**  Composite the annotation layer POSTed to `layerUrl` just before. */
+	withLayer: boolean,
+};
 
 export type ExportOutcome = { kind: "copied" } | { kind: "saved"; path: string } | 
 /**  Save As was dismissed. */
@@ -445,6 +453,16 @@ export type QuickOutcome = {
 	path: string | null,
 };
 
+export type RedactMode = "pixelate" | "blur";
+
+/**  One redaction, in the base image's pixels. */
+export type Redaction = {
+	rect: PhysicalRect,
+	mode: RedactMode,
+	/**  Pixelate: block size. Blur: box radius (three passes). Source px. */
+	strength: number,
+};
+
 export type SaveSettings = {
 	/**  May contain `%ENV%` variables. */
 	directory?: string,
@@ -488,6 +506,10 @@ export type Styles = {
 	font?: FontPicker,
 	/**  The text tool's size in pt. */
 	fontSize?: NumberPicker,
+	/**  Redact's pixelate block size in source px (PLAN 3D.3). */
+	pixelate?: NumberPicker,
+	/**  Redact's blur radius in source px. */
+	blur?: NumberPicker,
 	/**  Per-tool overrides, keyed by tool id (`"highlighter"`, ...). */
 	tools?: { [key in string]: ToolStyles },
 };

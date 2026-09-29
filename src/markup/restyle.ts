@@ -11,6 +11,7 @@ import type {
   ArrowEnds,
   ArrowHead,
   Doc,
+  RedactMode,
   ShapeFill,
   TextAlign,
 } from "./model/types";
@@ -24,6 +25,7 @@ import {
   toolColor,
   toolFill,
   toolFont,
+  toolRedact,
   toolWidth,
 } from "./styles";
 import { useToolStore, type ToolId } from "./toolStore";
@@ -48,8 +50,12 @@ export function styleTarget(
   const picked = doc.annotations.filter((a) => ids.includes(a.id));
   if (picked.length) {
     const kinds = [...new Set(picked.map((a) => a.kind))];
-    // A mixed selection shows the first non-highlighter's pickers.
-    const lead = kinds.find((k) => k !== "highlighter") ?? kinds[0];
+    // A mixed selection shows the pickers of the first kind that draws
+    // (not a highlighter or a redaction), if there is one.
+    const lead =
+      kinds.find((k) => k !== "highlighter" && k !== "redact") ??
+      kinds.find((k) => k !== "highlighter") ??
+      kinds[0];
     return { tool: TOOL_FOR_KIND[lead], ids: picked.map((a) => a.id), kinds };
   }
   if (tool === "select") return null;
@@ -74,6 +80,8 @@ export interface TargetValues {
     background: boolean;
     backgroundColor: string;
   } | null;
+  /** Redact only. */
+  redact: { mode: RedactMode; strength: number } | null;
 }
 
 /** What the controls show: the first object's style, or the tool's. */
@@ -84,7 +92,7 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
     const t = target.tool;
     return {
       color: toolColor(t),
-      width: t === "text" ? null : toolWidth(t),
+      width: t === "text" || t === "redact" ? null : toolWidth(t),
       fill: t === "rect" || t === "ellipse" ? toolFill(t).fill : null,
       fillColor: t === "rect" || t === "ellipse" ? (toolFill(t).color ?? toolColor(t)) : null,
       head: t === "arrow" ? tools.arrowHead : null,
@@ -101,6 +109,19 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
               backgroundColor: tools.textBackgroundColor ?? DEFAULT_TEXT_BACKGROUND,
             }
           : null,
+      redact: t === "redact" ? toolRedact() : null,
+    };
+  }
+  if (a.kind === "redact") {
+    return {
+      color: toolColor("redact"),
+      width: null,
+      fill: null,
+      fillColor: null,
+      head: null,
+      ends: null,
+      text: null,
+      redact: { mode: a.mode, strength: a.strength },
     };
   }
   return {
@@ -122,6 +143,7 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
             backgroundColor: a.backgroundColor,
           }
         : null,
+    redact: null,
   };
 }
 
@@ -129,11 +151,12 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
 export function targetSections(target: StyleTarget) {
   const all = (pred: (k: AnnotationKind) => boolean) => target.kinds.every(pred);
   return {
-    color: true,
-    width: target.kinds.some((k) => k !== "text"),
+    color: target.kinds.some((k) => k !== "redact"),
+    width: target.kinds.some((k) => k !== "text" && k !== "redact"),
     fill: all((k) => k === "rect" || k === "ellipse"),
     head: all((k) => k === "arrow"),
     text: all((k) => k === "text"),
+    redact: all((k) => k === "redact"),
   };
 }
 
@@ -151,9 +174,18 @@ export interface StylePatch {
   align?: TextAlign;
   background?: boolean;
   backgroundColor?: string;
+  redactMode?: RedactMode;
+  /** Redact: for the mode it ends up in. */
+  strength?: number;
 }
 
 function patchAnnotation(a: Annotation, p: StylePatch): Annotation {
+  if (a.kind === "redact") {
+    const mode = p.redactMode ?? a.mode;
+    // A new mode brings its own strength (a block size isn't a blur radius).
+    const strength = p.strength ?? (mode === a.mode ? a.strength : toolRedact(mode).strength);
+    return { ...a, mode, strength };
+  }
   if (a.kind === "text") {
     const t = {
       ...a,
@@ -234,7 +266,9 @@ export function applyStyle(patch: StylePatch): void {
   const tools = new Set(target.kinds.map((k) => TOOL_FOR_KIND[k]));
   for (const tool of tools) {
     if (patch.color !== undefined) rememberColor(tool, patch.color);
-    if (patch.width !== undefined && tool !== "text") rememberWidth(tool, patch.width);
+    if (patch.width !== undefined && tool !== "text" && tool !== "redact")
+      rememberWidth(tool, patch.width);
+    if (tool === "redact") rememberRedact(target, patch);
     if (tool === "rect" || tool === "ellipse") {
       if (patch.fill !== undefined)
         useToolStore.setState((s) => ({ fills: { ...s.fills, [tool]: patch.fill } }));
@@ -267,4 +301,19 @@ export function applyStyle(patch: StylePatch): void {
   if (own) store.beginGesture();
   for (const id of target.ids) store.update(id, (a) => patchAnnotation(a, patch));
   if (own) store.endGesture();
+}
+
+/** Redact remembers its mode, and the strength for the mode it applies to. */
+function rememberRedact(target: StyleTarget, patch: StylePatch): void {
+  const first = docStore.getState().doc.annotations.find((a) => target.ids.includes(a.id));
+  const mode =
+    patch.redactMode ??
+    (first?.kind === "redact" ? first.mode : useToolStore.getState().redactMode);
+  useToolStore.setState((t) => ({
+    redactMode: mode,
+    redactStrengths:
+      patch.strength !== undefined
+        ? { ...t.redactStrengths, [mode]: patch.strength }
+        : t.redactStrengths,
+  }));
 }

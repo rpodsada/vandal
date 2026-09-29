@@ -19,6 +19,8 @@ describe("tool memory", () => {
       fontSize: 36,
       textBold: true,
       textBackground: true,
+      redactMode: "blur",
+      redactStrengths: { pixelate: 16, blur: 6 },
     });
     const saved = JSON.stringify(snapshotToolMemory());
     useToolStore.setState(initial, true);

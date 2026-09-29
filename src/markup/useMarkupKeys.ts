@@ -9,7 +9,13 @@ import { translateAnnotation } from "./geometry";
 import { docStore } from "./model/store";
 import { digitSlot, pickByDigit, slotIndex } from "./pickers";
 import { applyStyle, styleTarget, targetSections, targetValues } from "./restyle";
-import { fontChoices, paletteFor, useStyleConfig, widthPickerFor } from "./styles";
+import {
+  fontChoices,
+  paletteFor,
+  strengthPickerFor,
+  useStyleConfig,
+  widthPickerFor,
+} from "./styles";
 import { editText } from "./textEditing";
 import type { Annotation, NewAnnotation } from "./model/types";
 import { TOOL_KEYS, useToolStore } from "./toolStore";
@@ -56,6 +62,12 @@ function pickWidth(slot: number): boolean {
     if (fontSize !== null) applyStyle({ fontSize });
     return true;
   }
+  if (sections.redact) {
+    const mode = targetValues(target, docStore.getState().doc).redact?.mode;
+    const strength = mode ? pickByDigit(strengthPickerFor(mode), slot) : null;
+    if (strength !== null) applyStyle({ strength });
+    return true;
+  }
   if (!sections.width) return false;
   const width = pickByDigit(widthPickerFor(target.tool), slot);
   if (width !== null) applyStyle({ width });
@@ -88,7 +100,7 @@ function toggleTextStyle(code: string): boolean {
  */
 function pickColor(slot: number, second: boolean): boolean {
   const target = styleTarget();
-  if (!target) return false;
+  if (!target || !targetSections(target).color) return false;
   const values = targetValues(target, docStore.getState().doc);
   const hasSecond = values.fill === "both" || !!values.text?.background;
   if (second && !hasSecond) return false;
@@ -106,7 +118,7 @@ function handlePlain(e: KeyboardEvent): boolean {
   const slot = digitSlot(e.code);
   if (slot !== null) return !e.shiftKey && pickWidth(slot);
   const tool = TOOL_KEYS[e.code];
-  if (tool && !e.shiftKey) {
+  if (tool && !e.shiftKey && !tools.hidden.includes(tool)) {
     tools.setTool(tool);
     return true;
   }

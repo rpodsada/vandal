@@ -58,6 +58,18 @@ const TOOL_BUTTONS: { id: ToolId; label: string; key: string; icon: ReactNode }[
     key: "T",
     icon: <path d="M5 7V5h14v2M12 5v14M9 19h6" />,
   },
+  {
+    id: "redact",
+    label: "Redact",
+    key: "B",
+    icon: (
+      <>
+        <rect x="4" y="4" width="16" height="16" rx="2" />
+        <path d="M4 12h16M12 4v16" />
+        <path d="M4.8 4.8h7.2v7.2H4.8zM12 12h7.2v7.2H12z" fill="currentColor" opacity="0.45" />
+      </>
+    ),
+  },
 ];
 
 interface Props {
@@ -72,12 +84,13 @@ interface Props {
 /** Tools, then undo/redo. Shared by quick edit and the editor (PLAN §4.6). */
 export function Toolbar({ extra, toolsActive = true, onPickTool }: Props) {
   const tool = useToolStore((s) => s.tool);
+  const hidden = useToolStore((s) => s.hidden);
   const undoable = useDoc(canUndo);
   const redoable = useDoc(canRedo);
 
   return (
     <div className={styles.toolbar} role="toolbar" aria-label="Tools">
-      {TOOL_BUTTONS.map((b) => (
+      {TOOL_BUTTONS.filter((b) => !hidden.includes(b.id)).map((b) => (
         <button
           key={b.id}
           type="button"

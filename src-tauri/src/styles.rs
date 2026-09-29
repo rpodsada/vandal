@@ -137,6 +137,10 @@ pub struct Styles {
     pub font: FontPicker,
     /// The text tool's size in pt.
     pub font_size: NumberPicker,
+    /// Redact's pixelate block size in source px (PLAN 3D.3).
+    pub pixelate: NumberPicker,
+    /// Redact's blur radius in source px.
+    pub blur: NumberPicker,
     /// Per-tool overrides, keyed by tool id (`"highlighter"`, ...).
     pub tools: BTreeMap<String, ToolStyles>,
 }
@@ -155,6 +159,12 @@ impl Default for Styles {
             font: FontPicker::default(),
             font_size: NumberPicker::Dropdown {
                 values: vec![8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 36.0, 48.0, 72.0],
+            },
+            pixelate: NumberPicker::Buttons {
+                values: vec![6.0, 10.0, 16.0, 24.0],
+            },
+            blur: NumberPicker::Buttons {
+                values: vec![3.0, 6.0, 10.0, 16.0],
             },
             tools: BTreeMap::from([(
                 "highlighter".to_string(),
@@ -213,6 +223,8 @@ impl Styles {
             width: self.width.normalized().unwrap_or(defaults.width),
             font: self.font.normalized(),
             font_size: self.font_size.normalized().unwrap_or(defaults.font_size),
+            pixelate: self.pixelate.normalized().unwrap_or(defaults.pixelate),
+            blur: self.blur.normalized().unwrap_or(defaults.blur),
             tools: self
                 .tools
                 .into_iter()

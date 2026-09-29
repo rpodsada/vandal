@@ -4,7 +4,7 @@
 use tauri::{AppHandle, Manager, WebviewWindow};
 use tauri_plugin_dialog::DialogExt;
 
-use crate::editor::{self, CloseChoice, EditorInit, ExportAction, ExportOutcome};
+use crate::editor::{self, CloseChoice, EditorInit, ExportAction, ExportMarkup, ExportOutcome};
 use crate::frames::CaptureId;
 use crate::geometry::PhysicalRect;
 use crate::output;
@@ -176,31 +176,20 @@ pub fn editor_ready(app: AppHandle, window: WebviewWindow) {
     editor::ready(&app, &window);
 }
 
-/// Copy or save `crop` of the base image. With `withHighlights`, the layer
-/// POSTed to `highlightsUrl` just before is multiplied in; with `withLayer`, the
-/// annotation layer POSTed to `layerUrl` is composited on top. `layerMs`
-/// (render + upload time in the page) is only for the perf log.
+/// Copy or save `crop` of the base image with `markup` (see [`ExportMarkup`]).
+/// `layerMs` (render + upload time in the page) is only for the perf log.
 #[tauri::command]
 #[specta::specta]
 pub async fn editor_export(
     app: AppHandle,
     window: WebviewWindow,
     crop: PhysicalRect,
-    with_layer: bool,
-    with_highlights: bool,
+    markup: ExportMarkup,
     action: ExportAction,
     layer_ms: Option<f64>,
 ) -> Result<ExportOutcome, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        editor::export(
-            &app,
-            &window,
-            crop,
-            with_layer,
-            with_highlights,
-            action,
-            layer_ms,
-        )
+        editor::export(&app, &window, crop, markup, action, layer_ms)
     })
     .await
     .map_err(|e| e.to_string())?

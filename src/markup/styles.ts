@@ -4,7 +4,7 @@
 
 import { create } from "zustand";
 import type { NumberPicker, StyleSettings } from "../shared/ipc";
-import type { AnnotationKind, ShapeFill, StrokeStyle } from "./model/types";
+import type { AnnotationKind, RedactMode, ShapeFill, StrokeStyle } from "./model/types";
 import { nearestValue } from "./pickers";
 import { TOOLS, useToolStore, type PaletteKey, type ToolId } from "./toolStore";
 
@@ -36,6 +36,8 @@ export const DEFAULT_STYLE_CONFIG: StyleConfig = {
     width: { control: "buttons", values: [2, 4, 6, 10] },
     font: { source: "system", fonts: [], control: "dropdown" },
     fontSize: { control: "dropdown", values: [8, 10, 12, 14, 16, 18, 20, 36, 48, 72] },
+    pixelate: { control: "buttons", values: [6, 10, 16, 24] },
+    blur: { control: "buttons", values: [3, 6, 10, 16] },
     tools: {
       highlighter: {
         palette: ["#ffeb3b", "#76ff03", "#ff4081", "#40c4ff", "#ffab40"],
@@ -65,6 +67,7 @@ export const TOOL_FOR_KIND: Record<AnnotationKind, ToolId> = {
   rect: "rect",
   ellipse: "ellipse",
   text: "text",
+  redact: "redact",
 };
 
 function override(tool: ToolId, cfg: StyleConfig) {
@@ -177,6 +180,24 @@ export function setCustomColor(key: PaletteKey, color: string | undefined): void
 /** A remembered color that isn't one of the presets. */
 function isCustom(c: string | null | undefined, palette: string[]): boolean {
   return !!c && !palette.some((p) => p.toLowerCase() === c.toLowerCase());
+}
+
+/** Each redact mode's strength picker (block size, blur radius). */
+export function strengthPickerFor(mode: RedactMode, cfg = useStyleConfig.getState()): NumberPicker {
+  return mode === "pixelate" ? cfg.styles.pixelate : cfg.styles.blur;
+}
+
+/** The strength a redaction starts with before one is picked. */
+const PREFERRED_STRENGTH: Record<RedactMode, number> = { pixelate: 10, blur: 6 };
+
+/** Redact's mode and that mode's strength now. */
+export function toolRedact(mode?: RedactMode): { mode: RedactMode; strength: number } {
+  const t = useToolStore.getState();
+  const m = mode ?? t.redactMode;
+  return {
+    mode: m,
+    strength: t.redactStrengths[m] ?? nearestValue(strengthPickerFor(m), PREFERRED_STRENGTH[m]),
+  };
 }
 
 export function rememberWidth(tool: ToolId, width: number): void {

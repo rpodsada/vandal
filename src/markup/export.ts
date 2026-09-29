@@ -6,18 +6,27 @@
 import Konva from "konva";
 import type { Annotation, Doc } from "./model/types";
 
-export type LayerName = "annotations" | "highlights";
+/** Redactions are never rendered for export: Rust bakes them in (PLAN 3D.3). */
+export type LayerName = "annotations" | "highlights" | "redactions";
 
 /** The live groups of the markup surface (source-px coordinates). */
-const groups: Record<LayerName, Konva.Group | null> = { annotations: null, highlights: null };
+const groups: Record<LayerName, Konva.Group | null> = {
+  annotations: null,
+  highlights: null,
+  redactions: null,
+};
 
 export function registerAnnotationGroup(name: LayerName, group: Konva.Group | null): void {
   groups[name] = group;
 }
 
-/** Which layer an annotation draws in: highlights sit under everything else. */
+/** Which layer an annotation draws in: redactions, then highlights, then the rest. */
 export function layerOf(a: Annotation): LayerName {
-  return a.kind === "highlighter" ? "highlights" : "annotations";
+  return a.kind === "redact"
+    ? "redactions"
+    : a.kind === "highlighter"
+      ? "highlights"
+      : "annotations";
 }
 
 /**

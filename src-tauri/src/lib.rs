@@ -19,6 +19,7 @@ mod monitors;
 mod output;
 mod overlay;
 mod protocol;
+mod redact;
 mod session;
 mod settings;
 mod settings_window;
