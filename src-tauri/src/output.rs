@@ -13,15 +13,59 @@ use tauri::{AppHandle, Manager};
 use tauri_winrt_notification::Toast;
 use windows::Win32::System::SystemInformation::GetLocalTime;
 
+use crate::capture::MonitorFrame;
 use crate::compose::RgbaImage;
+use crate::frames::Capture;
+use crate::geometry::PhysicalRect;
 use crate::settings::{SaveSettings, Settings};
 use crate::state::AppState;
 
 /// The last few delivered images, so a notification's "Save" button can write
-/// one after the fact without holding pixels in the toast callback.
+/// one after the fact without holding pixels in the toast callback, and its
+/// "Edit" can reopen the capture still editable (PLAN 3D).
 pub struct RecentImages {
     next_id: u32,
-    items: VecDeque<(u32, Arc<RgbaImage>)>,
+    items: VecDeque<(u32, Recent)>,
+}
+
+/// A delivered image and the document it came from.
+#[derive(Clone)]
+pub struct Recent {
+    /// As delivered: cropped, markup flattened.
+    pub image: Arc<RgbaImage>,
+    pub doc: CaptureDoc,
+}
+
+/// What "Open in editor" would have opened (PLAN 3D.1). The frames are shared
+/// with `FrameStore`, so they only cost memory once it has dropped them.
+#[derive(Clone)]
+pub struct CaptureDoc {
+    /// The monitors the selection touched.
+    pub frames: Vec<Arc<MonitorFrame>>,
+    /// The selection, in virtual-desktop physical px.
+    pub rect: PhysicalRect,
+    /// Quick edit's annotations (JSON, virtual-desktop px), if it was used.
+    pub annotations: Option<String>,
+}
+
+impl CaptureDoc {
+    /// The frames of `capture` under `rect`.
+    pub fn new(capture: &Capture, rect: PhysicalRect, annotations: Option<String>) -> Self {
+        Self {
+            frames: touched_frames(&capture.frames, rect),
+            rect,
+            annotations,
+        }
+    }
+}
+
+/// The frames whose monitor `rect` touches.
+pub fn touched_frames(frames: &[Arc<MonitorFrame>], rect: PhysicalRect) -> Vec<Arc<MonitorFrame>> {
+    frames
+        .iter()
+        .filter(|f| f.monitor.physical_bounds.intersect(&rect).is_some())
+        .cloned()
+        .collect()
 }
 
 impl RecentImages {
@@ -34,26 +78,24 @@ impl RecentImages {
         }
     }
 
-    pub fn push(&mut self, image: Arc<RgbaImage>) -> u32 {
+    pub fn push(&mut self, recent: Recent) -> u32 {
         let id = self.next_id;
         self.next_id = self.next_id.wrapping_add(1).max(1);
-        self.items.push_back((id, image));
+        self.items.push_back((id, recent));
         while self.items.len() > Self::KEEP {
             self.items.pop_front();
         }
         id
     }
 
-    pub fn get(&self, id: u32) -> Option<Arc<RgbaImage>> {
+    pub fn get(&self, id: u32) -> Option<Recent> {
         self.items
             .iter()
             .find(|(i, _)| *i == id)
-            .map(|(_, img)| img.clone())
+            .map(|(_, recent)| recent.clone())
     }
 }
 
-/// Hand a finished capture to the configured actions. Returns immediately; the
-/// work runs on a background thread so the overlay can disappear at once.
 /// What quick edit already did with this image, so delivering doesn't repeat it.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Already {
@@ -61,7 +103,16 @@ pub struct Already {
     pub saved: Option<PathBuf>,
 }
 
-pub fn deliver(app: &AppHandle, image: RgbaImage, started: Instant, already: Already) {
+/// Hand a finished capture to the configured actions. Returns immediately; the
+/// work runs on a background thread so the overlay can disappear at once.
+/// `doc` is what the notification's Edit reopens (PLAN 3D.1).
+pub fn deliver(
+    app: &AppHandle,
+    image: RgbaImage,
+    doc: CaptureDoc,
+    started: Instant,
+    already: Already,
+) {
     let settings: Settings = app.state::<AppState>().settings.read().unwrap().clone();
     let app = app.clone();
     std::thread::spawn(move || {
@@ -71,7 +122,10 @@ pub fn deliver(app: &AppHandle, image: RgbaImage, started: Instant, already: Alr
             .recent_images
             .lock()
             .unwrap()
-            .push(image.clone());
+            .push(Recent {
+                image: image.clone(),
+                doc,
+            });
 
         let copying = settings.after_capture.copy_to_clipboard && !already.copied;
         let copied = copying
@@ -128,7 +182,7 @@ pub fn deliver(app: &AppHandle, image: RgbaImage, started: Instant, already: Alr
 /// save settings, then confirm with an "Open folder" notification.
 fn save_recent(app: &AppHandle, image_id: u32) {
     let state = app.state::<AppState>();
-    let Some(image) = state.recent_images.lock().unwrap().get(image_id) else {
+    let Some(Recent { image, .. }) = state.recent_images.lock().unwrap().get(image_id) else {
         notify_error(app, "Couldn't save screenshot", "It's no longer in memory.");
         return;
     };
@@ -495,12 +549,17 @@ mod tests {
 
     #[test]
     fn recent_images_keeps_last_few() {
-        let img = || {
-            Arc::new(RgbaImage {
+        let img = || Recent {
+            image: Arc::new(RgbaImage {
                 width: 1,
                 height: 1,
                 rgba: vec![0; 4],
-            })
+            }),
+            doc: CaptureDoc {
+                frames: vec![],
+                rect: PhysicalRect::new(0, 0, 1, 1),
+                annotations: None,
+            },
         };
         let mut recent = RecentImages::new();
         let ids: Vec<u32> = (0..7).map(|_| recent.push(img())).collect();
@@ -508,6 +567,41 @@ mod tests {
         assert!(recent.get(ids[1]).is_none());
         assert!(recent.get(ids[2]).is_some());
         assert!(recent.get(ids[6]).is_some());
+    }
+
+    #[test]
+    fn capture_doc_keeps_only_touched_monitors() {
+        use crate::geometry::MonitorInfo;
+        let frame = |index: u32, x: i32| {
+            let bounds = PhysicalRect::new(x, 0, 100, 100);
+            Arc::new(MonitorFrame {
+                monitor: MonitorInfo {
+                    index,
+                    name: String::new(),
+                    physical_bounds: bounds,
+                    work_area: bounds,
+                    scale_factor: 1.0,
+                    is_primary: index == 0,
+                },
+                width: 100,
+                height: 100,
+                bgra: vec![],
+            })
+        };
+        // Left monitor at negative x, then primary, then right.
+        let frames = vec![frame(1, -100), frame(0, 0), frame(2, 100)];
+        let indices = |rect| -> Vec<u32> {
+            touched_frames(&frames, rect)
+                .iter()
+                .map(|f| f.monitor.index)
+                .collect()
+        };
+        assert_eq!(indices(PhysicalRect::new(10, 10, 20, 20)), [0]);
+        assert_eq!(indices(PhysicalRect::new(-20, 10, 40, 20)), [1, 0]);
+        assert_eq!(indices(PhysicalRect::new(-100, 0, 300, 100)), [1, 0, 2]);
+        // Shared, not copied.
+        let touched = touched_frames(&frames, PhysicalRect::new(10, 10, 20, 20));
+        assert!(Arc::ptr_eq(&touched[0], &frames[1]));
     }
 
     #[test]

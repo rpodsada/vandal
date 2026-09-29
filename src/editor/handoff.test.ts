@@ -13,6 +13,7 @@ const init: EditorInit = {
   highlightsUrl: "",
   markup: null,
   file: null,
+  delivered: false,
 };
 
 const style = { color: "#e53935", width: 4, opacity: 1 };

@@ -6,6 +6,12 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- A notification's Edit (or a click on it) reopens the capture just as "Open in editor" would:
+  quick edit's annotations are still editable, and the crop can grow back out to the whole screen.
+  Closing the editor without changes no longer copies the image again.
+
 ### Fixed
 
 - In quick edit, right-clicking a color swatch to edit it no longer cancels the capture.

@@ -42,6 +42,13 @@ export async function exportImage(init: EditorInit, action: ExportAction): Promi
   return outcome;
 }
 
+/** The Doc as loaded was already delivered (reopened from a notification):
+ * count it as copied and saved, so closing it unchanged repeats nothing. */
+export function markDelivered(doc: Doc): void {
+  lastOutput.copied = doc;
+  lastOutput.saved = doc;
+}
+
 /** Whether the current Doc was already copied / saved (since its last change). */
 export function alreadyDone(action: "copy" | "save"): boolean {
   const doc = docStore.getState().doc;

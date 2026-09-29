@@ -5,7 +5,7 @@ import { useMarkupKeys } from "../markup/useMarkupKeys";
 import { emptyDoc } from "../markup/model/types";
 import { initialDoc } from "./handoff";
 import { commands, type EditorInit, type ExportAction, type Settings } from "../shared/ipc";
-import { alreadyDone, exportImage } from "./actions";
+import { alreadyDone, exportImage, markDelivered } from "./actions";
 import { CommandBar } from "./CommandBar";
 import { CropOptions } from "./CropOptions";
 import { applyCrop, beginCrop, useCropStore } from "./cropStore";
@@ -55,8 +55,10 @@ export function EditorApp() {
         // The whole frame, so the crop can grow back (the stage clips it).
         paintFrame(canvasRef.current!, init, pixels);
         docStore.getState().load(initialDoc(init));
+        // Reopened from a notification: already delivered (PLAN 3D.1).
+        if (init.delivered) markDelivered(docStore.getState().doc);
         // Markup handed over from quick edit hasn't been copied or saved yet.
-        if (init.markup)
+        else if (init.markup)
           docStore.setState({
             baseline: emptyDoc({ width: init.width, height: init.height }, init.crop),
           });

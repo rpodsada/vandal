@@ -123,6 +123,11 @@ export const commands = {
 	 *  capture on-close actions.
 	 */
 	file: string | null,
+	/**
+	 *  Reopened from a notification (PLAN 3D.1): the document as loaded was
+	 *  already delivered, so it counts as copied and saved.
+	 */
+	delivered: boolean,
 } | null>("editor_init"),
 	/**  Editor page painted its image; show the window. */
 	editorReady: () => __TAURI_INVOKE<void>("editor_ready"),
@@ -210,6 +215,11 @@ export type EditorInit = {
 	 *  capture on-close actions.
 	 */
 	file: string | null,
+	/**
+	 *  Reopened from a notification (PLAN 3D.1): the document as loaded was
+	 *  already delivered, so it counts as copied and saved.
+	 */
+	delivered: boolean,
 };
 
 export type EditorOnClose = {

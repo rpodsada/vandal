@@ -611,7 +611,8 @@ pub fn quick_done(
         session.highlights.as_deref(),
     )?;
     let already = session.done.for_image((rect, markup.revision));
-    output::deliver(app, image, started, already);
+    let doc = output::CaptureDoc::new(&capture, rect, Some(markup.annotations));
+    output::deliver(app, image, doc, started, already);
     Ok(())
 }
 
@@ -720,7 +721,10 @@ fn finish(
     }
     let frames: Vec<&MonitorFrame> = capture.frames.iter().map(|f| f.as_ref()).collect();
     match compose::compose(&frames, rect) {
-        Some(image) => output::deliver(app, image, started, output::Already::default()),
+        Some(image) => {
+            let doc = output::CaptureDoc::new(capture, rect, None);
+            output::deliver(app, image, doc, started, output::Already::default());
+        }
         None => eprintln!("[capture] #{}: empty selection {rect:?}", capture.id),
     }
 }

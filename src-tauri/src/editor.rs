@@ -69,6 +69,8 @@ pub struct Editor {
     pub file: Option<PathBuf>,
     /// Saving over `file` was confirmed (or it was just chosen in Save As).
     pub overwrite_confirmed: bool,
+    /// Reopened from a notification: the document was already delivered.
+    pub delivered: bool,
 }
 
 /// Quick edit's annotations, handed to the editor still editable (PLAN 2B.3).
@@ -147,6 +149,9 @@ pub struct EditorInit {
     /// ask before closing with unsaved changes instead of running the
     /// capture on-close actions.
     pub file: Option<String>,
+    /// Reopened from a notification (PLAN 3D.1): the document as loaded was
+    /// already delivered, so it counts as copied and saved.
+    pub delivered: bool,
 }
 
 /// What to do with the finished image.
@@ -197,12 +202,20 @@ pub fn open_capture(
     rect: PhysicalRect,
     annotations: Option<String>,
 ) {
-    let touched: Vec<&MonitorFrame> = capture
-        .frames
-        .iter()
-        .map(|f| f.as_ref())
-        .filter(|f| f.monitor.physical_bounds.intersect(&rect).is_some())
-        .collect();
+    open_frames(app, &capture.frames, rect, annotations, false);
+}
+
+/// [`open_capture`] on some of a capture's frames. `delivered`: the document
+/// was already delivered (a notification's Edit).
+fn open_frames(
+    app: &AppHandle,
+    frames: &[Arc<MonitorFrame>],
+    rect: PhysicalRect,
+    annotations: Option<String>,
+    delivered: bool,
+) {
+    let touched = output::touched_frames(frames, rect);
+    let touched: Vec<&MonitorFrame> = touched.iter().map(|f| f.as_ref()).collect();
     let monitors: Vec<MonitorInfo> = touched.iter().map(|f| f.monitor.clone()).collect();
     let bounds = virtual_bounds(&monitors);
     let (Some(image), Some(crop)) = (compose::compose(&touched, bounds), rect.intersect(&bounds))
@@ -223,6 +236,7 @@ pub fn open_capture(
         markup,
         title,
         None,
+        delivered,
     );
 }
 
@@ -235,7 +249,7 @@ pub fn open_file(app: &AppHandle, path: &Path) {
         Ok(image) => {
             let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
             let title = file_title(&app, &path);
-            open(&app, Arc::new(image), crop, None, title, Some(path));
+            open(&app, Arc::new(image), crop, None, title, Some(path), false);
         }
         Err(message) => output::notify_error(&app, "Couldn't open the image", &message),
     });
@@ -267,7 +281,7 @@ pub fn open_clipboard(app: &AppHandle) {
         Ok(image) => {
             let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
             let title = format!("Clipboard image — {}", crate::product_name(app));
-            open(app, Arc::new(image), crop, None, title, None);
+            open(app, Arc::new(image), crop, None, title, None, false);
         }
         Err(message) => output::notify_error(app, "Nothing to open", &message),
     }
@@ -301,15 +315,17 @@ fn capture_title(app: &AppHandle) -> String {
     )
 }
 
-/// Open an editor on a delivered image (the notification's Edit action).
+/// Open an editor on a delivered capture (the notification's Edit action),
+/// just as "Open in editor" would have: its monitors, its crop and quick
+/// edit's annotations, still editable (PLAN 3D.1).
 pub fn open_recent(app: &AppHandle, image_id: u32) {
-    let image = app
+    let recent = app
         .state::<AppState>()
         .recent_images
         .lock()
         .unwrap()
         .get(image_id);
-    let Some(image) = image else {
+    let Some(recent) = recent else {
         output::notify_error(
             app,
             "Couldn't open the editor",
@@ -317,9 +333,8 @@ pub fn open_recent(app: &AppHandle, image_id: u32) {
         );
         return;
     };
-    let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
-    let title = capture_title(app);
-    open(app, image, crop, None, title, None);
+    let doc = recent.doc;
+    open_frames(app, &doc.frames, doc.rect, doc.annotations, true);
 }
 
 fn open(
@@ -329,6 +344,7 @@ fn open(
     markup: Option<HandoffMarkup>,
     title: String,
     file: Option<PathBuf>,
+    delivered: bool,
 ) {
     let remembered = load_window_state(app);
     let state = app.state::<AppState>();
@@ -341,6 +357,7 @@ fn open(
         markup,
         file,
         overwrite_confirmed: false,
+        delivered,
     });
 
     let monitors = state.monitors.read().unwrap().clone();
@@ -420,6 +437,7 @@ pub fn init(app: &AppHandle, window_label: &str) -> Option<EditorInit> {
         highlights_url: protocol::editor_layer_url(id, LayerKind::Highlights),
         markup: e.markup.clone(),
         file: e.file.as_deref().map(file_name),
+        delivered: e.delivered,
     })
 }
 
