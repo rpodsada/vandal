@@ -27,7 +27,12 @@
       "icons/128x128@2x.png",
       "icons/icon.ico"
     ],
-    "shortDescription": "Screen capture and markup",
+    "publisher": "Richard Podsada",
+    "copyright": "Copyright © 2026 Richard Podsada",
+    "license": "GPL-3.0-or-later",
+    "category": "Utility",
+    "shortDescription": "Fast, free screen capture and markup",
+    "longDescription": "A fast, free screen capture and markup tool for Windows. Press a shortcut, select an area, draw on it, and it's on your clipboard. Every tool remembers your settings, every picker can be tailored to your workflow, and almost everything has a keyboard shortcut.",
     "windows": {
       "webviewInstallMode": {
         "type": "downloadBootstrapper",
