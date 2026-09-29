@@ -22,6 +22,30 @@ pub enum NumberPicker {
 }
 
 impl NumberPicker {
+    /// [`Self::normalized`], with no value above `max` (a percentage's 100).
+    fn normalized_up_to(self, max: f64) -> Option<Self> {
+        let cap = |values: Vec<f64>| values.into_iter().map(|v| v.min(max)).collect();
+        match self.normalized()? {
+            Self::Slider { min, max: hi } => Self::Slider {
+                min: min.min(max),
+                max: hi.min(max),
+            }
+            .normalized(),
+            Self::Stepped { values } => Self::Stepped {
+                values: cap(values),
+            }
+            .normalized(),
+            Self::Dropdown { values } => Self::Dropdown {
+                values: cap(values),
+            }
+            .normalized(),
+            Self::Buttons { values } => Self::Buttons {
+                values: cap(values),
+            }
+            .normalized(),
+        }
+    }
+
     /// Fix what can be fixed (order, duplicates, too many values); `None` if
     /// nothing usable is left.
     fn normalized(self) -> Option<Self> {
@@ -230,7 +254,10 @@ impl Styles {
             font_size: self.font_size.normalized().unwrap_or(defaults.font_size),
             pixelate: self.pixelate.normalized().unwrap_or(defaults.pixelate),
             blur: self.blur.normalized().unwrap_or(defaults.blur),
-            spotlight: self.spotlight.normalized().unwrap_or(defaults.spotlight),
+            spotlight: self
+                .spotlight
+                .normalized_up_to(100.0)
+                .unwrap_or(defaults.spotlight),
             tools: self
                 .tools
                 .into_iter()
@@ -308,6 +335,48 @@ impl Styles {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn spotlight_darkness_stays_a_percentage() {
+        let s = Styles {
+            spotlight: NumberPicker::Buttons {
+                values: vec![40.0, 150.0, 100.0],
+            },
+            ..Styles::default()
+        }
+        .normalized();
+        assert_eq!(
+            s.spotlight,
+            NumberPicker::Buttons {
+                values: vec![40.0, 100.0]
+            }
+        );
+        let s = Styles {
+            spotlight: NumberPicker::Slider {
+                min: 20.0,
+                max: 300.0,
+            },
+            ..Styles::default()
+        }
+        .normalized();
+        assert_eq!(
+            s.spotlight,
+            NumberPicker::Slider {
+                min: 20.0,
+                max: 100.0
+            }
+        );
+        // Nothing usable left: the default.
+        let s = Styles {
+            spotlight: NumberPicker::Slider {
+                min: 120.0,
+                max: 300.0,
+            },
+            ..Styles::default()
+        }
+        .normalized();
+        assert_eq!(s.spotlight, Styles::default().spotlight);
+    }
 
     #[test]
     fn presets_go_to_the_palette_the_tool_uses() {

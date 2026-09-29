@@ -415,6 +415,21 @@ export const sections: Section[] = [
         ],
       },
       {
+        title: "Spotlight",
+        items: [
+          {
+            id: "styles-spotlight",
+            kind: "numberPicker",
+            path: "styles.spotlight",
+            label: "Darkness choices",
+            description:
+              "How dark the spotlight tool makes everything outside it, in percent. Keys 1–9 and 0 pick them while you draw. Values above 100 are lowered to 100.",
+            unit: "%",
+            keywords: ["spotlight", "dim", "darken", "darkness", "opacity", "focus", "highlight"],
+          },
+        ],
+      },
+      {
         title: "Per-tool styles",
         description:
           "Give a tool its own colors or widths instead of the ones above. The highlighter comes with its own.",

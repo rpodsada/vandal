@@ -17,6 +17,7 @@ All notable changes to Vandal are listed here. The format follows
   arc. It snaps straight near the straight line, and double-clicking the handle straightens it.
 - Spotlight tool (S): darken everything outside a rectangle or ellipse to draw attention to it.
   Several spotlights share one darkness, set in the options bar; arrows and text stay bright.
+- Settings › Markup › Spotlight: choose the darkness levels the spotlight tool offers.
 
 ### Changed
 
