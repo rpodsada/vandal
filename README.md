@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <!-- TODO(3C): release and build badges once hosting is decided. -->
+  <!-- TODO(Phase 4): release and build badges once hosting is decided. -->
   <strong>Beta</strong> · Windows 10 (1903+) and Windows 11 · x64
 </p>
 
@@ -20,8 +20,8 @@ Press a shortcut, drag over any part of the screen, mark it up right there, and 
 clipboard. Vandal freezes the screen the instant you press the shortcut, so open menus, tooltips
 and hover states stay in the picture.
 
-<!-- TODO(3C): screenshot: selecting a region on a dimmed screen (docs/images/select.png) -->
-<!-- TODO(3C): screenshot: quick edit toolbar under a selection (docs/images/quick-edit.png) -->
+<!-- TODO(Phase 4): screenshot: selecting a region on a dimmed screen (docs/images/select.png) -->
+<!-- TODO(Phase 4): screenshot: quick edit toolbar under a selection (docs/images/quick-edit.png) -->
 
 > **Vandal is in beta.** It's being tested by a small group before a public release.
 > Expect rough edges, and please [report anything odd](#feedback-and-bug-reports).
@@ -80,7 +80,7 @@ where every screenshot should look the same.
 
 ## Install
 
-<!-- TODO(3C): download link once hosting is decided. -->
+<!-- TODO(Phase 4): download link once hosting is decided. -->
 
 1. Download the latest `Vandal_<version>_x64-setup.exe` (download link coming soon).
 2. Run it. Vandal installs for your user account only, so no administrator rights are needed.
@@ -146,7 +146,7 @@ F and A work only before you've drawn a selection. After that, A is the arrow to
 When you release the mouse, a toolbar appears under the selection (or above it if there's no
 room). Pick a tool and draw straight onto the frozen screen.
 
-<!-- TODO(3C): screenshot: quick edit with an arrow and a text label (docs/images/quick-edit-markup.png) -->
+<!-- TODO(Phase 4): screenshot: quick edit with an arrow and a text label (docs/images/quick-edit-markup.png) -->
 
 - **Enter** or **Done** finishes: the result is copied (and saved, if auto-save is on).
 - **Ctrl+C** copies and **Ctrl+S** saves, then quick edit closes.
@@ -163,7 +163,7 @@ use **Settings › Capture**.
 The editor opens for full-screen captures, from **Open in editor**, when you click a capture
 notification, and for image files.
 
-<!-- TODO(3C): screenshot: the editor window with markup (docs/images/editor.png) -->
+<!-- TODO(Phase 4): screenshot: the editor window with markup (docs/images/editor.png) -->
 
 - **Tools:** Select (V), Pen (P), Highlighter (H), Line (L), Arrow (A), Rectangle (R),
   Ellipse (E), Text (T) and Crop (C). The same tools, apart from Crop, are in quick edit.
@@ -338,7 +338,7 @@ Taskbar › Other system tray icons**.
 Vandal works entirely on your PC. Captures stay in memory until you copy or save them.
 Vandal doesn't collect usage data and doesn't make network connections.
 
-<!-- TODO(3C): once the updater exists, note that Vandal checks for updates (and what that sends),
+<!-- TODO(Phase 4): once the updater exists, note that Vandal checks for updates (and what that sends),
      and add a link to a privacy policy. -->
 
 ## All features
@@ -391,7 +391,7 @@ Vandal doesn't collect usage data and doesn't make network connections.
 
 ## Feedback and bug reports
 
-<!-- TODO(3C): feedback address or issue tracker, once hosting is decided. -->
+<!-- TODO(Phase 4): feedback address or issue tracker, once hosting is decided. -->
 
 Found a bug or have an idea? Please tell us. It helps to include:
 
