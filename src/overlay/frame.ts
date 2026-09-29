@@ -1,3 +1,4 @@
+import { useRedactSource } from "../markup/redact";
 import type { OverlayLoad, OverlayReport } from "../shared/ipc";
 
 /** Fetch a frame from the `capture://` protocol and draw it 1:1 onto `canvas`. */
@@ -19,9 +20,14 @@ export async function drawFrame(
     const buf = await res.arrayBuffer();
     t1 = performance.now();
     bytes = buf.byteLength;
-    const image = new ImageData(new Uint8ClampedArray(buf), load.width, load.height);
+    const data = new Uint8ClampedArray(buf);
+    const image = new ImageData(data, load.width, load.height);
     t2 = performance.now();
     ctx.putImageData(image, 0, 0);
+    // Redactions preview from these pixels (PLAN 3D.4).
+    useRedactSource.setState({
+      image: { x: 0, y: 0, width: load.width, height: load.height, data },
+    });
   } else {
     const blob = await res.blob();
     t1 = performance.now();
@@ -36,6 +42,14 @@ export async function drawFrame(
     bitmap.close();
   }
   const t3 = performance.now();
+  if (load.format !== "rgba") {
+    // The BMP transfer (a benchmark option) has no pixels in JS: read them
+    // back once for the redaction preview, after the timing.
+    const { data } = ctx.getImageData(0, 0, load.width, load.height);
+    useRedactSource.setState({
+      image: { x: 0, y: 0, width: load.width, height: load.height, data },
+    });
+  }
 
   return {
     monitorIndex: load.monitorIndex,

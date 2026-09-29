@@ -435,12 +435,15 @@ export type QuickEditSettings = {
 
 /**
  *  Quick edit's markup, as the page describes it with each action: which
- *  layers it just uploaded, its revision, and the annotations themselves (a
- *  JSON array in virtual-desktop px) in case the editor takes over.
+ *  layers it just uploaded, its redactions, its revision, and the annotations
+ *  themselves (a JSON array in virtual-desktop px) in case the editor takes
+ *  over.
  */
 export type QuickMarkup = {
 	layer: boolean,
 	highlights: boolean,
+	/**  Pixelated or blurred areas in virtual-desktop px, bottom to top (PLAN 3D.4). */
+	redactions: Redaction[],
 	revision: number,
 	annotations: string,
 };

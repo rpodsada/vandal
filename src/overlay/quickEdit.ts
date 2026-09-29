@@ -4,6 +4,7 @@
 // here is reset on each load.
 
 import { renderLayer } from "../markup/export";
+import { exportRedactions } from "../markup/redact";
 import { translateAnnotation } from "../markup/geometry";
 import { docStore } from "../markup/model/store";
 import { emptyDoc } from "../markup/model/types";
@@ -50,5 +51,17 @@ export async function uploadMarkup(load: OverlayLoad, selection: Rect): Promise<
     layer && uploadPixels(load.layerUrl, layer),
     highlights && uploadPixels(load.highlightsUrl, highlights),
   ]);
-  return { layer: layer !== null, highlights: highlights !== null, revision, annotations };
+  // Rust bakes redactions in itself, in virtual-desktop px like the annotations.
+  const { x, y } = load.physicalBounds;
+  const redactions = exportRedactions(doc).map((r) => ({
+    ...r,
+    rect: { ...r.rect, x: r.rect.x + x, y: r.rect.y + y },
+  }));
+  return {
+    layer: layer !== null,
+    highlights: highlights !== null,
+    redactions,
+    revision,
+    annotations,
+  };
 }

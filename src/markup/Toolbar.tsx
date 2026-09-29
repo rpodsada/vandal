@@ -84,13 +84,12 @@ interface Props {
 /** Tools, then undo/redo. Shared by quick edit and the editor (PLAN §4.6). */
 export function Toolbar({ extra, toolsActive = true, onPickTool }: Props) {
   const tool = useToolStore((s) => s.tool);
-  const hidden = useToolStore((s) => s.hidden);
   const undoable = useDoc(canUndo);
   const redoable = useDoc(canRedo);
 
   return (
     <div className={styles.toolbar} role="toolbar" aria-label="Tools">
-      {TOOL_BUTTONS.filter((b) => !hidden.includes(b.id)).map((b) => (
+      {TOOL_BUTTONS.map((b) => (
         <button
           key={b.id}
           type="button"

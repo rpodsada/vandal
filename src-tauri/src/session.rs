@@ -16,6 +16,7 @@ use crate::editor::LayerKind;
 use crate::frames::{Capture, CaptureId};
 use crate::geometry::{monitor_at, virtual_bounds, MonitorInfo, PhysicalRect};
 use crate::protocol::{self, TransferFormat};
+use crate::redact::{self, Redaction};
 use crate::state::AppState;
 use crate::{editor, monitors, output, overlay};
 
@@ -142,13 +143,16 @@ impl QuickDone {
 }
 
 /// Quick edit's markup, as the page describes it with each action: which
-/// layers it just uploaded, its revision, and the annotations themselves (a
-/// JSON array in virtual-desktop px) in case the editor takes over.
+/// layers it just uploaded, its redactions, its revision, and the annotations
+/// themselves (a JSON array in virtual-desktop px) in case the editor takes
+/// over.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct QuickMarkup {
     pub layer: bool,
     pub highlights: bool,
+    /// Pixelated or blurred areas in virtual-desktop px, bottom to top (PLAN 3D.4).
+    pub redactions: Vec<Redaction>,
     pub revision: u32,
     pub annotations: String,
 }
@@ -213,6 +217,28 @@ fn quick_image(
 ) -> Result<compose::RgbaImage, String> {
     let frames: Vec<&MonitorFrame> = capture.frames.iter().map(|f| f.as_ref()).collect();
     let mut image = compose::compose(&frames, rect).ok_or("The selection is empty.")?;
+    if !markup.redactions.is_empty() {
+        // Worked out on the whole monitor under the selection, as the overlay
+        // previews them, so a blur reads the same pixels around it.
+        let touched: Vec<&MonitorFrame> = frames
+            .iter()
+            .copied()
+            .filter(|f| f.monitor.physical_bounds.intersect(&rect).is_some())
+            .collect();
+        let monitors: Vec<MonitorInfo> = touched.iter().map(|f| f.monitor.clone()).collect();
+        let bounds = virtual_bounds(&monitors);
+        let base = compose::compose(&touched, bounds).ok_or("The selection is empty.")?;
+        let origin = bounds.origin();
+        let redactions: Vec<Redaction> = markup
+            .redactions
+            .iter()
+            .map(|r| Redaction {
+                rect: r.rect.relative_to(origin),
+                ..*r
+            })
+            .collect();
+        redact::apply(&base, rect.relative_to(origin), &mut image, &redactions);
+    }
     if markup.highlights {
         let h = highlights.ok_or("The highlights didn't arrive.")?;
         compose::blend_multiply(&mut image, h)?;

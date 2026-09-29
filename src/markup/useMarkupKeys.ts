@@ -118,7 +118,7 @@ function handlePlain(e: KeyboardEvent): boolean {
   const slot = digitSlot(e.code);
   if (slot !== null) return !e.shiftKey && pickWidth(slot);
   const tool = TOOL_KEYS[e.code];
-  if (tool && !e.shiftKey && !tools.hidden.includes(tool)) {
+  if (tool && !e.shiftKey) {
     tools.setTool(tool);
     return true;
   }

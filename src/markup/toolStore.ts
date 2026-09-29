@@ -86,8 +86,6 @@ export interface ToolState {
   /** Redact: pixelate or blur, and each mode's strength once picked. */
   redactMode: RedactMode;
   redactStrengths: Partial<Record<RedactMode, number>>;
-  /** Tools this host doesn't offer (yet): no button, no key. */
-  hidden: ToolId[];
   editing: TextEditing | null;
   setTool: (tool: ToolId) => void;
   setEditing: (editing: TextEditing | null) => void;
@@ -113,7 +111,6 @@ export const useToolStore = create<ToolState>((set) => ({
   textBackgroundColor: null,
   redactMode: "pixelate",
   redactStrengths: {},
-  hidden: [],
   editing: null,
   // Picking a drawing tool drops the selection, so the options show that tool.
   setTool: (tool) => {
