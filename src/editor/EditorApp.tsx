@@ -105,9 +105,13 @@ export function EditorApp() {
     setBusy(true);
     try {
       const outcome = await exportImage(init, action);
-      if (outcome.kind === "copied") setNotice({ text: "Copied to clipboard" });
+      if (outcome.kind === "copied") setNotice({ text: "Copied to clipboard", success: true });
       if (outcome.kind === "saved")
-        setNotice({ text: `Saved ${fileName(outcome.path)}`, path: outcome.path });
+        setNotice({
+          text: `Saved ${fileName(outcome.path)}`,
+          path: outcome.path,
+          success: true,
+        });
     } catch (e) {
       setNotice({ text: errorText(e), error: true });
     } finally {

@@ -205,6 +205,28 @@
   color: var(--error-text);
 }
 
+/* Only the text gives way in a narrow window, not the check or the link. */
+.notice > *,
+.noticeError > * {
+  flex-shrink: 0;
+}
+
+.notice > .noticeText,
+.noticeError > .noticeText {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status .noticeCheck {
+  width: 16px;
+  height: 16px;
+  margin-right: -2px;
+  color: var(--success-text);
+  stroke-width: 2.4;
+}
+
 .linkButton {
   padding: 0;
   border: 0;

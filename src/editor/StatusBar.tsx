@@ -12,6 +12,8 @@ export interface Notice {
   /** A saved file, offered as "Show in folder". */
   path?: string;
   error?: boolean;
+  /** A copy or save that worked: shown with a green check. */
+  success?: boolean;
 }
 
 /** Zoom levels offered in the menu. */
@@ -35,7 +37,12 @@ export function StatusBar({
     <footer className={styles.status}>
       {notice ? (
         <span className={notice.error ? styles.noticeError : styles.notice} role="status">
-          {notice.text}
+          {notice.success && (
+            <svg className={styles.noticeCheck} viewBox="0 0 24 24" aria-hidden>
+              <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </svg>
+          )}
+          <span className={styles.noticeText}>{notice.text}</span>
           {notice.path && (
             <button
               type="button"

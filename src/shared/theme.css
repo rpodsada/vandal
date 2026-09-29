@@ -41,6 +41,7 @@
   --error-bg: light-dark(#fde7e9, #442726);
   --error-text: light-dark(#c42b1c, #ff99a4);
   --error-border: light-dark(rgb(196 43 28 / 0.25), rgb(255 153 164 / 0.25));
+  --success-text: light-dark(#0f7b0f, #6ccb5f);
 }
 
 :root[data-theme="light"] {
