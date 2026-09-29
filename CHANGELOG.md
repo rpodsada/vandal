@@ -15,6 +15,8 @@ All notable changes to Vandal are listed here. The format follows
 - Curved lines and arrows: drag the diamond handle on a selected line or arrow to bend it. Slide
   the handle toward an end to make the curve lean that way, or hold Shift for a perfect circular
   arc. It snaps straight near the straight line, and double-clicking the handle straightens it.
+- Spotlight tool (S): darken everything outside a rectangle or ellipse to draw attention to it.
+  Several spotlights share one darkness, set in the options bar; arrows and text stay bright.
 
 ### Changed
 

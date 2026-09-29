@@ -4,6 +4,7 @@ import {
   emptyDoc,
   type RedactAnnotation,
   type ShapeAnnotation,
+  type SpotlightAnnotation,
   type TextAnnotation,
 } from "./model/types";
 import { applyStyle } from "./restyle";
@@ -160,5 +161,51 @@ describe("applyStyle on redactions", () => {
     const before = redaction(id);
     applyStyle({ color: "#000000" });
     expect(redaction(id)).toEqual(before);
+  });
+});
+
+describe("applyStyle on spotlights", () => {
+  beforeEach(() => {
+    docStore.getState().load(emptyDoc({ width: 100, height: 100 }));
+    useToolStore.setState({ tool: "select", spotlightShape: "rect", spotlightDim: null });
+  });
+
+  function addSpotlight(): string {
+    return docStore.getState().add({
+      kind: "spotlight",
+      rect: { x: 0, y: 0, width: 10, height: 10 },
+      shape: "rect",
+      dim: 50,
+    });
+  }
+
+  const spotlight = (id: string) =>
+    docStore.getState().doc.annotations.find((a) => a.id === id) as SpotlightAnnotation;
+
+  it("changes every spotlight's darkness, selected or not", () => {
+    const a = addSpotlight();
+    const b = addSpotlight();
+    docStore.getState().select([a]);
+    applyStyle({ dim: 70 });
+    expect(spotlight(a).dim).toBe(70);
+    expect(spotlight(b).dim).toBe(70);
+    expect(useToolStore.getState().spotlightDim).toBe(70);
+  });
+
+  it("changes existing spotlights' darkness from the tool too", () => {
+    const a = addSpotlight();
+    useToolStore.setState({ tool: "spotlight" });
+    applyStyle({ dim: 30 });
+    expect(spotlight(a).dim).toBe(30);
+  });
+
+  it("changes only the selected spotlight's shape", () => {
+    const a = addSpotlight();
+    const b = addSpotlight();
+    docStore.getState().select([a]);
+    applyStyle({ spotlightShape: "ellipse" });
+    expect(spotlight(a).shape).toBe("ellipse");
+    expect(spotlight(b).shape).toBe("rect");
+    expect(useToolStore.getState().spotlightShape).toBe("ellipse");
   });
 });

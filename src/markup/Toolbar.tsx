@@ -70,6 +70,24 @@ const TOOL_BUTTONS: { id: ToolId; label: string; key: string; icon: ReactNode }[
       </>
     ),
   },
+  {
+    id: "spotlight",
+    label: "Spotlight",
+    key: "S",
+    icon: (
+      <>
+        <path
+          d="M3 5h18v14H3zM12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8z"
+          fill="currentColor"
+          fillRule="evenodd"
+          stroke="none"
+          opacity="0.45"
+        />
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <circle cx="12" cy="12" r="4" />
+      </>
+    ),
+  },
 ];
 
 interface Props {

@@ -59,6 +59,7 @@ export function annotationBounds(a: Annotation): Rect {
     case "ellipse":
       return rotatedBounds(a.rect, a.rotation);
     case "redact":
+    case "spotlight":
       return a.rect;
     case "line":
     case "arrow": {
@@ -116,6 +117,7 @@ export function translateAnnotation<A extends Annotation>(a: A, dx: number, dy: 
     case "rect":
     case "ellipse":
     case "redact":
+    case "spotlight":
       return { ...a, rect: { ...a.rect, x: a.rect.x + dx, y: a.rect.y + dy } };
     case "line":
     case "arrow":

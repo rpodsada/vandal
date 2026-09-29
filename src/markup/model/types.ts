@@ -139,6 +139,21 @@ export interface RedactAnnotation extends Base {
   strength: number;
 }
 
+export type SpotlightShape = "rect" | "ellipse";
+
+/**
+ * Keeps its area bright and darkens everything else (PLAN 3D.7). All
+ * spotlights cut holes in one shared dark layer, under the other annotations.
+ */
+export interface SpotlightAnnotation extends Base {
+  kind: "spotlight";
+  /** Axis-aligned, no rotation. */
+  rect: Rect;
+  shape: SpotlightShape;
+  /** How dark outside, in %. Shared: every spotlight in a document has the same. */
+  dim: number;
+}
+
 export type Annotation =
   | PenAnnotation
   | HighlighterAnnotation
@@ -146,7 +161,8 @@ export type Annotation =
   | ArrowAnnotation
   | ShapeAnnotation
   | TextAnnotation
-  | RedactAnnotation;
+  | RedactAnnotation
+  | SpotlightAnnotation;
 
 export type AnnotationKind = Annotation["kind"];
 

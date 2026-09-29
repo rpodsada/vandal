@@ -141,6 +141,8 @@ pub struct Styles {
     pub pixelate: NumberPicker,
     /// Redact's blur radius in source px.
     pub blur: NumberPicker,
+    /// Spotlight's darkness outside, in % (PLAN 3D.7).
+    pub spotlight: NumberPicker,
     /// Per-tool overrides, keyed by tool id (`"highlighter"`, ...).
     pub tools: BTreeMap<String, ToolStyles>,
 }
@@ -165,6 +167,9 @@ impl Default for Styles {
             },
             blur: NumberPicker::Buttons {
                 values: vec![3.0, 6.0, 10.0, 16.0],
+            },
+            spotlight: NumberPicker::Buttons {
+                values: vec![30.0, 50.0, 70.0, 85.0],
             },
             tools: BTreeMap::from([(
                 "highlighter".to_string(),
@@ -225,6 +230,7 @@ impl Styles {
             font_size: self.font_size.normalized().unwrap_or(defaults.font_size),
             pixelate: self.pixelate.normalized().unwrap_or(defaults.pixelate),
             blur: self.blur.normalized().unwrap_or(defaults.blur),
+            spotlight: self.spotlight.normalized().unwrap_or(defaults.spotlight),
             tools: self
                 .tools
                 .into_iter()

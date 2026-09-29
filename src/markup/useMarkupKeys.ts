@@ -62,6 +62,11 @@ function pickWidth(slot: number): boolean {
     if (fontSize !== null) applyStyle({ fontSize });
     return true;
   }
+  if (sections.spotlight) {
+    const dim = pickByDigit(useStyleConfig.getState().styles.spotlight, slot);
+    if (dim !== null) applyStyle({ dim });
+    return true;
+  }
   if (sections.redact) {
     const mode = targetValues(target, docStore.getState().doc).redact?.mode;
     const strength = mode ? pickByDigit(strengthPickerFor(mode), slot) : null;

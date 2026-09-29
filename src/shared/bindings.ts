@@ -513,6 +513,8 @@ export type Styles = {
 	pixelate?: NumberPicker,
 	/**  Redact's blur radius in source px. */
 	blur?: NumberPicker,
+	/**  Spotlight's darkness outside, in % (PLAN 3D.7). */
+	spotlight?: NumberPicker,
 	/**  Per-tool overrides, keyed by tool id (`"highlighter"`, ...). */
 	tools?: { [key in string]: ToolStyles },
 };

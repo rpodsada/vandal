@@ -13,6 +13,7 @@ import type {
   Doc,
   RedactMode,
   ShapeFill,
+  SpotlightShape,
   TextAlign,
 } from "./model/types";
 import { textPx } from "./geometry";
@@ -26,6 +27,7 @@ import {
   toolFill,
   toolFont,
   toolRedact,
+  toolSpotlight,
   toolWidth,
 } from "./styles";
 import { useToolStore, type ToolId } from "./toolStore";
@@ -51,9 +53,9 @@ export function styleTarget(
   if (picked.length) {
     const kinds = [...new Set(picked.map((a) => a.kind))];
     // A mixed selection shows the pickers of the first kind that draws
-    // (not a highlighter or a redaction), if there is one.
+    // (not a highlighter, redaction or spotlight), if there is one.
     const lead =
-      kinds.find((k) => k !== "highlighter" && k !== "redact") ??
+      kinds.find((k) => k !== "highlighter" && k !== "redact" && k !== "spotlight") ??
       kinds.find((k) => k !== "highlighter") ??
       kinds[0];
     return { tool: TOOL_FOR_KIND[lead], ids: picked.map((a) => a.id), kinds };
@@ -82,6 +84,8 @@ export interface TargetValues {
   } | null;
   /** Redact only. */
   redact: { mode: RedactMode; strength: number } | null;
+  /** Spotlight only. */
+  spotlight: { shape: SpotlightShape; dim: number } | null;
 }
 
 /** What the controls show: the first object's style, or the tool's. */
@@ -92,7 +96,7 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
     const t = target.tool;
     return {
       color: toolColor(t),
-      width: t === "text" || t === "redact" ? null : toolWidth(t),
+      width: t === "text" || t === "redact" || t === "spotlight" ? null : toolWidth(t),
       fill: t === "rect" || t === "ellipse" ? toolFill(t).fill : null,
       fillColor: t === "rect" || t === "ellipse" ? (toolFill(t).color ?? toolColor(t)) : null,
       head: t === "arrow" ? tools.arrowHead : null,
@@ -110,6 +114,20 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
             }
           : null,
       redact: t === "redact" ? toolRedact() : null,
+      spotlight: t === "spotlight" ? toolSpotlight() : null,
+    };
+  }
+  if (a.kind === "spotlight") {
+    return {
+      color: toolColor("spotlight"),
+      width: null,
+      fill: null,
+      fillColor: null,
+      head: null,
+      ends: null,
+      text: null,
+      redact: null,
+      spotlight: { shape: a.shape, dim: a.dim },
     };
   }
   if (a.kind === "redact") {
@@ -122,6 +140,7 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
       ends: null,
       text: null,
       redact: { mode: a.mode, strength: a.strength },
+      spotlight: null,
     };
   }
   return {
@@ -144,6 +163,7 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
           }
         : null,
     redact: null,
+    spotlight: null,
   };
 }
 
@@ -151,12 +171,13 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
 export function targetSections(target: StyleTarget) {
   const all = (pred: (k: AnnotationKind) => boolean) => target.kinds.every(pred);
   return {
-    color: target.kinds.some((k) => k !== "redact"),
-    width: target.kinds.some((k) => k !== "text" && k !== "redact"),
+    color: target.kinds.some((k) => k !== "redact" && k !== "spotlight"),
+    width: target.kinds.some((k) => k !== "text" && k !== "redact" && k !== "spotlight"),
     fill: all((k) => k === "rect" || k === "ellipse"),
     head: all((k) => k === "arrow"),
     text: all((k) => k === "text"),
     redact: all((k) => k === "redact"),
+    spotlight: all((k) => k === "spotlight"),
   };
 }
 
@@ -177,9 +198,15 @@ export interface StylePatch {
   redactMode?: RedactMode;
   /** Redact: for the mode it ends up in. */
   strength?: number;
+  spotlightShape?: SpotlightShape;
+  /** Spotlight darkness (%): applies to every spotlight in the document. */
+  dim?: number;
 }
 
 function patchAnnotation(a: Annotation, p: StylePatch): Annotation {
+  if (a.kind === "spotlight") {
+    return { ...a, shape: p.spotlightShape ?? a.shape, dim: p.dim ?? a.dim };
+  }
   if (a.kind === "redact") {
     const mode = p.redactMode ?? a.mode;
     // A new mode brings its own strength (a block size isn't a blur radius).
@@ -266,8 +293,15 @@ export function applyStyle(patch: StylePatch): void {
   const tools = new Set(target.kinds.map((k) => TOOL_FOR_KIND[k]));
   for (const tool of tools) {
     if (patch.color !== undefined) rememberColor(tool, patch.color);
-    if (patch.width !== undefined && tool !== "text" && tool !== "redact")
+    if (patch.width !== undefined && tool !== "text" && tool !== "redact" && tool !== "spotlight")
       rememberWidth(tool, patch.width);
+    if (tool === "spotlight") {
+      const t = useToolStore.getState();
+      useToolStore.setState({
+        spotlightShape: patch.spotlightShape ?? t.spotlightShape,
+        spotlightDim: patch.dim ?? t.spotlightDim,
+      });
+    }
     if (tool === "redact") rememberRedact(target, patch);
     if (tool === "rect" || tool === "ellipse") {
       if (patch.fill !== undefined)
@@ -295,11 +329,21 @@ export function applyStyle(patch: StylePatch): void {
       useToolStore.setState({ arrowEnds: patch.ends });
   }
 
-  if (!target.ids.length) return;
   const store = docStore.getState();
+  // The darkness is shared by every spotlight, selected or not.
+  const ids =
+    patch.dim === undefined
+      ? target.ids
+      : [
+          ...new Set([
+            ...target.ids,
+            ...store.doc.annotations.filter((a) => a.kind === "spotlight").map((a) => a.id),
+          ]),
+        ];
+  if (!ids.length) return;
   const own = !store.gestureStart;
   if (own) store.beginGesture();
-  for (const id of target.ids) store.update(id, (a) => patchAnnotation(a, patch));
+  for (const id of ids) store.update(id, (a) => patchAnnotation(a, patch));
   if (own) store.endGesture();
 }
 

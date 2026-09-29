@@ -3,7 +3,14 @@
 // a stored value from an older or newer version restores what still makes
 // sense and ignores the rest.
 
-import type { ArrowEnds, ArrowHead, RedactMode, ShapeFill, TextAlign } from "./model/types";
+import type {
+  ArrowEnds,
+  ArrowHead,
+  RedactMode,
+  ShapeFill,
+  SpotlightShape,
+  TextAlign,
+} from "./model/types";
 import { isTool, useToolStore, type PaletteKey, type ToolId } from "./toolStore";
 
 /** Bumped only if a field changes meaning; new fields just appear. */
@@ -28,6 +35,8 @@ export interface ToolMemory {
   textBackgroundColor: string | null;
   redactMode: RedactMode;
   redactStrengths: Partial<Record<RedactMode, number>>;
+  spotlightShape: SpotlightShape;
+  spotlightDim: number | null;
 }
 
 /** The tools' current memory. */
@@ -52,6 +61,8 @@ export function snapshotToolMemory(): ToolMemory {
     textBackgroundColor: t.textBackgroundColor,
     redactMode: t.redactMode,
     redactStrengths: t.redactStrengths,
+    spotlightShape: t.spotlightShape,
+    spotlightDim: t.spotlightDim,
   };
 }
 
@@ -124,5 +135,11 @@ export function restoreToolMemory(stored: unknown): void {
     textBackgroundColor: pick("textBackgroundColor", nullable(isColor), t.textBackgroundColor),
     redactMode: pick("redactMode", isRedactMode, t.redactMode),
     redactStrengths: redactStrengths(s.redactStrengths),
+    spotlightShape: pick(
+      "spotlightShape",
+      oneOf<SpotlightShape>("rect", "ellipse"),
+      t.spotlightShape,
+    ),
+    spotlightDim: pick("spotlightDim", nullable(isSize), t.spotlightDim),
   });
 }

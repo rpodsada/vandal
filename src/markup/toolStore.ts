@@ -9,6 +9,7 @@ import type {
   ArrowHead,
   RedactMode,
   ShapeFill,
+  SpotlightShape,
   TextAlign,
 } from "./model/types";
 
@@ -23,6 +24,7 @@ export const TOOLS = [
   "ellipse",
   "text",
   "redact",
+  "spotlight",
 ] as const;
 export type ToolId = (typeof TOOLS)[number];
 
@@ -40,6 +42,7 @@ export const TOOL_KEYS: Record<string, ToolId> = {
   KeyE: "ellipse",
   KeyT: "text",
   KeyB: "redact",
+  KeyS: "spotlight",
 };
 
 export function isTool(value: string): value is ToolId {
@@ -86,6 +89,9 @@ export interface ToolState {
   /** Redact: pixelate or blur, and each mode's strength once picked. */
   redactMode: RedactMode;
   redactStrengths: Partial<Record<RedactMode, number>>;
+  /** Spotlight: its shape, and the darkness once picked (%). */
+  spotlightShape: SpotlightShape;
+  spotlightDim: number | null;
   editing: TextEditing | null;
   setTool: (tool: ToolId) => void;
   setEditing: (editing: TextEditing | null) => void;
@@ -111,6 +117,8 @@ export const useToolStore = create<ToolState>((set) => ({
   textBackgroundColor: null,
   redactMode: "pixelate",
   redactStrengths: {},
+  spotlightShape: "rect",
+  spotlightDim: null,
   editing: null,
   // Picking a drawing tool drops the selection, so the options show that tool.
   setTool: (tool) => {

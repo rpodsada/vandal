@@ -40,6 +40,7 @@ import type {
   Rect,
   RedactAnnotation,
   ShapeAnnotation,
+  SpotlightAnnotation,
   TextAnnotation,
 } from "./model/types";
 import { redactPixels, redactReads, redactRect, useRedactSource } from "./redact";
@@ -49,6 +50,7 @@ import {
   toolFill,
   toolFont,
   toolRedact,
+  toolSpotlight,
   toolStroke,
   useStyleConfig,
 } from "./styles";
@@ -149,14 +151,19 @@ function isStroke(a: Annotation): a is PenAnnotation | HighlighterAnnotation {
   return a.kind === "pen" || a.kind === "highlighter";
 }
 
-/** Rects, ellipses, text and redactions get the resize/rotate transformer. */
-function isBoxed(a: Annotation): boolean {
-  return a.kind === "rect" || a.kind === "ellipse" || a.kind === "text" || a.kind === "redact";
+/** Shapes drawn by dragging out a box. */
+function hasRect(a: Annotation): a is ShapeAnnotation | RedactAnnotation | SpotlightAnnotation {
+  return a.kind === "rect" || a.kind === "ellipse" || a.kind === "redact" || a.kind === "spotlight";
 }
 
-/** Shapes drawn by dragging out a box. */
-function hasRect(a: Annotation): a is ShapeAnnotation | RedactAnnotation {
-  return a.kind === "rect" || a.kind === "ellipse" || a.kind === "redact";
+/** Boxes and text get the resize/rotate transformer. */
+function isBoxed(a: Annotation): boolean {
+  return hasRect(a) || a.kind === "text";
+}
+
+/** Kept axis-aligned: no rotate handle. */
+function isUnrotatable(a: Annotation): boolean {
+  return a.kind === "redact" || a.kind === "spotlight";
 }
 
 /**
@@ -376,6 +383,15 @@ export function MarkupLayer({
         ...toolRedact(),
       });
       drag = { mode: "draw", start: p, id };
+    } else if (tool === "spotlight") {
+      store.select([]);
+      store.beginGesture();
+      const id = store.add({
+        kind: "spotlight",
+        rect: { x: p.x, y: p.y, width: 0, height: 0 },
+        ...toolSpotlight(),
+      });
+      drag = { mode: "draw", start: p, id };
     } else {
       const style = toolStroke(tool);
       const { arrowHead, arrowEnds } = useToolStore.getState();
@@ -405,7 +421,8 @@ export function MarkupLayer({
             (drag.mode === "draw" && (tool === "line" || tool === "arrow"))
           ? "segment"
           : drag.mode === "draw"
-            ? tool === "ellipse"
+            ? tool === "ellipse" ||
+              (tool === "spotlight" && useToolStore.getState().spotlightShape === "ellipse")
               ? "circle"
               : "square"
             : drag.mode === "text"
@@ -637,7 +654,7 @@ export function MarkupLayer({
       node.scaleY(1);
       const rect = { x: cx - w / 2, y: cy - h / 2, width: w, height: h };
       store.update(a.id, (x) =>
-        x.kind === "redact"
+        x.kind === "redact" || x.kind === "spotlight"
           ? { ...x, rect }
           : x.kind === "rect" || x.kind === "ellipse"
             ? { ...x, rect, rotation }
@@ -648,9 +665,12 @@ export function MarkupLayer({
 
   const crop = clip ?? doc.crop;
   const textSelected = doc.annotations.some((a) => a.kind === "text" && selection.includes(a.id));
-  // Redactions stay axis-aligned (Rust bakes whole-pixel rectangles).
-  const redactSelected = doc.annotations.some(
-    (a) => a.kind === "redact" && selection.includes(a.id),
+  // Redactions (Rust bakes whole-pixel rectangles) and spotlights stay axis-aligned.
+  const unrotatableSelected = doc.annotations.some(
+    (a) => isUnrotatable(a) && selection.includes(a.id),
+  );
+  const spotlights = doc.annotations.filter(
+    (a): a is SpotlightAnnotation => a.kind === "spotlight",
   );
   const editedText = doc.annotations.find(
     (a): a is TextAnnotation => a.kind === "text" && a.id === editing?.id,
@@ -698,6 +718,8 @@ export function MarkupLayer({
         </Layer>
         <Layer>
           <Group ref={groupRef} {...groupProps}>
+            {/* First in this layer: it punches its holes into nothing else. */}
+            {spotlights.length > 0 && <SpotlightDim spots={spotlights} source={doc.source} />}
             {doc.annotations
               .filter((a) => layerOf(a) === "annotations")
               .map((a) => (
@@ -716,7 +738,7 @@ export function MarkupLayer({
             listening={handlesLive}
             ignoreStroke
             flipEnabled={false}
-            rotateEnabled={!redactSelected}
+            rotateEnabled={!unrotatableSelected}
             // Corners resize freely; Shift keeps the proportions.
             keepRatio={false}
             enabledAnchors={textSelected ? TEXT_ANCHORS : ALL_ANCHORS}
@@ -866,6 +888,7 @@ function AnnotationShape({
     );
   }
   if (hasEndpoints(a)) return <SegmentShape a={a} hitSlop={hitSlop} />;
+  if (a.kind === "spotlight") return <SpotlightEdge a={a} hitSlop={hitSlop} />;
   if (isStroke(a)) {
     const { color, width, opacity } = a.style;
     // Within the highlight layer, overlapping highlights darken like ink.
@@ -936,6 +959,83 @@ function AnnotationShape({
     />
   ) : (
     <Ellipse {...common} radiusX={rect.width / 2} radiusY={rect.height / 2} />
+  );
+}
+
+/**
+ * The shared dark layer (PLAN 3D.7): the whole image darkened by the last
+ * spotlight's amount (they're kept equal), with every spotlight cut out, so
+ * overlaps don't darken twice. Exported with the annotation layer.
+ */
+function SpotlightDim({
+  spots,
+  source,
+}: {
+  spots: SpotlightAnnotation[];
+  source: { width: number; height: number };
+}) {
+  const dim = Math.min(100, Math.max(0, spots[spots.length - 1].dim)) / 100;
+  return (
+    <Shape
+      listening={false}
+      perfectDrawEnabled={false}
+      sceneFunc={(ctx) => {
+        const c = (ctx as unknown as { _context: CanvasRenderingContext2D })._context;
+        c.save();
+        c.fillStyle = `rgba(0, 0, 0, ${dim})`;
+        c.fillRect(0, 0, source.width, source.height);
+        c.globalCompositeOperation = "destination-out";
+        c.fillStyle = "#000";
+        for (const { rect: r, shape } of spots) {
+          c.beginPath();
+          if (shape === "ellipse") {
+            c.ellipse(
+              r.x + r.width / 2,
+              r.y + r.height / 2,
+              r.width / 2,
+              r.height / 2,
+              0,
+              0,
+              2 * Math.PI,
+            );
+          } else {
+            c.rect(r.x, r.y, r.width, r.height);
+          }
+          c.fill();
+        }
+        c.restore();
+      }}
+    />
+  );
+}
+
+/**
+ * A spotlight's own object: invisible (the dark layer shows where it is), and
+ * picked anywhere inside, like a filled box. Ctrl draws over it instead.
+ */
+function SpotlightEdge({ a, hitSlop }: { a: SpotlightAnnotation; hitSlop: number }) {
+  const { rect } = a;
+  const common = {
+    id: a.id,
+    name: "annotation",
+    x: rect.x + rect.width / 2,
+    y: rect.y + rect.height / 2,
+    fill: "rgba(0, 0, 0, 0)",
+    stroke: "rgba(0, 0, 0, 0)",
+    strokeWidth: 1,
+    hitStrokeWidth: 2 * hitSlop,
+    perfectDrawEnabled: false,
+  };
+  return a.shape === "ellipse" ? (
+    <Ellipse {...common} radiusX={rect.width / 2} radiusY={rect.height / 2} />
+  ) : (
+    <KRect
+      {...common}
+      width={rect.width}
+      height={rect.height}
+      offsetX={rect.width / 2}
+      offsetY={rect.height / 2}
+    />
   );
 }
 

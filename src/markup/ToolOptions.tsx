@@ -4,7 +4,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { Dropdown } from "./Dropdown";
 import { useDoc } from "./model/store";
 import { FontPickerControl } from "./FontPickerControl";
-import type { ArrowHead, RedactMode, ShapeFill, TextAlign } from "./model/types";
+import type { ArrowHead, RedactMode, ShapeFill, SpotlightShape, TextAlign } from "./model/types";
 import { NumberPickerControl } from "./NumberPickerControl";
 import { PresetEditor } from "./PresetEditor";
 import { slotKey } from "./pickers";
@@ -102,6 +102,11 @@ const REDACT_MODES: { id: RedactMode; label: string; icon: ReactNode }[] = [
   },
 ];
 
+const SPOTLIGHT_SHAPES: { id: SpotlightShape; label: string; icon: ReactNode }[] = [
+  { id: "rect", label: "Rectangle", icon: <rect x="4" y="6" width="16" height="12" rx="1" /> },
+  { id: "ellipse", label: "Ellipse", icon: <ellipse cx="12" cy="12" rx="8" ry="6" /> },
+];
+
 /**
  * The options for what's being drawn or selected (mockup: ToolOptions):
  * colors, line width, fill and arrow head. Shared by quick edit and the editor.
@@ -141,6 +146,8 @@ export function ToolOptions() {
   useToolStore((s) => s.textBackgroundColor);
   useToolStore((s) => s.redactMode);
   useToolStore((s) => s.redactStrengths);
+  useToolStore((s) => s.spotlightShape);
+  useToolStore((s) => s.spotlightDim);
   const config = useStyleConfig();
   const held = useHeldKeys();
   // The preset being edited (right-click on a swatch).
@@ -228,6 +235,41 @@ export function ToolOptions() {
               showKeys={hints && held.digit}
               hints={hints}
               onPick={(width) => applyStyle({ width })}
+              onDragStart={beginStyleDrag}
+              onDragEnd={endStyleDrag}
+            />
+          </span>
+        </div>
+      )}
+
+      {show.spotlight && values.spotlight && (
+        <div className={styles.section}>
+          <div className={styles.group} {...hint("spotlight.shape")}>
+            {SPOTLIGHT_SHAPES.map((sh) => (
+              <button
+                key={sh.id}
+                type="button"
+                className={styles.toggle}
+                aria-pressed={values.spotlight?.shape === sh.id}
+                aria-label={sh.label}
+                title={sh.label}
+                onClick={() => applyStyle({ spotlightShape: sh.id })}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden>
+                  {sh.icon}
+                </svg>
+              </button>
+            ))}
+          </div>
+          <span className={styles.hintArea} {...hint("dim")}>
+            <NumberPickerControl
+              picker={config.styles.spotlight}
+              value={values.spotlight.dim}
+              unit="%"
+              label="Darkness"
+              showKeys={hints && held.digit}
+              hints={hints}
+              onPick={(dim) => applyStyle({ dim })}
               onDragStart={beginStyleDrag}
               onDragEnd={endStyleDrag}
             />

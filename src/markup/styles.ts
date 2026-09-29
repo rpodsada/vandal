@@ -4,7 +4,13 @@
 
 import { create } from "zustand";
 import type { NumberPicker, StyleSettings } from "../shared/ipc";
-import type { AnnotationKind, RedactMode, ShapeFill, StrokeStyle } from "./model/types";
+import type {
+  AnnotationKind,
+  RedactMode,
+  ShapeFill,
+  SpotlightShape,
+  StrokeStyle,
+} from "./model/types";
 import { nearestValue } from "./pickers";
 import { TOOLS, useToolStore, type PaletteKey, type ToolId } from "./toolStore";
 
@@ -38,6 +44,7 @@ export const DEFAULT_STYLE_CONFIG: StyleConfig = {
     fontSize: { control: "dropdown", values: [8, 10, 12, 14, 16, 18, 20, 36, 48, 72] },
     pixelate: { control: "buttons", values: [6, 10, 16, 24] },
     blur: { control: "buttons", values: [3, 6, 10, 16] },
+    spotlight: { control: "buttons", values: [30, 50, 70, 85] },
     tools: {
       highlighter: {
         palette: ["#ffeb3b", "#76ff03", "#ff4081", "#40c4ff", "#ffab40"],
@@ -68,6 +75,7 @@ export const TOOL_FOR_KIND: Record<AnnotationKind, ToolId> = {
   ellipse: "ellipse",
   text: "text",
   redact: "redact",
+  spotlight: "spotlight",
 };
 
 function override(tool: ToolId, cfg: StyleConfig) {
@@ -198,6 +206,16 @@ export function toolRedact(mode?: RedactMode): { mode: RedactMode; strength: num
     mode: m,
     strength: t.redactStrengths[m] ?? nearestValue(strengthPickerFor(m), PREFERRED_STRENGTH[m]),
   };
+}
+
+/** The darkness a spotlight starts with before one is picked (%). */
+const PREFERRED_DIM = 50;
+
+/** Spotlight's shape and darkness now. */
+export function toolSpotlight(): { shape: SpotlightShape; dim: number } {
+  const t = useToolStore.getState();
+  const picker = useStyleConfig.getState().styles.spotlight;
+  return { shape: t.spotlightShape, dim: t.spotlightDim ?? nearestValue(picker, PREFERRED_DIM) };
 }
 
 export function rememberWidth(tool: ToolId, width: number): void {
