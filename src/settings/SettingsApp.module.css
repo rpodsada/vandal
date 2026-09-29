@@ -180,10 +180,13 @@
   scroll-margin-top: 12px;
 }
 
+/* Headings step down: page title 28px, group 20px, setting 15px, then the
+   14px text inside a setting. */
 .groupTitle {
-  margin: 0 0 8px 2px;
-  font-size: 14px;
+  margin: 0 0 10px 2px;
+  font-size: 20px;
   font-weight: 600;
+  line-height: 28px;
 }
 
 .groupDescription {
@@ -220,7 +223,7 @@
 .row + .rowStacked,
 .rowStacked + .row,
 .rowStacked + .rowStacked {
-  border-top: 1px solid var(--border);
+  border-top: 2px solid var(--divider);
 }
 
 .row[data-disabled],
@@ -235,8 +238,9 @@
 
 .label {
   display: block;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
 }
 
 .description {

@@ -15,7 +15,7 @@ type FontPicker = StyleSettings["font"];
 
 const SOURCES = [
   { value: "system", label: "All installed fonts" },
-  { value: "custom", label: "My list" },
+  { value: "custom", label: "Custom list" },
 ] as const;
 
 const CONTROLS = [
@@ -45,7 +45,7 @@ export function FontPickerSetting({ item, id, disabled }: ControlProps<FontPicke
     picker.control === "stepped" && (!custom || picker.fonts.length > MAX_STEPPED_FONTS);
 
   return (
-    <div className={styles.stack}>
+    <div className={styles.controlGroup}>
       <Segmented
         id={id}
         label={`${item.label}: which fonts`}

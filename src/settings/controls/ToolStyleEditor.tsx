@@ -17,8 +17,9 @@ type ToolStyles = StyleSettings["tools"][string];
 const setAside = new Map<string, Partial<ToolStyles>>();
 
 /**
- * One tool's own colors and widths (PLAN 2C.2): a switch for each, and the
- * palette / width editor while it's on. Off, the tool uses the shared ones.
+ * One tool's own colors and widths (PLAN 2C.2): a switch for each, with its
+ * palette / width editor under it while it's on. Off, the tool uses the
+ * shared ones.
  */
 export function ToolStyleSetting({ item, id, disabled }: ControlProps<ToolStyleItem>) {
   const settings = useSettingsStore((s) => s.settings!);
@@ -55,10 +56,10 @@ export function ToolStyleSetting({ item, id, disabled }: ControlProps<ToolStyleI
   };
 
   return (
-    <div className={styles.stack} id={id}>
-      <div className={styles.overrideSwitches}>
+    <div className={styles.overrides} id={id}>
+      <div className={styles.override}>
         <label className={styles.overrideSwitch}>
-          Custom colors
+          <span className={styles.overrideLabel}>Custom colors</span>
           <Switch
             checked={!!own.palette}
             disabled={disabled}
@@ -66,9 +67,19 @@ export function ToolStyleSetting({ item, id, disabled }: ControlProps<ToolStyleI
             onChange={switchPalette}
           />
         </label>
-        {item.widths && (
+        {own.palette && (
+          <PaletteEditor
+            colors={own.palette}
+            label={`${item.label} colors`}
+            disabled={disabled}
+            onChange={(palette) => update({ palette })}
+          />
+        )}
+      </div>
+      {item.widths && (
+        <div className={styles.override}>
           <label className={styles.overrideSwitch}>
-            Custom widths
+            <span className={styles.overrideLabel}>Custom widths</span>
             <Switch
               checked={!!own.width}
               disabled={disabled}
@@ -76,25 +87,17 @@ export function ToolStyleSetting({ item, id, disabled }: ControlProps<ToolStyleI
               onChange={switchWidth}
             />
           </label>
-        )}
-      </div>
-      {own.palette && (
-        <PaletteEditor
-          colors={own.palette}
-          label={`${item.label} colors`}
-          disabled={disabled}
-          onChange={(palette) => update({ palette })}
-        />
-      )}
-      {own.width && (
-        <NumberPickerEditor
-          picker={own.width}
-          label={`${item.label} width`}
-          unit="px"
-          lines
-          disabled={disabled}
-          onChange={(width) => update({ width })}
-        />
+          {own.width && (
+            <NumberPickerEditor
+              picker={own.width}
+              label={`${item.label} width`}
+              unit="px"
+              lines
+              disabled={disabled}
+              onChange={(width) => update({ width })}
+            />
+          )}
+        </div>
       )}
     </div>
   );

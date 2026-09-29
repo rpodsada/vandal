@@ -192,6 +192,9 @@
   position: relative;
   height: 22px;
   flex-shrink: 0;
+  /* The thumb hangs half its width past each end: keep that clear of the
+     controls beside the slider. */
+  margin: 0 9px;
   touch-action: none;
 }
 

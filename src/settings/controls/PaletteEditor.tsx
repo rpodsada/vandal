@@ -3,6 +3,7 @@ import { ColorPicker } from "../../markup/ColorPicker";
 import { boxOf, useMenuPlacement } from "../../markup/menuPlacement";
 import { usePopover } from "../../markup/usePopover";
 import markup from "../../markup/options.module.css";
+import { PlusIcon } from "../icons";
 import type { PaletteItem } from "../schema";
 import { dropIndex, MAX_COLORS, moveItem, paletteError } from "../paletteSpec";
 import { useSetting } from "../store";
@@ -110,7 +111,7 @@ export function PaletteEditor({ id, colors, label, disabled, onChange }: Props) 
   };
 
   return (
-    <div className={styles.stack}>
+    <div className={styles.controlGroup}>
       <div id={id} ref={rowRef} className={styles.palette} role="list" aria-label={label}>
         {colors.map((color, i) => {
           const editing = edit?.index === i;
@@ -157,7 +158,7 @@ export function PaletteEditor({ id, colors, label, disabled, onChange }: Props) 
             {edit?.index === null ? (
               <span className={styles.paletteNew} style={{ background: edit.color }} />
             ) : (
-              "+"
+              <PlusIcon />
             )}
           </button>
         )}

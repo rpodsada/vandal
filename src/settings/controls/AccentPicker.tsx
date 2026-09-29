@@ -47,7 +47,7 @@ export function AccentPicker({ item, id, disabled }: ControlProps<AccentItem>) {
       : (preset?.name ?? `Custom ${accent}`);
 
   return (
-    <div className={styles.stack}>
+    <div className={styles.controlGroup}>
       <div id={id} className={styles.palette} role="radiogroup" aria-label={item.label}>
         <button
           type="button"

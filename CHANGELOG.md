@@ -20,6 +20,13 @@ All notable changes to Vandal are listed here. The format follows
 - Settings › Markup › Spotlight: choose the darkness levels the spotlight tool offers.
 - Settings: the open page's groups are listed under it in the sidebar. Click one to scroll to it; the
   one you're looking at is highlighted.
+- Settings › Markup › Per-tool styles: each tool's custom colors and custom widths switches now
+  sit one above the other, each with its editor right under it, with more room between them.
+- Settings: a clearer look. Larger group headings and setting names, rows separated by gaps, even
+  10 px spacing between a setting's controls, value boxes with the number centred and a remove
+  button that turns red on hover (click anywhere in a box to edit the number), add buttons that
+  light up in the accent color, and "Custom list" instead of "My list" for fonts.
+- Sliders in the options bar no longer touch the control beside them at their first stop.
 
 ### Changed
 

@@ -67,3 +67,24 @@ export function SearchIcon() {
     </svg>
   );
 }
+
+/**
+ * Small icons for buttons inside controls (add, remove). Drawn rather than
+ * typed, so they sit in the middle of their buttons: the "+" and "×"
+ * characters don't, in most fonts.
+ */
+export function PlusIcon({ size = 12 }: { size?: number }) {
+  return (
+    <svg {...props} width={size} height={size} viewBox="0 0 12 12" strokeWidth={1.4}>
+      <path d="M6 1.5v9M1.5 6h9" />
+    </svg>
+  );
+}
+
+export function RemoveIcon({ size = 8 }: { size?: number }) {
+  return (
+    <svg {...props} width={size} height={size} viewBox="0 0 8 8" strokeWidth={1.3}>
+      <path d="M1 1l6 6M7 1l-6 6" />
+    </svg>
+  );
+}

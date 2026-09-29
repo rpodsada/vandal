@@ -375,7 +375,7 @@ export const sections: Section[] = [
             kind: "fontPicker",
             label: "Fonts",
             description:
-              "The fonts the text tool offers. With your own list, Alt+1–9 and Alt+0 pick them while you type.",
+              "The fonts the text tool offers. With a custom list, Alt+1–9 and Alt+0 pick them while you type.",
             keywords: ["font", "typeface", "family", "text", "list", "installed"],
           },
           {

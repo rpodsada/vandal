@@ -22,6 +22,8 @@
   /* Editor backdrop around the image. */
   --canvas: light-dark(#e4e4e4, #171717);
   --border: light-dark(rgb(0 0 0 / 0.07), rgb(255 255 255 / 0.06));
+  /* Between the rows of a settings card: the page background, a gap in the card. */
+  --divider: light-dark(#f3f3f3, #202020);
   --hover: light-dark(rgb(0 0 0 / 0.04), rgb(255 255 255 / 0.05));
   --selected: light-dark(rgb(0 0 0 / 0.06), rgb(255 255 255 / 0.07));
 
@@ -33,6 +35,8 @@
   --control-bg-hover: light-dark(#f9f9f9, rgb(255 255 255 / 0.08));
   --control-bg-focus: light-dark(#fff, #1f1f1f);
   --control-border: light-dark(rgb(0 0 0 / 0.14), rgb(255 255 255 / 0.1));
+  /* An add-on segment inside a control (a value box's remove button). */
+  --control-addon: light-dark(rgb(0 0 0 / 0.04), rgb(0 0 0 / 0.2));
   --button-bg: light-dark(#fbfbfb, rgb(255 255 255 / 0.06));
   --button-bg-hover: light-dark(#f6f6f6, rgb(255 255 255 / 0.09));
   --button-bg-active: light-dark(#f0f0f0, rgb(255 255 255 / 0.04));
@@ -41,6 +45,8 @@
   --error-bg: light-dark(#fde7e9, #442726);
   --error-text: light-dark(#c42b1c, #ff99a4);
   --error-border: light-dark(rgb(196 43 28 / 0.25), rgb(255 153 164 / 0.25));
+  /* A delete button's hover (as Windows' close button), with white on it. */
+  --danger: light-dark(#c42b1c, #b02719); /* dark: 10% darker, less glaring */
   --success-text: light-dark(#0f7b0f, #6ccb5f);
 }
 

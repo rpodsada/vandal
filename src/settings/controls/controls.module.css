@@ -71,10 +71,19 @@
 
 /* ---- text inputs ---- */
 
+/* A field and its message. */
 .stack {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* Rows of controls in one setting (picker type, values, preview...): the
+   same gap wherever they're stacked. */
+.controlGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .input {
@@ -253,14 +262,30 @@
   gap: 6px;
 }
 
+/* A value box: the number and its unit centred, then (in a list) the remove
+   button as an add-on segment on the right. */
 .valueChip {
   display: inline-flex;
-  align-items: center;
+  align-items: stretch;
+  width: 88px;
   height: 30px;
-  padding: 0 4px 0 0;
   border-radius: 4px;
   background: var(--control-bg);
   box-shadow: inset 0 0 0 1px var(--control-border);
+  overflow: hidden;
+}
+
+.chipValue {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  /* The digits sit low in the box; this lifts them 2px to look centred. */
+  padding-bottom: 4px;
+  /* A press here edits the number (see focusAtEnd). */
+  cursor: text;
 }
 
 .valueChip:focus-within {
@@ -271,9 +296,12 @@
 
 .valueInput {
   user-select: text;
-  width: 40px;
+  /* As wide as the number, so number and unit centre together. */
+  field-sizing: content;
+  min-width: 1ch;
+  max-width: 48px;
   height: 100%;
-  padding: 0 2px 0 8px;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--text);
@@ -283,7 +311,6 @@
 }
 
 .unit {
-  padding-right: 4px;
   color: var(--text-2);
   font-size: 12px;
 }
@@ -298,21 +325,28 @@
 }
 
 .chipRemove {
-  width: 20px;
-  height: 20px;
+  display: grid;
+  place-items: center;
+  width: 26px;
   padding: 0;
-  border-radius: 3px;
-  line-height: 1;
+  /* The add-on segment: a shade darker, set off by a line. */
+  background: var(--control-addon);
+  box-shadow: inset 1px 0 0 var(--control-border);
 }
 
+/* Red, like a window's close button: it deletes. */
 .chipRemove:hover:not(:disabled) {
-  background: var(--hover);
-  color: var(--text);
+  background: var(--danger);
+  box-shadow: none;
+  color: #fff;
 }
 
 .addValue {
+  display: grid;
+  place-items: center;
   width: 30px;
   height: 30px;
+  padding: 0;
   border-radius: 4px;
   background: var(--button-bg);
   box-shadow: inset 0 0 0 1px var(--control-border);
@@ -320,8 +354,11 @@
   font-size: 16px;
 }
 
-.addValue:hover:not(:disabled) {
-  background: var(--button-bg-hover);
+/* Add buttons light up in the accent (the remove buttons go red). */
+.addValue:hover:not(:disabled),
+.paletteAdd:hover:not(:disabled):not([aria-pressed="true"]) {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 .fieldError {
@@ -337,7 +374,13 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 36px;
+}
+
+/* It borrows the options bar's styling for its pickers, but not that bar's
+   44px height, which would add space above it. */
+.controlGroup > .pickerPreview {
+  min-height: 0;
+  padding: 0;
 }
 
 /* ---- palette ---- */
@@ -396,10 +439,6 @@
   font-size: 16px;
 }
 
-.paletteAdd:hover:not(:disabled) {
-  background: var(--button-bg-hover);
-}
-
 .paletteAdd[aria-pressed="true"] {
   box-shadow: 0 0 0 2px var(--accent);
 }
@@ -412,10 +451,23 @@
 
 /* ---- per-tool overrides ---- */
 
-.overrideSwitches {
+/* Each switch has its editor under it while on, so the next switch moves
+   down below it. */
+.overrides {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px 28px;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.override {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* An open editor gets more room below it: 25px to the next switch. */
+.override:has(> :nth-child(2)):not(:last-child) {
+  padding-bottom: 15px;
 }
 
 .overrideSwitch {
@@ -425,7 +477,12 @@
   color: var(--text);
 }
 
-/* ---- fonts: installed ⇄ my list ---- */
+/* The same width for both labels, so the switches line up. */
+.overrideLabel {
+  min-width: 110px;
+}
+
+/* ---- fonts: installed ⇄ custom list ---- */
 
 .fontLists {
   display: grid;

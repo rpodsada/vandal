@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type MouseEvent } from "react";
 import { NumberPickerControl } from "../../markup/NumberPickerControl";
 import type { NumberPicker } from "../../shared/ipc";
 import type { NumberPickerItem } from "../schema";
@@ -18,6 +18,7 @@ import type { ControlProps } from "./index";
 import { Segmented, type ChoiceOption } from "./Segmented";
 import { useDraft } from "./useDraft";
 import markup from "../../markup/options.module.css";
+import { PlusIcon, RemoveIcon } from "../icons";
 import styles from "./controls.module.css";
 
 const CONTROLS: ChoiceOption<PickerControl>[] = [
@@ -81,7 +82,7 @@ export function NumberPickerEditor({
   };
 
   return (
-    <div className={styles.stack}>
+    <div className={styles.controlGroup}>
       <Segmented
         id={id}
         label={`${label}: control`}
@@ -166,7 +167,7 @@ function ValueList({
           disabled={disabled}
           onClick={() => onChange(cleanValues([...values, nextValue(values)]))}
         >
-          +
+          <PlusIcon />
         </button>
       )}
       <span className={styles.help}>
@@ -174,6 +175,19 @@ function ValueList({
       </span>
     </div>
   );
+}
+
+/**
+ * A press on a value box outside its number (the unit, the space around)
+ * puts the caret after the number, without selecting it.
+ */
+function focusAtEnd(e: MouseEvent<HTMLElement>) {
+  const input = e.currentTarget.querySelector("input");
+  if (!input || e.target === input || input.disabled) return;
+  e.preventDefault();
+  input.focus();
+  const end = input.value.length;
+  input.setSelectionRange(end, end);
 }
 
 /** One value: edits locally, commits on blur or Enter (sorted in), Escape reverts. */
@@ -200,20 +214,22 @@ function ValueField({
   };
   return (
     <span className={styles.valueChip}>
-      <input
-        className={styles.valueInput}
-        value={draft}
-        inputMode="decimal"
-        aria-label={label}
-        disabled={disabled}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commit();
-          if (e.key === "Escape") setDraft(String(value));
-        }}
-      />
-      <span className={styles.unit}>{unit}</span>
+      <span className={styles.chipValue} onMouseDown={focusAtEnd}>
+        <input
+          className={styles.valueInput}
+          value={draft}
+          inputMode="decimal"
+          aria-label={label}
+          disabled={disabled}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") setDraft(String(value));
+          }}
+        />
+        <span className={styles.unit}>{unit}</span>
+      </span>
       {onRemove && (
         <button
           type="button"
@@ -223,7 +239,7 @@ function ValueField({
           disabled={disabled}
           onClick={onRemove}
         >
-          ×
+          <RemoveIcon />
         </button>
       )}
     </span>
@@ -259,20 +275,22 @@ function RangeFields({
   };
   const field = (text: string, set: (t: string) => void, name: string) => (
     <span className={styles.valueChip}>
-      <input
-        className={styles.valueInput}
-        value={text}
-        inputMode="decimal"
-        aria-label={`${label}: ${name}`}
-        disabled={disabled}
-        onChange={(e) => set(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commit();
-          if (e.key === "Escape") revert();
-        }}
-      />
-      <span className={styles.unit}>{unit}</span>
+      <span className={styles.chipValue} onMouseDown={focusAtEnd}>
+        <input
+          className={styles.valueInput}
+          value={text}
+          inputMode="decimal"
+          aria-label={`${label}: ${name}`}
+          disabled={disabled}
+          onChange={(e) => set(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") revert();
+          }}
+        />
+        <span className={styles.unit}>{unit}</span>
+      </span>
     </span>
   );
   return (
