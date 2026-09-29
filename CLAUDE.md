@@ -5,11 +5,12 @@ Tray-resident Windows screen capture + markup tool. Tauri 2 (Rust) + React/TS (V
 on the current phase unless asked. Current phase: **3 (polish, private beta testing)**. Plan each
 sub-phase with the user first, then build one feature per increment, confirmed by the user and
 committed before the next one. Warn the user before changes that restart the dev app (Rust,
-`Cargo.toml`, `tauri.conf.json`): he is often using it.
+`Cargo.toml`, `tauri.conf.json`): they are often using it. Commit here once an increment is
+confirmed, but don't push unless asked.
 
 `internal/` holds our private notes (plan, test matrix, perf log, mockups). It's a separate
-private git repo and is gitignored here: commit its changes in `internal/`, never in this repo. If
-it's missing, ask the user for it rather than working without the plan.
+private git repo and is gitignored here: commit its changes in `internal/`, never in this repo,
+and push them right away. If it's missing, ask the user for it rather than working without the plan.
 
 ## Non-negotiables (PLAN §1)
 
