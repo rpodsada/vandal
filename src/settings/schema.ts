@@ -62,7 +62,7 @@ export interface ChoiceItem extends BaseItem {
 export interface NumberPickerItem extends BaseItem {
   kind: "numberPicker";
   /** Picker specs are objects, so these aren't typed leaf paths. */
-  path: "styles.width" | "styles.fontSize";
+  path: "styles.width" | "styles.fontSize" | "styles.pixelate" | "styles.blur";
   unit: "px" | "pt";
   /** Preview the values as lines of that thickness. */
   lines?: boolean;

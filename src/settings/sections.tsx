@@ -390,6 +390,31 @@ export const sections: Section[] = [
         ],
       },
       {
+        title: "Redact",
+        items: [
+          {
+            id: "styles-pixelate",
+            kind: "numberPicker",
+            path: "styles.pixelate",
+            label: "Pixelate block sizes",
+            description:
+              "The block sizes the redact tool offers for Pixelate, in pixels. Bigger blocks hide more. Keys 1–9 and 0 pick them.",
+            unit: "px",
+            keywords: ["redact", "pixelate", "mosaic", "block", "strength", "hide", "censor"],
+          },
+          {
+            id: "styles-blur",
+            kind: "numberPicker",
+            path: "styles.blur",
+            label: "Blur strengths",
+            description:
+              "The blur radii the redact tool offers for Blur, in pixels. A bigger radius hides more. Keys 1–9 and 0 pick them.",
+            unit: "px",
+            keywords: ["redact", "blur", "radius", "strength", "hide", "censor"],
+          },
+        ],
+      },
+      {
         title: "Per-tool styles",
         description:
           "Give a tool its own colors or widths instead of the ones above. The highlighter comes with its own.",

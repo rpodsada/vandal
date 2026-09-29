@@ -11,6 +11,7 @@ All notable changes to Vandal are listed here. The format follows
 - Redact tool (B) in the editor: drag over an area to pixelate or blur it. The choice of Pixelate or
   Blur and the strength are in the options bar. Redactions always sit under the other markup, and
   the saved or copied image's pixels are really changed, so they can't be removed afterwards.
+- Settings › Markup › Redact: choose the block sizes and blur strengths the redact tool offers.
 
 ### Changed
 
