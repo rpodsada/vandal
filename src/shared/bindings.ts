@@ -310,7 +310,7 @@ export type History = {
 export type Hotkeys = {
 	region?: string | null,
 	fullscreen?: string | null,
-	/**  Window capture arrives in Phase 4; not registered yet. */
+	/**  For window capture, which isn't built yet; not registered. */
 	window?: string | null,
 	repeatLast?: string | null,
 };

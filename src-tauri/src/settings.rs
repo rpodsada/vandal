@@ -97,7 +97,7 @@ impl Default for Appearance {
 pub struct Hotkeys {
     pub region: Option<String>,
     pub fullscreen: Option<String>,
-    /// Window capture arrives in Phase 4; not registered yet.
+    /// For window capture, which isn't built yet; not registered.
     pub window: Option<String>,
     pub repeat_last: Option<String>,
 }

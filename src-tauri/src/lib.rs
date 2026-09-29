@@ -9,7 +9,7 @@ mod decode;
 mod editor;
 mod encode;
 mod fonts;
-// Some of these APIs are first used by the editor (Phase 2) and window snap (Phase 4).
+// Some of these APIs are first used by the editor (Phase 2) and window snap (not built yet).
 #[allow(dead_code)]
 mod frames;
 #[allow(dead_code)]
