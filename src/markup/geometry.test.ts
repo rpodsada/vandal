@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   annotationBounds,
   arrowGeometry,
+  type ArrowGeometry,
   arrowHeadSize,
   rectFromDrag,
   rectsIntersect,
@@ -131,10 +132,15 @@ describe("arrowGeometry", () => {
   const from = { x: 0, y: 0 };
   const to = { x: 100, y: 0 };
   const { length, halfWidth } = arrowHeadSize(4);
+  /** A straight shaft's points. */
+  const line = (g: ArrowGeometry) => {
+    if (g.shaft.kind !== "line") throw new Error("expected a straight shaft");
+    return g.shaft.points;
+  };
 
   it("stops a filled head's shaft at the head's base", () => {
     const g = arrowGeometry(from, to, "filled", 4);
-    expect(g.shaft).toEqual([0, 0, 100 - length, 0]);
+    expect(line(g)).toEqual([0, 0, 100 - length, 0]);
     expect(g.heads).toHaveLength(1);
     const [left, tip, right] = g.heads[0];
     expect(tip).toEqual(to);
@@ -143,7 +149,7 @@ describe("arrowGeometry", () => {
   });
 
   it("runs an open head's shaft to the tip", () => {
-    expect(arrowGeometry(from, to, "open", 4).shaft).toEqual([0, 0, 100, 0]);
+    expect(line(arrowGeometry(from, to, "open", 4))).toEqual([0, 0, 100, 0]);
   });
 
   it("has no head for 'none' or a zero-length arrow", () => {
@@ -153,32 +159,71 @@ describe("arrowGeometry", () => {
 
   it("shrinks the head on short arrows", () => {
     const g = arrowGeometry(from, { x: 10, y: 0 }, "filled", 4);
-    expect(g.shaft[2]).toBeCloseTo(2); // head is 80% of the length
+    expect(line(g)[2]).toBeCloseTo(2); // head is 80% of the length
   });
 
   it("puts a mirrored head on the tail of a two-ended arrow", () => {
     const g = arrowGeometry(from, to, "filled", 4, "both");
-    expect(g.shaft).toEqual([length, 0, 100 - length, 0]);
+    expect(line(g)).toEqual([length, 0, 100 - length, 0]);
     expect(g.heads).toHaveLength(2);
     const [left, tip, right] = g.heads[1];
     expect(tip).toEqual(from);
     expect(left.x).toBeCloseTo(length);
     expect(right.x).toBeCloseTo(length);
     // Open heads keep the full shaft.
-    expect(arrowGeometry(from, to, "open", 4, "both").shaft).toEqual([0, 0, 100, 0]);
+    expect(line(arrowGeometry(from, to, "open", 4, "both"))).toEqual([0, 0, 100, 0]);
   });
 
   it("puts the only head on the start with 'start'", () => {
     const g = arrowGeometry(from, to, "filled", 4, "start");
-    expect(g.shaft).toEqual([length, 0, 100, 0]);
+    expect(line(g)).toEqual([length, 0, 100, 0]);
     expect(g.heads).toHaveLength(1);
     expect(g.heads[0][1]).toEqual(from);
   });
 
   it("shrinks both heads to share a short arrow", () => {
     const g = arrowGeometry(from, { x: 10, y: 0 }, "filled", 4, "both");
-    expect(g.shaft[0]).toBeCloseTo(4); // each head is 40% of the length
-    expect(g.shaft[2]).toBeCloseTo(6);
+    expect(line(g)[0]).toBeCloseTo(4); // each head is 40% of the length
+    expect(line(g)[2]).toBeCloseTo(6);
+  });
+
+  describe("bent", () => {
+    // Close to a half circle: centre (50, 0), radius 50, through (50, 50).
+    const bend = { t: 0.5, d: 50 };
+    const curve = (g: ArrowGeometry) => {
+      if (g.shaft.kind !== "curve") throw new Error("expected a curve");
+      return g.shaft.curve;
+    };
+
+    it("runs from end to end through the handle", () => {
+      const c = curve(arrowGeometry(from, to, "none", 4, "end", bend));
+      expect(c[0]).toEqual(from);
+      expect(c[3]).toEqual(to);
+    });
+
+    it("stops a filled head's shaft its length back along the curve", () => {
+      const g = arrowGeometry(from, to, "filled", 4, "end", bend);
+      const end = curve(g)[3];
+      // About `length` back along a radius-50 circle from (100, 0).
+      expect(Math.hypot(end.x - 50, end.y)).toBeCloseTo(50, -0.5);
+      expect(Math.hypot(end.x - 100, end.y)).toBeCloseTo(length, -0.5);
+      const [left, tip, right] = g.heads[0];
+      expect(tip).toEqual(to);
+      // The head's base is where the shaft stops.
+      expect((left.x + right.x) / 2).toBeCloseTo(end.x);
+      expect((left.y + right.y) / 2).toBeCloseTo(end.y);
+    });
+
+    it("mirrors the bend for a head at the start", () => {
+      const end = arrowGeometry(from, to, "filled", 4, "end", bend);
+      const start = arrowGeometry(to, from, "filled", 4, "start", { t: 0.5, d: -50 });
+      expect(start.heads[0][1]).toEqual(end.heads[0][1]);
+      expect(curve(start)[0]).toEqual(curve(end)[3]);
+    });
+
+    it("is straight when the bend is negligible", () => {
+      expect(arrowGeometry(from, to, "none", 4, "end", { t: 0.5, d: 0.1 }).shaft.kind).toBe("line");
+    });
   });
 });
 

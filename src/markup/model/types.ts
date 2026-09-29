@@ -45,10 +45,23 @@ export interface HighlighterAnnotation extends Base {
   style: StrokeStyle;
 }
 
+/**
+ * Where a segment's bend handle sits, relative to its chord (PLAN 3D.6): `t`
+ * of the way from `from` to `to`, then `d` source px to the side (positive:
+ * to the right of the direction of travel, as seen on screen). The segment is the circular arc through
+ * both ends and that point.
+ */
+export interface Bend {
+  t: number;
+  d: number;
+}
+
 export interface LineAnnotation extends Base {
   kind: "line";
   from: Point;
   to: Point;
+  /** Absent: straight. */
+  bend?: Bend;
   style: StrokeStyle;
 }
 
@@ -65,6 +78,8 @@ export interface ArrowAnnotation extends Base {
   to: Point;
   head: ArrowHead;
   ends: ArrowEnds;
+  /** Absent: straight. */
+  bend?: Bend;
   style: StrokeStyle;
 }
 

@@ -8,6 +8,7 @@ const base: HintState = {
   tool: "select",
   selected: 0,
   textSelected: false,
+  segmentSelected: false,
   typing: false,
   overObject: false,
   twoColors: false,
@@ -26,6 +27,7 @@ describe("chooseHint", () => {
     expect(chooseHint(base)).toContain("tools");
     expect(chooseHint({ ...base, selected: 2 })).toMatch(/^\[Del\]/);
     expect(chooseHint({ ...base, selected: 1, textSelected: true })).toMatch(/^\[Enter\]/);
+    expect(chooseHint({ ...base, selected: 1, segmentSelected: true })).toMatch(/^Drag the ◆/);
   });
 
   it("says what Ctrl does over an object, following the setting", () => {

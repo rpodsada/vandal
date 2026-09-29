@@ -25,6 +25,11 @@ export function HintLine() {
       s.selection.length === 1 &&
       s.doc.annotations.find((a) => a.id === s.selection[0])?.kind === "text",
   );
+  const segmentSelected = useDoc((s) => {
+    if (s.selection.length !== 1) return false;
+    const kind = s.doc.annotations.find((a) => a.id === s.selection[0])?.kind;
+    return kind === "line" || kind === "arrow";
+  });
   const config = useStyleConfig();
   // For naming the second color only when there is one.
   const doc = useDoc((s) => s.doc);
@@ -64,6 +69,7 @@ export function HintLine() {
     tool,
     selected,
     textSelected,
+    segmentSelected,
     typing,
     overObject,
     twoColors,

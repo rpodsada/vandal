@@ -12,6 +12,9 @@ All notable changes to Vandal are listed here. The format follows
   Blur and the strength are in the options bar. Redactions always sit under the other markup, and
   the saved or copied image's pixels are really changed, so they can't be removed afterwards.
 - Settings › Markup › Redact: choose the block sizes and blur strengths the redact tool offers.
+- Curved lines and arrows: drag the diamond handle on a selected line or arrow to bend it. Slide
+  the handle toward an end to make the curve lean that way, or hold Shift for a perfect circular
+  arc. It snaps straight near the straight line, and double-clicking the handle straightens it.
 
 ### Changed
 

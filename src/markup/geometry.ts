@@ -1,6 +1,16 @@
 // Pure geometry for the markup tools, in source-image pixels.
 
-import type { Annotation, ArrowEnds, ArrowHead, Point, Rect } from "./model/types";
+import {
+  bentCurve,
+  cubicPoint,
+  cubicPoints,
+  measure,
+  reverseBend,
+  reverseCubic,
+  subCubic,
+  type Cubic,
+} from "./bend";
+import type { Annotation, ArrowEnds, ArrowHead, Bend, Point, Rect } from "./model/types";
 
 /** Rect spanned by a drag from `a` to `b`. With `square`, the shorter side grows to match. */
 export function rectFromDrag(a: Point, b: Point, square = false): Rect {
@@ -51,8 +61,14 @@ export function annotationBounds(a: Annotation): Rect {
     case "redact":
       return a.rect;
     case "line":
-    case "arrow":
-      return pointsBounds([a.from.x, a.to.x], [a.from.y, a.to.y]);
+    case "arrow": {
+      const curve = bentCurve(a.from, a.to, a.bend);
+      const pts = curve ? cubicPoints(curve) : [a.from, a.to];
+      return pointsBounds(
+        pts.map((p) => p.x),
+        pts.map((p) => p.y),
+      );
+    }
     case "pen":
     case "highlighter":
       return pointsBounds(
@@ -132,9 +148,18 @@ export function arrowHeadSize(width: number): { length: number; halfWidth: numbe
   return { length: 6 + 3 * width, halfWidth: 4 + 1.25 * width };
 }
 
+/** The line to stroke: straight, or a cubic Bézier when bent (PLAN 3D.6). */
+export type Shaft =
+  { kind: "line"; points: [number, number, number, number] } | { kind: "curve"; curve: Cubic };
+
+function reverseShaft(s: Shaft): Shaft {
+  if (s.kind === "curve") return { kind: "curve", curve: reverseCubic(s.curve) };
+  const [x1, y1, x2, y2] = s.points;
+  return { kind: "line", points: [x2, y2, x1, y1] };
+}
+
 export interface ArrowGeometry {
-  /** The line to stroke: [x1, y1, x2, y2]. */
-  shaft: [number, number, number, number];
+  shaft: Shaft;
   /**
    * Head outlines [left, tip, right] (filled triangles or open chevrons): the
    * `to` end first, then the `from` end for a two-ended arrow.
@@ -142,10 +167,23 @@ export interface ArrowGeometry {
   heads: [Point, Point, Point][];
 }
 
+/** A head with its tip at `tip` and its base's middle at `base`. */
+function headOutline(tip: Point, base: Point, hw: number): [Point, Point, Point] {
+  const len = Math.hypot(tip.x - base.x, tip.y - base.y) || 1;
+  const vx = (tip.x - base.x) / len;
+  const vy = (tip.y - base.y) / len;
+  return [
+    { x: base.x - vy * hw, y: base.y + vx * hw },
+    { ...tip },
+    { x: base.x + vy * hw, y: base.y - vx * hw },
+  ];
+}
+
 /**
- * Where to draw an arrow. A filled head's shaft stops at the head's base so a
- * round cap never pokes through the tip. Heads shrink on arrows too short for
- * them (to 80% of the length, or 40% each with two).
+ * Where to draw a line or arrow, straight or bent into a curve. A filled
+ * head's shaft stops at the head's base (along the curve, when bent) so a round
+ * cap never pokes through the tip. Heads shrink on arrows too short for them
+ * (to 80% of the length, or 40% each with two).
  */
 export function arrowGeometry(
   from: Point,
@@ -153,44 +191,54 @@ export function arrowGeometry(
   head: ArrowHead | "none",
   width: number,
   ends: ArrowEnds = "end",
+  bend?: Bend,
 ): ArrowGeometry {
   // A head at the start is an arrow drawn the other way.
   if (ends === "start") {
-    const g = arrowGeometry(to, from, head, width, "end");
-    const [x1, y1, x2, y2] = g.shaft;
-    return { shaft: [x2, y2, x1, y1], heads: g.heads };
+    const g = arrowGeometry(to, from, head, width, "end", reverseBend(bend));
+    return { shaft: reverseShaft(g.shaft), heads: g.heads };
   }
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const len = Math.hypot(dx, dy);
-  if (head === "none" || len === 0) {
-    return { shaft: [from.x, from.y, to.x, to.y], heads: [] };
-  }
+  const curve = bentCurve(from, to, bend);
+  const measured = curve && measure(curve);
+  const len = measured ? measured.length : Math.hypot(to.x - from.x, to.y - from.y);
+  const whole: Shaft = curve
+    ? { kind: "curve", curve }
+    : { kind: "line", points: [from.x, from.y, to.x, to.y] };
+  if (head === "none" || len === 0) return { shaft: whole, heads: [] };
+
   const both = ends === "both";
   const size = arrowHeadSize(width);
   const k = Math.min(1, (len * (both ? 0.4 : 0.8)) / size.length);
   const hl = size.length * k;
   const hw = size.halfWidth * k;
-  const ux = dx / len;
-  const uy = dy / len;
-  /** Head at `tip`, pointing along (vx, vy); returns it and its base. */
-  const at = (tip: Point, vx: number, vy: number) => {
-    const base = { x: tip.x - vx * hl, y: tip.y - vy * hl };
-    const outline: [Point, Point, Point] = [
-      { x: base.x - vy * hw, y: base.y + vx * hw },
-      { ...tip },
-      { x: base.x + vy * hw, y: base.y - vx * hw },
-    ];
-    return { outline, end: head === "filled" ? base : tip };
-  };
-  const front = at(to, ux, uy);
-  if (!both) {
-    return { shaft: [from.x, from.y, front.end.x, front.end.y], heads: [front.outline] };
+  const filled = head === "filled";
+
+  if (!curve || !measured) {
+    const ux = (to.x - from.x) / len;
+    const uy = (to.y - from.y) / len;
+    const frontBase = { x: to.x - ux * hl, y: to.y - uy * hl };
+    const backBase = { x: from.x + ux * hl, y: from.y + uy * hl };
+    const a = both && filled ? backBase : from;
+    const b = filled ? frontBase : to;
+    return {
+      shaft: { kind: "line", points: [a.x, a.y, b.x, b.y] },
+      heads: both
+        ? [headOutline(to, frontBase, hw), headOutline(from, backBase, hw)]
+        : [headOutline(to, frontBase, hw)],
+    };
   }
-  const back = at(from, -ux, -uy);
+
+  // Bent: each head's base is `hl` back along the curve from its tip.
+  const frontBase = measured.paramAt(len - hl);
+  const backBase = measured.paramAt(hl);
+  const shaft: Shaft = {
+    kind: "curve",
+    curve: subCubic(curve, both && filled ? backBase : 0, filled ? frontBase : 1),
+  };
+  const front = headOutline(to, cubicPoint(curve, frontBase), hw);
   return {
-    shaft: [back.end.x, back.end.y, front.end.x, front.end.y],
-    heads: [front.outline, back.outline],
+    shaft,
+    heads: both ? [front, headOutline(from, cubicPoint(curve, backBase), hw)] : [front],
   };
 }
 

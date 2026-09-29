@@ -14,6 +14,7 @@ import {
   Text,
   Transformer,
 } from "react-konva";
+import { bendFromPoint, bendPoint } from "./bend";
 import { layerOf, registerAnnotationGroup } from "./export";
 import {
   annotationBounds,
@@ -82,6 +83,8 @@ const ALL_ANCHORS = [
   "bottom-center",
   "bottom-right",
 ];
+/** Screen px from the straight line within which a bend handle snaps straight. */
+const BEND_SNAP = 6;
 /** Degrees from a 45° step within which rotation snaps to it. */
 const ROTATION_SNAP = 6;
 
@@ -126,6 +129,7 @@ type Drag =
     }
   | { mode: "draw"; start: Point; id: AnnotationId }
   | { mode: "endpoint"; id: AnnotationId; end: "from" | "to"; anchor: Point }
+  | { mode: "bend"; id: AnnotationId; handle: Point; start: Point; client: Point; began: boolean }
   | { mode: "stroke"; id: AnnotationId; start: Point; last: Point }
   | { mode: "text"; start: Point; client: Point }
   | { mode: "marquee"; start: Point; base: AnnotationId[] };
@@ -319,13 +323,23 @@ export function MarkupLayer({
     } else if (picks && e.target.name() === "endpoint") {
       const attrs = (e.target as Konva.Node).attrs as {
         annotationId: AnnotationId;
-        end: "from" | "to";
+        end: "from" | "to" | "bend";
       };
       const { annotationId: id, end } = attrs;
       const a = store.doc.annotations.find((x) => x.id === id);
       if (!a || !hasEndpoints(a)) return;
       store.beginGesture();
-      drag = { mode: "endpoint", id, end, anchor: end === "from" ? a.to : a.from };
+      drag =
+        end === "bend"
+          ? {
+              mode: "bend",
+              id,
+              handle: bendPoint(a.from, a.to, a.bend),
+              start: p,
+              client: { x: ev.clientX, y: ev.clientY },
+              began: false,
+            }
+          : { mode: "endpoint", id, end, anchor: end === "from" ? a.to : a.from };
     } else if (hit) {
       let sel = store.selection;
       if (ev.shiftKey) {
@@ -396,7 +410,9 @@ export function MarkupLayer({
               : "square"
             : drag.mode === "text"
               ? "text"
-              : null,
+              : drag.mode === "bend"
+                ? "bend"
+                : null,
     );
 
     const onMove = (m: PointerEvent) => {
@@ -430,6 +446,25 @@ export function MarkupLayer({
           const pt = m.shiftKey ? snapAngle(drag.anchor, q) : q;
           const end = drag.end;
           s.update(drag.id, (a) => (hasEndpoints(a) ? { ...a, [end]: pt } : a));
+          break;
+        }
+        case "bend": {
+          // A click (or double-click) on the handle leaves the bend alone.
+          if (!drag.began) {
+            if (Math.hypot(m.clientX - drag.client.x, m.clientY - drag.client.y) < DRAG_THRESHOLD)
+              return;
+            drag.began = true;
+          }
+          const handle = {
+            x: drag.handle.x + q.x - drag.start.x,
+            y: drag.handle.y + q.y - drag.start.y,
+          };
+          const snap = BEND_SNAP / view.current.scale;
+          s.update(drag.id, (a) =>
+            hasEndpoints(a)
+              ? { ...a, bend: bendFromPoint(a.from, a.to, handle, m.shiftKey, snap) }
+              : a,
+          );
           break;
         }
         case "stroke": {
@@ -480,6 +515,7 @@ export function MarkupLayer({
           break;
         }
         case "endpoint":
+        case "bend":
           s.endGesture();
           break;
         case "stroke": {
@@ -552,7 +588,18 @@ export function MarkupLayer({
   };
 
   const onDblClick = (e: KonvaEventObject<MouseEvent>) => {
-    if (!interactive || e.target.name() !== "annotation") return;
+    if (!interactive) return;
+    // Double-clicking the bend handle straightens the line (PLAN 3D.6).
+    const attrs = e.target.attrs as { annotationId?: AnnotationId; end?: string };
+    if (e.target.name() === "endpoint" && attrs.end === "bend" && attrs.annotationId) {
+      markTaken(e.evt);
+      const store = docStore.getState();
+      store.beginGesture();
+      store.update(attrs.annotationId, (a) => (hasEndpoints(a) ? { ...a, bend: undefined } : a));
+      store.endGesture();
+      return;
+    }
+    if (e.target.name() !== "annotation") return;
     markTaken(e.evt);
     editText(e.target.id());
   };
@@ -701,6 +748,19 @@ export function MarkupLayer({
               docStore.getState().endGesture();
             }}
           />
+          {doc.annotations
+            .filter(hasEndpoints)
+            .map((a) =>
+              selection.includes(a.id) ? (
+                <BendHandle
+                  key={`${a.id}-bend`}
+                  a={a}
+                  scale={scale}
+                  offset={offset}
+                  listening={handlesLive}
+                />
+              ) : null,
+            )}
           {doc.annotations
             .filter(hasEndpoints)
             .flatMap((a) =>
@@ -955,10 +1015,17 @@ function SegmentShape({ a, hitSlop }: { a: ArrowAnnotation | LineAnnotation; hit
       hitStrokeWidth={width + hitSlop}
       perfectDrawEnabled={false}
       sceneFunc={(ctx, shape) => {
-        const g = arrowGeometry(a.from, a.to, head, width, ends);
+        const g = arrowGeometry(a.from, a.to, head, width, ends, a.bend);
+        const s = g.shaft;
         ctx.beginPath();
-        ctx.moveTo(g.shaft[0], g.shaft[1]);
-        ctx.lineTo(g.shaft[2], g.shaft[3]);
+        if (s.kind === "curve") {
+          const [p0, p1, p2, p3] = s.curve;
+          ctx.moveTo(p0.x, p0.y);
+          ctx.bezierCurveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+        } else {
+          ctx.moveTo(s.points[0], s.points[1]);
+          ctx.lineTo(s.points[2], s.points[3]);
+        }
         if (head === "open") {
           for (const [l, t, r] of g.heads) {
             ctx.moveTo(l.x, l.y);
@@ -978,6 +1045,45 @@ function SegmentShape({ a, hitSlop }: { a: ArrowAnnotation | LineAnnotation; hit
           ctx.fillShape(shape);
         }
       }}
+    />
+  );
+}
+
+/**
+ * The handle that bends a selected line or arrow (PLAN 3D.6): a small diamond
+ * on the segment, in the middle when straight. Drag to bend, Shift for a
+ * symmetric arc, double-click to straighten.
+ */
+function BendHandle({
+  a,
+  scale,
+  offset,
+  listening,
+}: {
+  a: ArrowAnnotation | LineAnnotation;
+  scale: number;
+  offset: Point;
+  listening: boolean;
+}) {
+  const p = bendPoint(a.from, a.to, a.bend);
+  const size = 9;
+  return (
+    <KRect
+      name="endpoint"
+      annotationId={a.id}
+      end="bend"
+      listening={listening}
+      x={offset.x + p.x * scale}
+      y={offset.y + p.y * scale}
+      width={size}
+      height={size}
+      offsetX={size / 2}
+      offsetY={size / 2}
+      rotation={45}
+      fill={CHROME}
+      stroke="#ffffff"
+      strokeWidth={1.5}
+      hitStrokeWidth={8}
     />
   );
 }

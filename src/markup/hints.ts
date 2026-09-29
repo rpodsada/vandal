@@ -59,10 +59,12 @@ export const CONTROL_HINTS = {
 export type ControlHint = keyof typeof CONTROL_HINTS;
 
 /** What a drag in progress is doing, for its modifier hints. */
-export type DragHint = "segment" | "square" | "circle" | "stroke" | "text" | "resize" | "rotate";
+export type DragHint =
+  "segment" | "bend" | "square" | "circle" | "stroke" | "text" | "resize" | "rotate";
 
 const DRAG_HINTS: Record<DragHint, string> = {
   segment: "[Shift] 45° steps",
+  bend: "[Shift] symmetric arc · Near the straight line it snaps straight · Double-click the handle to straighten",
   square: "[Shift] square",
   circle: "[Shift] circle",
   stroke: "[Shift] straight line",
@@ -106,6 +108,7 @@ function toolHint(tool: Exclude<ToolId, "select">, twoColors: boolean): string {
 const SELECTED =
   "[Del] delete · [Ctrl+D] duplicate · [←↑↓→] nudge, [Shift] 10 px · [Ctrl+[] [Ctrl+]] order · [Shift]+click adds or removes";
 const TEXT_SELECTED = `[Enter] edit the text · ${SELECTED}`;
+const SEGMENT_SELECTED = `Drag the ◆ handle to bend it, double-click it to straighten · ${SELECTED}`;
 const TYPING = "[Esc] done · [Ctrl+B] bold · [Ctrl+I] italic · [Alt+1…0] font";
 const CROP =
   "Drag edges or corners, [Shift] keeps proportions · Drag outside for a new box · [Enter] apply · [Esc] cancel · [←↑↓→] nudge, [Ctrl] resize";
@@ -121,6 +124,8 @@ export interface HintState {
   selected: number;
   /** The one selected object is text. */
   textSelected: boolean;
+  /** The one selected object is a line or an arrow (it can bend). */
+  segmentSelected: boolean;
   typing: boolean;
   /** The pointer is over an object on the canvas. */
   overObject: boolean;
@@ -137,7 +142,9 @@ export function chooseHint(s: HintState): string {
   if (s.mode === "crop") return CROP;
   if (s.typing) return `${TYPING} · ${colorKeys("text", s.twoColors)}`;
   if (s.tool === "select") {
-    if (s.selected) return s.textSelected && s.selected === 1 ? TEXT_SELECTED : SELECTED;
+    if (s.selected === 1 && s.textSelected) return TEXT_SELECTED;
+    if (s.selected === 1 && s.segmentSelected) return SEGMENT_SELECTED;
+    if (s.selected) return SELECTED;
     return IDLE;
   }
   const tool = toolHint(s.tool, s.twoColors);
