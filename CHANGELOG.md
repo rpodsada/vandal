@@ -6,6 +6,10 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- In quick edit, right-clicking a color swatch to edit it no longer cancels the capture.
+
 ## [0.3.0-beta.1] - 2026-09-28
 
 The first build for beta testers.

@@ -289,6 +289,9 @@ export function OverlayApp() {
     };
     const onContextMenu = (e: MouseEvent) => {
       e.preventDefault();
+      // The quick edit card has right-clicks of its own (edit a preset, open
+      // the custom color picker), and none of them mean cancel.
+      if (barRef.current?.contains(e.target as Node)) return;
       // Once there's markup (here or on another monitor), a stray right-click
       // doesn't throw it away.
       if (!hasMarkup && !lockedOut) cancel();
