@@ -4,11 +4,7 @@ Vandal is a Tauri 2 app: a Rust core (`src-tauri/`) for capture, hotkeys, the tr
 and image output, and a React + TypeScript UI (`src/`, built with Vite) for the overlay,
 editor and Settings windows.
 
-- [`PLAN.md`](PLAN.md): the architecture, the phases and where things stand (its Status
-  section), plus the Decisions log.
-- [`../CLAUDE.md`](../CLAUDE.md): the working conventions (commands, IPC, settings, checks).
-- [`test-matrix.md`](test-matrix.md): the manual checks run at the end of each phase.
-- [`perf.md`](perf.md): capture benchmarks.
+[`CLAUDE.md`](CLAUDE.md) has the working conventions (commands, IPC, settings, checks).
 
 ## Prerequisites
 
@@ -53,10 +49,11 @@ without an installer, use `npm run tauri build -- --no-bundle`.
 ## Releasing
 
 `package.json` holds the version, which `tauri.conf.json` reads. `src-tauri/Cargo.toml` and
-both lockfiles must match it. See PLAN "Versioning" for the numbering (including `-beta.N`
-prereleases).
+both lockfiles must match it. Versions follow semver and stay at 0.x for now. Builds for
+testers are prereleases of the next version (`0.3.0-beta.1`, `0.3.0-beta.2`...), which sort
+before the release itself (`0.3.0`). Every build must have a new, higher number.
 
-1. As you work, add changes under `## [Unreleased]` in [`../CHANGELOG.md`](../CHANGELOG.md).
+1. As you work, add changes under `## [Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md).
 2. Bump the version:
 
    ```powershell

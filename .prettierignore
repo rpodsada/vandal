@@ -1,6 +1,6 @@
 dist
 src-tauri
 src/shared/bindings.ts
-docs
+internal
 package-lock.json
 .vscode

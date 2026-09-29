@@ -1,11 +1,15 @@
 # Vandal
 
 Tray-resident Windows screen capture + markup tool. Tauri 2 (Rust) + React/TS (Vite).
-**Read `docs/PLAN.md` before starting work** (its Status section says where we are). Work only on the
-current phase unless asked. Current phase: **3 (polish, testing with friends)**, starting with 3A
-theming. Plan each sub-phase with Richard first, then build one feature per increment, confirmed by
-Richard and committed before the next one. Warn Richard before changes that restart the dev app
-(Rust, `Cargo.toml`, `tauri.conf.json`): he is often using it.
+**Read `internal/PLAN.md` before starting work** (its Status section says where we are). Work only
+on the current phase unless asked. Current phase: **3 (polish, testing with friends)**. Plan each
+sub-phase with Richard first, then build one feature per increment, confirmed by Richard and
+committed before the next one. Warn Richard before changes that restart the dev app (Rust,
+`Cargo.toml`, `tauri.conf.json`): he is often using it.
+
+`internal/` holds Richard's private notes (plan, test matrix, perf log, mockups). It's a separate
+private git repo and is gitignored here: commit its changes in `internal/`, never in this repo. If
+it's missing, ask Richard for it rather than working without the plan.
 
 ## Non-negotiables (PLAN §1)
 
@@ -23,8 +27,8 @@ Richard and committed before the next one. Warn Richard before changes that rest
   through `src/shared/ipc.ts`, never raw `invoke` strings.
 - Tauri capabilities are minimal and per-window. Overlays get no filesystem access.
 - New dependencies need a short justification in the commit message.
-- If the plan turns out to be wrong, update `docs/PLAN.md` in the same commit and add to its
-  Decisions log.
+- If the plan turns out to be wrong, update `internal/PLAN.md` at the same time (committed in
+  `internal/`) and add to its Decisions log.
 - Small, focused commits that explain _why_.
 
 ## Before calling a task done
@@ -64,10 +68,10 @@ Run Node tooling from PowerShell. Git Bash on this machine has an old nvm Node 1
   Pass real scan codes too (e.g. `keybd_event(0x57, 0x11, ...)` for W): with scan code 0 the
   webview sees an empty `KeyboardEvent.code`, and our shortcuts match on `code`.
 - Benchmark + pixel-alignment check: `npm run tauri build -- --no-bundle`, then
-  `CAPTURE_BENCH=10 src-tauri/target/release/vandal.exe`. Record results in `docs/perf.md`.
+  `CAPTURE_BENCH=10 src-tauri/target/release/vandal.exe`. Record results in `internal/perf.md`.
 - `CAPTURE_TRANSFER=bmp` switches the overlay transfer format.
 - Releasing: `npm run release:bump -- <version>`, then tag `v<version>` and push. CI builds a draft
-  GitHub release (steps in `docs/DEVELOPMENT.md` › Releasing). Add changes under `[Unreleased]`
+  GitHub release (steps in `DEVELOPMENT.md` › Releasing). Add changes under `[Unreleased]`
   in `CHANGELOG.md` as you go.
 - Rust unit tests must stay on pure modules. Test binaries that link the Tauri runtime crash on
   Windows (see the PLAN decisions log).

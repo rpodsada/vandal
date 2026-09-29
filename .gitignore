@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Internal docs (plan, test matrix, perf notes, mockups): a separate private repo
+/internal/

@@ -402,7 +402,7 @@ Found a bug or have an idea? Please tell us. It helps to include:
 ## Building from source
 
 Vandal is open source. To build it yourself or to contribute, see
-[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+[DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## License
 
