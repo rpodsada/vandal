@@ -60,6 +60,8 @@ All notable changes to Vandal are listed here. The format follows
   line under its text (over it when the pointer points up), with the pointer at its nearer end.
   Selected with other objects, a callout's frame takes in its pointer, and rotating the group
   carries it around with the rest, its text staying upright.
+- Open Settings from quick edit with the gear on its toolbar, or with Ctrl+, (in the editor too).
+  Settings opens above quick edit and stays there while you work, so changes show straight away.
 
 ### Changed
 

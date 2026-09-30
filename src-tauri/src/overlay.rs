@@ -168,11 +168,24 @@ pub(crate) fn force_foreground(hwnd: HWND) {
 }
 
 pub fn hide_all(app: &AppHandle) {
+    crate::settings_window::release(app);
     for (label, window) in app.webview_windows() {
         if is_overlay(&label) {
             let _ = window.hide();
         }
     }
+}
+
+/// The overlay being worked in (the focused one, else any shown), if any.
+pub fn shown(app: &AppHandle) -> Option<WebviewWindow> {
+    let mut shown: Vec<WebviewWindow> = app
+        .webview_windows()
+        .into_iter()
+        .filter(|(label, w)| is_overlay(label) && w.is_visible().unwrap_or(false))
+        .map(|(_, w)| w)
+        .collect();
+    shown.sort_by_key(|w| !w.is_focused().unwrap_or(false));
+    shown.into_iter().next()
 }
 
 /// Rebuild the pool when monitors are plugged/unplugged or rescaled, so the

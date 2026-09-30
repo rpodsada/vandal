@@ -184,6 +184,10 @@ export function EditorApp() {
           if (e.shiftKey) return;
           void commands.editorOpenImage();
           break;
+        case "Comma":
+          if (e.shiftKey) return;
+          void commands.openSettings();
+          break;
         case "Equal":
         case "NumpadAdd":
           view.zoomStep(1);

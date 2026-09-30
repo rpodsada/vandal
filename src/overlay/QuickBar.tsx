@@ -1,6 +1,8 @@
 import { forwardRef } from "react";
 import { useDoc } from "../markup/model/store";
 import { Toolbar } from "../markup/Toolbar";
+import { SETTINGS_ICON } from "../shared/icons";
+import { commands } from "../shared/ipc";
 import { ToolOptions } from "../markup/ToolOptions";
 import { useToolStore } from "../markup/toolStore";
 import styles from "./OverlayApp.module.css";
@@ -20,8 +22,8 @@ interface Props {
 
 /**
  * Quick edit's toolbar card on the selection (PLAN 2B, mockup "Main"): the
- * tools and undo/redo, Copy, Save (the accent button), Open in editor and
- * Exit, with the current tool's options as a second row.
+ * tools and undo/redo, Copy, Save (the accent button), Open in editor,
+ * Settings and Exit, with the current tool's options as a second row.
  */
 export const QuickBar = forwardRef<HTMLDivElement, Props>(function QuickBar(
   { x, y, busy, notice, onCopy, onSave, onOpenEditor, onExit },
@@ -86,6 +88,15 @@ export const QuickBar = forwardRef<HTMLDivElement, Props>(function QuickBar(
             <path d="M20 4l-8 8" />
             <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
           </svg>
+        </button>
+        <button
+          type="button"
+          className={styles.quickIcon}
+          aria-label="Settings (Ctrl+,)"
+          title="Settings (Ctrl+,)"
+          onClick={() => void commands.openSettings()}
+        >
+          {SETTINGS_ICON}
         </button>
         <button
           type="button"

@@ -253,6 +253,11 @@ export function OverlayApp() {
       if (lockedOut) return;
       if (e.key === "Escape") return cancel();
       if (e.key === "Enter") return void done();
+      if (e.ctrlKey && !e.altKey && !e.shiftKey && e.code === "Comma") {
+        e.preventDefault();
+        if (!e.repeat) void commands.openSettings();
+        return;
+      }
       if (quickEdit && selection && e.ctrlKey && !e.altKey && !e.shiftKey) {
         if (e.code === "KeyC" || e.code === "KeyS") {
           e.preventDefault();

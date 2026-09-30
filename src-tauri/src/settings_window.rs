@@ -2,7 +2,9 @@
 
 use std::time::Duration;
 
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use windows::Win32::Foundation::HWND;
+use windows::Win32::UI::WindowsAndMessaging::{SetWindowLongPtrW, GWLP_HWNDPARENT};
 
 pub const LABEL: &str = "settings";
 
@@ -10,6 +12,7 @@ pub const LABEL: &str = "settings";
 /// page shows it after its first render, so it never flashes white.
 pub fn open(app: &AppHandle) {
     if let Some(window) = app.get_webview_window(LABEL) {
+        follow_overlay(app, &window);
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
@@ -31,6 +34,7 @@ pub fn open(app: &AppHandle) {
         match built {
             Ok(window) => {
                 crate::browser_keys::disable(&window);
+                follow_overlay(&app, &window);
                 // Fallback in case the page never signals it rendered.
                 std::thread::sleep(Duration::from_secs(3));
                 if !window.is_visible().unwrap_or(true) {
@@ -41,4 +45,30 @@ pub fn open(app: &AppHandle) {
             Err(e) => eprintln!("[settings] window failed: {e}"),
         }
     });
+}
+
+/// Opened from quick edit, Settings goes above its overlay and stays there
+/// while you go back to the markup: owned by the overlay (an owned window is
+/// always above its owner) and topmost like it. Otherwise it's a normal window.
+fn follow_overlay(app: &AppHandle, window: &WebviewWindow) {
+    let owner = crate::overlay::shown(app).and_then(|o| o.hwnd().ok());
+    let _ = window.set_always_on_top(owner.is_some());
+    set_owner(window, owner.map(|h| HWND(h.0)));
+}
+
+/// Quick edit closed: Settings (if open) becomes a normal window again.
+pub fn release(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window(LABEL) {
+        set_owner(&window, None);
+        let _ = window.set_always_on_top(false);
+    }
+}
+
+fn set_owner(window: &WebviewWindow, owner: Option<HWND>) {
+    if let Ok(hwnd) = window.hwnd() {
+        let owner = owner.map_or(0, |h| h.0 as isize);
+        unsafe {
+            SetWindowLongPtrW(HWND(hwnd.0), GWLP_HWNDPARENT, owner);
+        }
+    }
 }
