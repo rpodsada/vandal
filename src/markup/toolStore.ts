@@ -77,8 +77,8 @@ export interface ToolState {
    * the shared palette ("shared"), and one per tool with its own palette.
    */
   customColors: Partial<Record<PaletteKey, string>>;
-  /** Which color the swatches set when a shape has border and fill. */
-  colorSlot: "border" | "fill";
+  /** Which color the swatches set when there are two (the chip's top or bottom). */
+  colorSlot: "first" | "second";
   arrowHead: ArrowHead;
   arrowEnds: ArrowEnds;
   /** Text: font family and size in pt, once picked. */
@@ -121,7 +121,7 @@ export const useToolStore = create<ToolState>((set) => ({
   fills: {},
   fillColors: {},
   customColors: {},
-  colorSlot: "border",
+  colorSlot: "first",
   arrowHead: "filled",
   arrowEnds: "end",
   fontFamily: null,
@@ -146,7 +146,7 @@ export const useToolStore = create<ToolState>((set) => ({
   // Picking a drawing tool drops the selection, so the options show that tool.
   setTool: (tool) => {
     if (tool !== "select") docStore.getState().select([]);
-    set({ tool, colorSlot: "border" });
+    set({ tool, colorSlot: "first" });
   },
   setEditing: (editing) => set({ editing }),
 }));

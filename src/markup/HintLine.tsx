@@ -1,7 +1,7 @@
 import { Fragment, useEffect } from "react";
 import { useDoc } from "./model/store";
 import { chooseHint, parseHint, useHintSources, type ControlHint } from "./hints";
-import { styleTarget, targetValues } from "./restyle";
+import { colorSlots, styleTarget, targetSections, targetValues } from "./restyle";
 import { useStyleConfig } from "./styles";
 import { useToolStore } from "./toolStore";
 import styles from "./markup.module.css";
@@ -45,7 +45,8 @@ export function HintLine() {
   useToolStore((s) => s.textBackground);
   const target = styleTarget(doc, selection, tool, editing);
   const values = target && targetValues(target, doc);
-  const twoColors = values?.fill === "both" || !!values?.text?.background || !!values?.step;
+  const twoColors =
+    !!target && !!values && colorSlots(values, targetSections(target)).second !== null;
 
   // Whatever control is under the pointer, found by its data-hint.
   useEffect(() => {

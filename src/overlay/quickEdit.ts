@@ -24,7 +24,7 @@ docStore.subscribe((s, prev) => {
 export function resetMarkup(load: OverlayLoad): void {
   // The source is this monitor's frame, in its physical pixels.
   docStore.getState().load(emptyDoc({ width: load.width, height: load.height }));
-  useToolStore.setState({ tool: "select", editing: null, colorSlot: "border" });
+  useToolStore.setState({ tool: "select", editing: null, colorSlot: "first" });
   void loadToolStyles();
 }
 

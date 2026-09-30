@@ -218,6 +218,55 @@ export function targetSections(target: StyleTarget) {
   };
 }
 
+/** A color the controls can set, by its key in {@link StylePatch}. */
+export type ColorKey = "color" | "fillColor" | "backgroundColor" | "textColor";
+
+export interface ColorSlot {
+  key: ColorKey;
+  value: string;
+}
+
+/**
+ * The colors the swatches set (PLAN 3D.14): one, or two picked with the chip.
+ * The first is the text's (text, a step marker's label) or a shape's fill;
+ * the second the box, the marker, or the shape's border. Ctrl+digit sets the
+ * first, Ctrl+Shift+digit the second.
+ */
+export interface ColorSlots {
+  /** What the second color is, which decides how the chip draws. */
+  kind: "single" | "text" | "shape";
+  first: ColorSlot;
+  second: ColorSlot | null;
+}
+
+export function colorSlots(
+  values: TargetValues,
+  sections: ReturnType<typeof targetSections>,
+): ColorSlots {
+  if (sections.step && values.step) {
+    return {
+      kind: "text",
+      first: { key: "textColor", value: values.step.textColor },
+      second: { key: "color", value: values.step.color },
+    };
+  }
+  if (sections.text && values.text?.background) {
+    return {
+      kind: "text",
+      first: { key: "color", value: values.color },
+      second: { key: "backgroundColor", value: values.text.backgroundColor },
+    };
+  }
+  if (sections.fill && values.fill === "both") {
+    return {
+      kind: "shape",
+      first: { key: "fillColor", value: values.fillColor ?? values.color },
+      second: { key: "color", value: values.color },
+    };
+  }
+  return { kind: "single", first: { key: "color", value: values.color }, second: null };
+}
+
 export interface StylePatch {
   color?: string;
   width?: number;

@@ -8,9 +8,11 @@ import type { ArrowHead, RedactMode, ShapeFill, SpotlightShape, TextAlign } from
 import { NumberPickerControl } from "./NumberPickerControl";
 import { PresetEditor } from "./PresetEditor";
 import { StepOptions } from "./StepOptions";
+import { contrastingText } from "./steps";
 import { slotKey } from "./pickers";
 import {
   applyStyle,
+  colorSlots,
   beginStyleDrag,
   endStyleDrag,
   styleTarget,
@@ -108,6 +110,9 @@ const SPOTLIGHT_SHAPES: { id: SpotlightShape; label: string; icon: ReactNode }[]
   { id: "ellipse", label: "Ellipse", icon: <ellipse cx="12" cy="12" rx="8" ry="6" /> },
 ];
 
+/** The "A" on the text color's chip, in its 20-unit viewBox. */
+const CHIP_LETTER_SIZE = 12;
+
 /**
  * The options for what's being drawn or selected (mockup: ToolOptions):
  * colors, line width, fill and arrow head. Shared by quick edit and the editor.
@@ -173,40 +178,28 @@ export function ToolOptions() {
   const text = values.text;
   const step = show.step ? values.step : null;
   // With border + fill, text on a box, or a step marker, the chip picks which
-  // color the swatches set. A step marker's label comes first, like text's.
-  const twoColors =
-    (show.fill && values.fill === "both") || (show.text && !!text?.background) || !!step;
-  const firstColor = step ? step.textColor : values.color;
-  const secondColor =
-    (step ? step.color : show.text ? text?.backgroundColor : values.fillColor) ?? values.color;
-  const editingFill = twoColors && colorSlot === "fill";
-  const current = (editingFill ? secondColor : firstColor).toLowerCase();
+  // color the swatches set.
+  const slots = colorSlots(values, show);
+  const second = slots.second;
+  const twoColors = second !== null;
+  const editingSecond = twoColors && colorSlot === "second";
+  const current = (second && editingSecond ? second : slots.first).value.toLowerCase();
   // Only while that tool's palette is on show and the preset still exists.
   const edit =
     presetEdit?.tool === target.tool && presetEdit.index < palette.length ? presetEdit : null;
   const pickColor = (c: string, toSecond: boolean) =>
-    applyStyle(
-      step
-        ? toSecond
-          ? { color: c }
-          : { textColor: c }
-        : !(toSecond && twoColors)
-          ? { color: c }
-          : show.text
-            ? { backgroundColor: c }
-            : { fillColor: c },
-    );
+    applyStyle({ [(toSecond && second ? second : slots.first).key]: c });
   const labels = step
     ? ["Label color", "Marker color"]
     : show.text
       ? ["Text color", "Box color"]
-      : ["Border color", "Fill color"];
+      : ["Fill color", "Border color"];
   const colorHints = step
     ? (["chip.label", "swatch.label"] as const)
     : show.text
       ? (["chip.box", "swatch.box"] as const)
       : (["chip.fill", "swatch.fill"] as const);
-  const setSlot = (slot: "border" | "fill") => useToolStore.setState({ colorSlot: slot });
+  const setSlot = (slot: "first" | "second") => useToolStore.setState({ colorSlot: slot });
 
   return (
     // Clicks here must not take focus: text being typed keeps it, and Space
@@ -478,25 +471,53 @@ export function ToolOptions() {
           else from under the pointer. */}
       {show.color && (
         <div className={`${styles.section} ${styles.swatches}`}>
-          {twoColors && (
+          {second && (
             <div className={styles.chip} {...hint(colorHints[0])}>
               <button
                 type="button"
-                className={styles.chipBorder}
-                style={{ borderColor: firstColor }}
-                aria-pressed={!editingFill}
+                className={`${styles.chipDot} ${styles.chipFirst}`}
+                style={{ background: slots.first.value }}
+                aria-pressed={!editingSecond}
                 aria-label={labels[0]}
                 title={`${labels[0]}${hints ? " (Ctrl+1…0)" : ""}`}
-                onClick={() => setSlot("border")}
-              />
+                onClick={() => setSlot("first")}
+              >
+                {slots.kind === "text" && (
+                  // Marks the text's color; black or white to read on it.
+                  // SVG text so the capital itself is centred: CSS centres the
+                  // line box, which leaves room for descenders an "A" hasn't got.
+                  <svg
+                    className={styles.chipLetter}
+                    viewBox="0 0 20 20"
+                    aria-hidden
+                    style={{ color: contrastingText(slots.first.value) }}
+                  >
+                    {/* Baseline: the middle plus half a cap height (0.7 em). */}
+                    <text
+                      x="10"
+                      fontSize={CHIP_LETTER_SIZE}
+                      y={10 + (0.7 * CHIP_LETTER_SIZE) / 2}
+                      textAnchor="middle"
+                    >
+                      A
+                    </text>
+                  </svg>
+                )}
+              </button>
               <button
                 type="button"
-                className={styles.chipFill}
-                style={{ background: secondColor }}
-                aria-pressed={editingFill}
+                className={`${styles.chipDot} ${styles.chipSecond}`}
+                // A shape's border is a ring, like the outline it draws.
+                style={
+                  slots.kind === "shape"
+                    ? { borderColor: second.value, background: "transparent" }
+                    : { background: second.value }
+                }
+                data-hollow={slots.kind === "shape" || undefined}
+                aria-pressed={editingSecond}
                 aria-label={labels[1]}
                 title={`${labels[1]}${hints ? " (Shift+click a color, Ctrl+Shift+1…0)" : ""}`}
-                onClick={() => setSlot("fill")}
+                onClick={() => setSlot("second")}
               />
             </div>
           )}
@@ -514,8 +535,8 @@ export function ToolOptions() {
                 aria-pressed={edit ? editingThis : c.toLowerCase() === current}
                 aria-label={`Color ${i + 1}`}
                 title={`Color ${i + 1}${hints ? ` (Ctrl+${slotKey(i)})` : ""}`}
-                // Shift+click sets the fill without switching the chip.
-                onClick={(e) => pickColor(c, e.shiftKey || editingFill)}
+                // Shift+click sets the second color without switching the chip.
+                onClick={(e) => pickColor(c, e.shiftKey || editingSecond)}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   setPresetEdit({
@@ -546,7 +567,7 @@ export function ToolOptions() {
             palette={palette}
             selected={edit ? false : undefined}
             tool={target.tool}
-            onPick={(c) => pickColor(c, editingFill)}
+            onPick={(c) => pickColor(c, editingSecond)}
           />
         </div>
       )}

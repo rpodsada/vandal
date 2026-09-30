@@ -8,7 +8,7 @@ import { isTyping } from "../shared/dom";
 import { translateAnnotation } from "./geometry";
 import { docStore } from "./model/store";
 import { digitSlot, pickByDigit, slotIndex } from "./pickers";
-import { applyStyle, styleTarget, targetSections, targetValues } from "./restyle";
+import { applyStyle, colorSlots, styleTarget, targetSections, targetValues } from "./restyle";
 import {
   fontChoices,
   paletteFor,
@@ -110,31 +110,21 @@ function toggleTextStyle(code: string): boolean {
 }
 
 /**
- * Ctrl+digit: color preset slot. With Shift, the second color: the fill of a
- * shape with border and fill, the box behind text, or a step marker (whose
- * first color is its label's, like text).
+ * Ctrl+digit: color preset slot. With Shift, the second color (see
+ * {@link colorSlots}): a shape's border when it has a fill too, the box
+ * behind text, or a step marker.
  */
 function pickColor(slot: number, second: boolean): boolean {
   const target = styleTarget();
-  if (!target || !targetSections(target).color) return false;
-  const values = targetValues(target, docStore.getState().doc);
-  const hasSecond = values.fill === "both" || !!values.text?.background || !!values.step;
-  if (second && !hasSecond) return false;
+  if (!target) return false;
+  const sections = targetSections(target);
+  if (!sections.color) return false;
+  const slots = colorSlots(targetValues(target, docStore.getState().doc), sections);
+  const into = second ? slots.second : slots.first;
+  if (!into) return false;
   const palette = paletteFor(target.tool);
   const i = slotIndex(palette.length, slot);
-  if (i === null) return true;
-  const c = palette[i];
-  applyStyle(
-    values.step
-      ? second
-        ? { color: c }
-        : { textColor: c }
-      : !second
-        ? { color: c }
-        : values.text
-          ? { backgroundColor: c }
-          : { fillColor: c },
-  );
+  if (i !== null) applyStyle({ [into.key]: palette[i] });
   return true;
 }
 

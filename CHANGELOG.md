@@ -43,6 +43,12 @@ All notable changes to Vandal are listed here. The format follows
 
 ### Changed
 
+- The two-color chip in the options bar is clearer: two overlapping circles with thin borders, the
+  active one in front with a dark edge. For text and step markers the top circle is the text color
+  with an "A" on it; for shapes with a border and fill, the fill is now the top color and the
+  border the ring below.
+  Ctrl+1–9/0 set the top color and Ctrl+Shift+1–9/0 the bottom one, so for those shapes they now
+  set the fill and the border respectively.
 - A notification's Edit (or a click on it) reopens the capture just as "Open in editor" would:
   quick edit's annotations are still editable, and the crop can grow back out to the whole screen.
   Closing the editor without changes no longer copies the image again.

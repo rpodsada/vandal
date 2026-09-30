@@ -8,7 +8,14 @@ import {
   type StepAnnotation,
   type TextAnnotation,
 } from "./model/types";
-import { applyStyle, resetStepStyles } from "./restyle";
+import {
+  applyStyle,
+  colorSlots,
+  resetStepStyles,
+  styleTarget,
+  targetSections,
+  targetValues,
+} from "./restyle";
 import { useToolStore } from "./toolStore";
 
 const style = { color: "#e53935", width: 4, opacity: 1 };
@@ -285,5 +292,38 @@ describe("applyStyle on step markers", () => {
     docStore.getState().undo();
     expect(step(a).size).toBe(32);
     expect(step(b).color).toBe("#e53935");
+  });
+});
+
+describe("colorSlots", () => {
+  beforeEach(() => {
+    docStore.getState().load(emptyDoc({ width: 100, height: 100 }));
+    useToolStore.setState({ tool: "select" });
+  });
+
+  const slotsNow = () => {
+    const target = styleTarget()!;
+    return colorSlots(targetValues(target, docStore.getState().doc), targetSections(target));
+  };
+
+  it("puts a shape's fill first and its border second, with both", () => {
+    addRect("both");
+    expect(slotsNow()).toEqual({
+      kind: "shape",
+      first: { key: "fillColor", value: "#123456" },
+      second: { key: "color", value: "#e53935" },
+    });
+  });
+
+  it("has one color for a shape with only a border or a fill", () => {
+    addRect("solid");
+    expect(slotsNow()).toMatchObject({ kind: "single", first: { key: "color" }, second: null });
+  });
+
+  it("sets the fill from the first slot", () => {
+    const id = addRect("both");
+    applyStyle({ [slotsNow().first.key]: "#00ff00" });
+    expect(rect(id).fillColor).toBe("#00ff00");
+    expect(rect(id).style.color).toBe("#e53935");
   });
 });

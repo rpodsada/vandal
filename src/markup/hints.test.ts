@@ -57,7 +57,7 @@ describe("color hints", () => {
     const rect = { ...base, tool: "rect" as const };
     expect(chooseHint(rect)).not.toContain("Ctrl+Shift");
     expect(chooseHint({ ...rect, twoColors: true })).toContain(
-      "[Ctrl+1…0] border color · [Ctrl+Shift+1…0] fill color",
+      "[Ctrl+1…0] fill color · [Ctrl+Shift+1…0] border color",
     );
   });
 

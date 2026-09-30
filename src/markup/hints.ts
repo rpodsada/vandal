@@ -28,10 +28,10 @@ export const CONTROL_HINTS = {
   redo: "[Ctrl+Y] or [Ctrl+Shift+Z] Redo",
   swatch: "[Ctrl+1…0] Pick a color by number · Right-click to change or delete it",
   "swatch.fill":
-    "[Shift]+click sets the fill · [Ctrl+1…0] border color · [Ctrl+Shift+1…0] fill color · Right-click to change or delete",
+    "[Shift]+click sets the border · [Ctrl+1…0] fill color · [Ctrl+Shift+1…0] border color · Right-click to change or delete",
   "swatch.box":
     "[Shift]+click sets the background · [Ctrl+1…0] text color · [Ctrl+Shift+1…0] background color · Right-click to change or delete",
-  "chip.fill": "Choose which color the swatches set · [Shift]+click a swatch sets the fill",
+  "chip.fill": "Choose which color the swatches set · [Shift]+click a swatch sets the border",
   "chip.box": "Choose which color the swatches set · [Shift]+click a swatch sets the background",
   "swatch.label":
     "[Shift]+click sets the marker · [Ctrl+1…0] label color · [Ctrl+Shift+1…0] marker color · Right-click to change or delete",
@@ -96,7 +96,7 @@ function colorKeys(tool: ToolId, twoColors: boolean): string {
       ? "[Ctrl+1…0] text color · [Ctrl+Shift+1…0] background color"
       : "[Ctrl+1…0] text color";
   }
-  return twoColors ? "[Ctrl+1…0] border color · [Ctrl+Shift+1…0] fill color" : "[Ctrl+1…0] color";
+  return twoColors ? "[Ctrl+1…0] fill color · [Ctrl+Shift+1…0] border color" : "[Ctrl+1…0] color";
 }
 
 function toolHint(tool: Exclude<ToolId, "select">, twoColors: boolean): string {
