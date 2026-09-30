@@ -56,6 +56,7 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::hotkeys_pause,
             commands::hotkeys_resume,
             commands::hotkey_check,
+            commands::shortcut_check,
             commands::print_screen_opens_snipping,
             commands::open_keyboard_settings,
             commands::default_settings,

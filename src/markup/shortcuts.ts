@@ -26,6 +26,24 @@ export const DEFAULT_SHORTCUTS: ShortcutKeys = {
   swapColors: "X",
 };
 
+/** What each shortcut does, in the toolbar's order, for Settings and its messages. */
+export const SHORTCUT_NAMES: Record<ShortcutId, string> = {
+  select: "Select",
+  pen: "Pen",
+  highlighter: "Highlighter",
+  line: "Line",
+  arrow: "Arrow",
+  rect: "Rectangle",
+  ellipse: "Ellipse",
+  text: "Text",
+  callout: "Callout",
+  redact: "Redact",
+  spotlight: "Spotlight",
+  step: "Step marker",
+  crop: "Crop",
+  swapColors: "Swap colors",
+};
+
 /** The shortcut a key press makes, spelled as settings store it, or null if it can't be one. */
 export function comboOf(e: {
   code: string;

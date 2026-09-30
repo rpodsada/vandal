@@ -702,3 +702,67 @@
   color: var(--text-2);
   font-size: 13px;
 }
+
+/* A markup shortcut (PLAN 3F): a fixed width beside its label, so a message
+   wraps under the control instead of squeezing the label. */
+.shortcutField {
+  width: 340px;
+}
+
+.shortcutField .hotkeyBox {
+  flex: 1;
+  min-width: 90px;
+}
+
+/* ---- confirm dialog ---- */
+
+.dialog {
+  width: min(420px, calc(100vw - 48px));
+  padding: 20px 22px 18px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 16px 48px rgb(0 0 0 / 0.35);
+  color: var(--text);
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+
+.dialogTitle {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.dialogBody {
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.dialogBody p {
+  margin: 0 0 6px;
+}
+
+.dialogButtons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.primaryButton,
+.primaryButton:hover,
+.primaryButton:active {
+  background: var(--accent);
+  box-shadow: none;
+  color: var(--on-accent);
+}
+
+.primaryButton:hover {
+  filter: brightness(1.08);
+}

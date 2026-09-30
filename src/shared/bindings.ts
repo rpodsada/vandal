@@ -66,6 +66,7 @@ export const commands = {
 	 *  or why it can't be one (fixed in Vandal, or held by Windows or another app,
 	 *  which would take the keys first). Another tool using it is for the caller.
 	 */
+	shortcutCheck: (shortcut: string) => typedError<string, string>(__TAURI_INVOKE("shortcut_check", { shortcut })),
 	/**  Whether Windows keeps PrintScreen for its own screen capture. */
 	printScreenOpensSnipping: () => __TAURI_INVOKE<boolean>("print_screen_opens_snipping"),
 	/**  Windows Settings › Accessibility › Keyboard (the Print Screen switch). */

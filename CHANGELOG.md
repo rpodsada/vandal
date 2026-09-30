@@ -61,6 +61,9 @@ All notable changes to Vandal are listed here. The format follows
   The box can also be just an outline, as thick as the pointer and the same color.
   Selected with other objects, a callout's frame takes in its pointer, and rotating the group
   carries it around with the rest, its text staying upright.
+- Change the markup tools' keys, and the swap colors key, in Settings › Keyboard shortcuts: a
+  letter, alone or with Ctrl, Alt or Shift. Picking a key another tool has asks first, then
+  leaves that tool without one. Tooltips and the hint line show the keys you chose.
 - Open Settings from quick edit with the gear on its toolbar, or with Ctrl+, (in the editor too).
   Settings opens above quick edit and stays there while you work, so changes show straight away.
 

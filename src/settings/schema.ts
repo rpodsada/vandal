@@ -4,6 +4,7 @@
 // kind of control, add an item type to `Item` below and a component to the
 // registry in `controls/index.ts` (TypeScript will insist on both).
 import type { ComponentType } from "react";
+import type { ShortcutId } from "../markup/shortcuts";
 import type { ToolId } from "../markup/toolStore";
 import type { Settings } from "../shared/ipc";
 import type { PathOf } from "./path";
@@ -114,6 +115,12 @@ export interface HotkeyItem extends BaseItem {
   path: PathOf<Settings, string | null>;
 }
 
+/** A markup shortcut (PLAN 3F): a letter, alone or with Ctrl, Alt and Shift. */
+export interface ShortcutItem extends BaseItem {
+  kind: "shortcut";
+  shortcut: ShortcutId;
+}
+
 /** Read-only value, for things not editable yet or informational. */
 export interface InfoItem extends BaseItem {
   kind: "info";
@@ -132,6 +139,7 @@ export type Item =
   | FontPickerItem
   | AccentItem
   | HotkeyItem
+  | ShortcutItem
   | InfoItem;
 export type ItemKind = Item["kind"];
 

@@ -8,8 +8,8 @@ import { useSetting, useSettingsStore } from "../store";
 import type { ControlProps } from "./index";
 import styles from "./controls.module.css";
 
-/** Which shortcut is being recorded: one at a time. */
-const useRecording = create<{ path: string | null }>(() => ({ path: null }));
+/** Which shortcut is being recorded: one at a time (these and the markup's). */
+export const useRecording = create<{ path: string | null }>(() => ({ path: null }));
 
 /** The shortcuts, by settings key, as the conflict message names them. */
 const ACTIONS: Record<string, string> = {

@@ -96,6 +96,20 @@ pub fn hotkey_check(app: AppHandle, hotkey: String) -> Option<String> {
     crate::hotkeys::check(&app, &hotkey).err()
 }
 
+/// A just-recorded markup shortcut (PLAN 3F): spelled as settings store it,
+/// or why it can't be one (fixed in Vandal, or held by Windows or another app,
+/// which would take the keys first). Another tool using it is for the caller.
+#[tauri::command]
+#[specta::specta]
+pub fn shortcut_check(app: AppHandle, shortcut: String) -> Result<String, String> {
+    let combo = crate::shortcuts::check_one(&shortcut)?;
+    // A letter alone can't be a global shortcut worth holding.
+    if combo.contains('+') {
+        crate::hotkeys::check(&app, &combo)?;
+    }
+    Ok(combo)
+}
+
 /// Whether Windows keeps PrintScreen for its own screen capture.
 #[tauri::command]
 #[specta::specta]

@@ -4,6 +4,7 @@
 // Capture (taking the shot), Copy & save (where the image goes), Markup (tools
 // and styles, shared by quick edit and the editor), Keyboard shortcuts, About.
 import pkg from "../../package.json";
+import { SHORTCUT_NAMES, type ShortcutId } from "../markup/shortcuts";
 import { commands } from "../shared/ipc";
 import { AboutIcon, CaptureIcon, GeneralIcon, KeyboardIcon, MarkupIcon, SaveIcon } from "./icons";
 import type { Section } from "./schema";
@@ -567,7 +568,8 @@ export const sections: Section[] = [
     id: "shortcuts",
     title: "Keyboard shortcuts",
     icon: KeyboardIcon,
-    description: "The capture shortcuts, which work anywhere in Windows.",
+    description:
+      "The capture shortcuts, which work anywhere in Windows, and the markup tools' keys.",
     groups: [
       {
         title: "Capture",
@@ -588,6 +590,19 @@ export const sections: Section[] = [
             keywords: ["hotkey", "shortcut", "keyboard", "key", "all monitors", "printscreen"],
           },
         ],
+      },
+      {
+        title: "Tools",
+        description:
+          "In quick edit and the editor. Click Change, then press a letter, alone or with Ctrl, Alt or Shift.",
+        items: (Object.keys(SHORTCUT_NAMES) as ShortcutId[]).map((shortcut) => ({
+          id: `shortcut-${shortcut}`,
+          kind: "shortcut" as const,
+          shortcut,
+          label: SHORTCUT_NAMES[shortcut],
+          description: shortcut === "crop" ? "In the editor" : undefined,
+          keywords: ["shortcut", "keyboard", "key", "tool"],
+        })),
       },
     ],
   },
