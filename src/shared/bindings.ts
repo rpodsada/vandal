@@ -536,6 +536,11 @@ export type Styles = {
 	spotlight?: NumberPicker,
 	/**  Step markers' size in source px (PLAN 3D.13). */
 	stepSize?: NumberPicker,
+	/**
+	 *  Rounded corners (rectangles, Spotlight's rectangle) in source px (PLAN
+	 *  3D.17): 0 is always a choice, and never buttons.
+	 */
+	cornerRadius?: NumberPicker,
 	/**  Step markers' font; by default the text tool's choices. */
 	stepFont?: FontPicker,
 	/**  Per-tool overrides, keyed by tool id (`"highlighter"`, ...). */

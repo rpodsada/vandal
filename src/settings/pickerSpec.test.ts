@@ -64,3 +64,28 @@ describe("rangeError", () => {
     expect(rangeError(null, 40)).not.toBeNull();
   });
 });
+
+describe("keeping 0 (corner radii)", () => {
+  it("keeps 0 first and always", () => {
+    expect(cleanValues([8, 4, 0, 4], true)).toEqual([0, 4, 8]);
+    expect(cleanValues([8, 4], true)).toEqual([0, 4, 8]);
+    expect(
+      cleanValues(
+        [...Array(15).keys()].map((n) => n + 1),
+        true,
+      ),
+    ).toHaveLength(10);
+  });
+
+  it("starts a slider at 0 and brings 0 back into a list", () => {
+    expect(
+      withControl({ control: "dropdown", values: [0, 4, 16] }, "slider", undefined, true),
+    ).toEqual({
+      control: "slider",
+      min: 0,
+      max: 16,
+    });
+    const list = withControl({ control: "slider", min: 0, max: 30 }, "stepped", undefined, true);
+    expect(list).toEqual({ control: "stepped", values: [0, 10, 20, 30] });
+  });
+});

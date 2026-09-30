@@ -68,8 +68,13 @@ export interface NumberPickerItem extends BaseItem {
     | "styles.pixelate"
     | "styles.blur"
     | "styles.spotlight"
-    | "styles.stepSize";
+    | "styles.stepSize"
+    | "styles.cornerRadius";
   unit: "px" | "pt" | "%";
+  /** 0 is always a choice, first in the list or the slider's start (PLAN 3D.18). */
+  zero?: boolean;
+  /** No "Buttons" control (it read as more buttons beside Spotlight's). */
+  noButtons?: boolean;
   /** Preview the values as lines of that thickness. */
   lines?: boolean;
 }

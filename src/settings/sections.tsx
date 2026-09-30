@@ -462,6 +462,23 @@ export const sections: Section[] = [
         ],
       },
       {
+        title: "Rounded corners",
+        items: [
+          {
+            id: "styles-corner-radius",
+            kind: "numberPicker",
+            path: "styles.cornerRadius",
+            label: "Corner radius choices",
+            description:
+              "The corner radii the rectangle and the spotlight's rectangle offer, in pixels. 0 (square corners) is always one of them. Alt+1–9 and Alt+0 pick them while you draw.",
+            unit: "px",
+            zero: true,
+            noButtons: true,
+            keywords: ["corner", "round", "rounded", "radius", "rectangle", "spotlight", "square"],
+          },
+        ],
+      },
+      {
         title: "Step markers",
         items: [
           {

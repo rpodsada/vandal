@@ -15,13 +15,7 @@ import {
   targetSections,
   targetValues,
 } from "./restyle";
-import {
-  CORNER_RADIUS_PICKER,
-  fontChoices,
-  strengthPickerFor,
-  useStyleConfig,
-  widthPickerFor,
-} from "./styles";
+import { fontChoices, strengthPickerFor, useStyleConfig, widthPickerFor } from "./styles";
 import { useToolStore } from "./toolStore";
 import { useHeldKeys } from "./useHeldKeys";
 import { useLineStarts } from "./useLineStarts";
@@ -118,31 +112,10 @@ export function ToolOptions() {
   // The groups wrap to more rows when the bar is narrow (PLAN 2C).
   const rootRef = useRef<HTMLDivElement>(null);
   useLineStarts(rootRef);
-  // Re-render when a tool's remembered style or the settings change.
-  useToolStore((s) => s.sharedColor);
-  useToolStore((s) => s.colors);
-  useToolStore((s) => s.widths);
-  useToolStore((s) => s.fills);
-  useToolStore((s) => s.fillColors);
-  useToolStore((s) => s.colorSlot);
-  useToolStore((s) => s.arrowHead);
-  useToolStore((s) => s.arrowEnds);
-  useToolStore((s) => s.fontFamily);
-  useToolStore((s) => s.fontSize);
-  useToolStore((s) => s.textAlign);
-  useToolStore((s) => s.textBold);
-  useToolStore((s) => s.textItalic);
-  useToolStore((s) => s.textBackground);
-  useToolStore((s) => s.textBackgroundColor);
-  useToolStore((s) => s.redactMode);
-  useToolStore((s) => s.redactStrengths);
-  useToolStore((s) => s.spotlightShape);
-  useToolStore((s) => s.spotlightDim);
-  useToolStore((s) => s.stepShape);
-  useToolStore((s) => s.stepSize);
-  useToolStore((s) => s.stepTextColor);
-  useToolStore((s) => s.stepFormat);
-  useToolStore((s) => s.stepStart);
+  // Re-render when a tool's remembered style changes: the whole store, so a
+  // new remembered style can't be missed (the step font and the corner radii
+  // once were, and their pickers didn't follow).
+  useToolStore();
   const config = useStyleConfig();
   const held = useHeldKeys();
   const hints = config.showShortcutHints;
@@ -168,7 +141,7 @@ export function ToolOptions() {
         <path d="M1.5 1.5l5.3 5.3M6.8 3.3v3.5H3.3" />
       </svg>
       <NumberPickerControl
-        picker={CORNER_RADIUS_PICKER}
+        picker={config.styles.cornerRadius}
         value={values.corner}
         unit="px"
         label="Corner radius"

@@ -17,7 +17,6 @@ import {
   targetValues,
 } from "./restyle";
 import {
-  CORNER_RADIUS_PICKER,
   fontChoices,
   paletteFor,
   stepFontChoices,
@@ -105,7 +104,7 @@ function pickAlt(slot: number): boolean {
   const sections = targetSections(target);
   if (sections.corner) {
     if (targetValues(target, docStore.getState().doc).corner === null) return false;
-    const cornerRadius = pickByDigit(CORNER_RADIUS_PICKER, slot);
+    const cornerRadius = pickByDigit(useStyleConfig.getState().styles.cornerRadius, slot);
     if (cornerRadius !== null) applyStyle({ cornerRadius });
     return true;
   }

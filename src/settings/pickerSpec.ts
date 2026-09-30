@@ -15,19 +15,24 @@ export function parseValue(text: string): number | null {
   return Math.round(n * 10) / 10;
 }
 
-/** Positive, ascending, without duplicates, at most MAX_VALUES. */
-export function cleanValues(values: readonly number[]): number[] {
+/**
+ * Positive, ascending, without duplicates, at most MAX_VALUES. With `zero`,
+ * 0 comes first and always stays (corner radii, PLAN 3D.18).
+ */
+export function cleanValues(values: readonly number[], zero = false): number[] {
   const sorted = values.filter((v) => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
-  return sorted.filter((v, i) => i === 0 || v !== sorted[i - 1]).slice(0, MAX_VALUES);
+  const unique = sorted.filter((v, i) => i === 0 || v !== sorted[i - 1]);
+  return zero ? [0, ...unique.slice(0, MAX_VALUES - 1)] : unique.slice(0, MAX_VALUES);
 }
 
 /** The list a picker offers, or the slider's range spread over a few values. */
-export function valuesOf(picker: NumberPicker): number[] {
+export function valuesOf(picker: NumberPicker, zero = false): number[] {
   if (picker.control !== "slider") return picker.values;
   const { min, max } = picker;
   const steps = 4;
   return cleanValues(
     Array.from({ length: steps }, (_, i) => Math.round(min + ((max - min) * i) / (steps - 1))),
+    zero,
   );
 }
 
@@ -40,17 +45,18 @@ export function withControl(
   picker: NumberPicker,
   control: PickerControl,
   remembered?: readonly number[],
+  zero = false,
 ): NumberPicker {
   if (control === picker.control) return picker;
   if (control === "slider") {
-    const values = valuesOf(picker);
-    const min = values[0];
+    const values = valuesOf(picker, zero);
+    const min = zero ? 0 : values[0];
     const max = Math.max(values[values.length - 1], min + 1);
     return { control, min, max };
   }
   const values =
-    picker.control === "slider" && remembered?.length ? [...remembered] : valuesOf(picker);
-  return { control, values };
+    picker.control === "slider" && remembered?.length ? [...remembered] : valuesOf(picker, zero);
+  return { control, values: zero ? cleanValues(values, true) : values };
 }
 
 /** A value to add after the last one: one step further, keeping the list's spacing. */

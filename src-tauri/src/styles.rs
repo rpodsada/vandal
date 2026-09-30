@@ -46,6 +46,35 @@ impl NumberPicker {
         }
     }
 
+    /// For the corner radius (PLAN 3D.18): 0 (square) is always a choice, first
+    /// in a list or a slider's minimum, and it's never buttons (beside
+    /// Spotlight's darkness buttons they read as one row of numbers), so
+    /// buttons become a dropdown. `None` if a slider has no usable top.
+    fn normalized_from_zero(self) -> Option<Self> {
+        let with_zero = |values: Vec<f64>| {
+            let mut v: Vec<f64> = values
+                .into_iter()
+                .filter(|x| x.is_finite() && *x > 0.0)
+                .collect();
+            v.sort_by(f64::total_cmp);
+            v.dedup();
+            v.truncate(MAX_PRESETS - 1);
+            v.insert(0, 0.0);
+            v
+        };
+        match self {
+            Self::Slider { max, .. } => {
+                (max.is_finite() && max > 0.0).then_some(Self::Slider { min: 0.0, max })
+            }
+            Self::Stepped { values } => Some(Self::Stepped {
+                values: with_zero(values),
+            }),
+            Self::Dropdown { values } | Self::Buttons { values } => Some(Self::Dropdown {
+                values: with_zero(values),
+            }),
+        }
+    }
+
     /// Fix what can be fixed (order, duplicates, too many values); `None` if
     /// nothing usable is left.
     fn normalized(self) -> Option<Self> {
@@ -188,6 +217,9 @@ pub struct Styles {
     pub spotlight: NumberPicker,
     /// Step markers' size in source px (PLAN 3D.13).
     pub step_size: NumberPicker,
+    /// Rounded corners (rectangles, Spotlight's rectangle) in source px (PLAN
+    /// 3D.17): 0 is always a choice, and never buttons.
+    pub corner_radius: NumberPicker,
     /// Step markers' font; by default the text tool's choices.
     pub step_font: FontPicker,
     /// Per-tool overrides, keyed by tool id (`"highlighter"`, ...).
@@ -221,6 +253,9 @@ impl Default for Styles {
             },
             step_size: NumberPicker::Buttons {
                 values: vec![24.0, 32.0, 44.0, 60.0],
+            },
+            corner_radius: NumberPicker::Dropdown {
+                values: vec![0.0, 5.0, 10.0, 15.0, 20.0],
             },
             step_font: FontPicker {
                 source: FontSource::Text,
@@ -292,6 +327,10 @@ impl Styles {
                 .normalized_up_to(100.0)
                 .unwrap_or(defaults.spotlight),
             step_size: self.step_size.normalized().unwrap_or(defaults.step_size),
+            corner_radius: self
+                .corner_radius
+                .normalized_from_zero()
+                .unwrap_or(defaults.corner_radius),
             step_font: self.step_font.normalized(true),
             tools: self
                 .tools
@@ -414,6 +453,49 @@ mod tests {
         }
         .normalized();
         assert_eq!(s.spotlight, Styles::default().spotlight);
+    }
+
+    #[test]
+    fn corner_radius_always_offers_square_and_is_never_buttons() {
+        let normalized = |p: NumberPicker| {
+            Styles {
+                corner_radius: p,
+                ..Styles::default()
+            }
+            .normalized()
+            .corner_radius
+        };
+        assert_eq!(
+            normalized(NumberPicker::Buttons {
+                values: vec![8.0, 4.0, 4.0, -1.0]
+            }),
+            NumberPicker::Dropdown {
+                values: vec![0.0, 4.0, 8.0]
+            }
+        );
+        assert_eq!(
+            normalized(NumberPicker::Stepped {
+                values: (1..=15).map(f64::from).collect()
+            }),
+            NumberPicker::Stepped {
+                values: (0..=9).map(f64::from).collect()
+            }
+        );
+        assert_eq!(
+            normalized(NumberPicker::Slider {
+                min: 5.0,
+                max: 30.0
+            }),
+            NumberPicker::Slider {
+                min: 0.0,
+                max: 30.0
+            }
+        );
+        assert_eq!(
+            normalized(NumberPicker::Slider { min: 0.0, max: 0.0 }),
+            Styles::default().corner_radius
+        );
+        assert_eq!(Styles::default().normalized(), Styles::default());
     }
 
     #[test]

@@ -55,6 +55,8 @@ export const DEFAULT_STYLE_CONFIG: StyleConfig = {
     blur: { control: "buttons", values: [3, 6, 10, 16] },
     spotlight: { control: "buttons", values: [30, 50, 70, 85] },
     stepSize: { control: "buttons", values: [24, 32, 44, 60] },
+    // Never buttons, and 0 is always a choice (Rust keeps it so).
+    cornerRadius: { control: "dropdown", values: [0, 5, 10, 15, 20] },
     stepFont: { source: "text", fonts: [], control: "dropdown" },
     tools: {
       highlighter: {
@@ -271,16 +273,10 @@ export function toolRedact(mode?: RedactMode): { mode: RedactMode; strength: num
   };
 }
 
-/**
- * Corner radii (source px). Never buttons (Richard: beside Spotlight's
- * darkness buttons it read as one row of numbers). Moves to Settings as
- * `styles.cornerRadius` in 3D.18.
- */
-export const CORNER_RADIUS_PICKER: NumberPicker = { control: "dropdown", values: [0, 4, 8, 16] };
-
 /** A rectangle's or spotlight's corner radius now: 0 (square) until one is picked. */
 export function toolCornerRadius(tool: ToolId): number {
-  return useToolStore.getState().cornerRadii[tool] ?? nearestValue(CORNER_RADIUS_PICKER, 0);
+  const picker = useStyleConfig.getState().styles.cornerRadius;
+  return useToolStore.getState().cornerRadii[tool] ?? nearestValue(picker, 0);
 }
 
 /** The radius a rectangle is drawn with: at most half its shorter side. */

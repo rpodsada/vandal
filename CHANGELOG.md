@@ -48,6 +48,8 @@ All notable changes to Vandal are listed here. The format follows
   Markup › Colors, or for one tool under Per-tool styles. The keys work the same either way.
 - Rounded corners for rectangles and the spotlight's rectangle: pick a corner radius in the options
   bar, or with Alt+1–9 and Alt+0.
+- Settings › Markup › Rounded corners: choose the corner radii on offer, as a dropdown, a slider
+  or a stepped slider. Square corners (0) are always one of them.
 
 ### Changed
 

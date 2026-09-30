@@ -40,6 +40,8 @@ export function NumberPickerSetting({ item, id, disabled }: ControlProps<NumberP
       label={item.label}
       unit={item.unit}
       lines={item.lines}
+      zero={item.zero}
+      noButtons={item.noButtons}
       disabled={disabled}
       onChange={(p) => void set(item.path as never, p as never)}
     />
@@ -54,6 +56,10 @@ interface EditorProps {
   unit: string;
   /** Preview values as lines of that thickness. */
   lines?: boolean;
+  /** 0 is always a choice: a fixed first value, or the slider's fixed start. */
+  zero?: boolean;
+  /** Offer no "Buttons" control. */
+  noButtons?: boolean;
   disabled?: boolean;
   onChange: (picker: NumberPicker) => void;
 }
@@ -69,6 +75,8 @@ export function NumberPickerEditor({
   label,
   unit,
   lines,
+  zero = false,
+  noButtons = false,
   disabled,
   onChange,
 }: EditorProps) {
@@ -80,7 +88,7 @@ export function NumberPickerEditor({
 
   const setControl = (control: PickerControl) => {
     if (picker.control !== "slider") remembered.current = picker.values;
-    onChange(withControl(picker, control, remembered.current));
+    onChange(withControl(picker, control, remembered.current, zero));
   };
 
   return (
@@ -88,7 +96,7 @@ export function NumberPickerEditor({
       <Segmented
         id={id}
         label={`${label}: control`}
-        options={CONTROLS}
+        options={noButtons ? CONTROLS.filter((c) => c.value !== "buttons") : CONTROLS}
         value={picker.control}
         disabled={disabled}
         onChange={setControl}
@@ -99,6 +107,7 @@ export function NumberPickerEditor({
           max={picker.max}
           unit={unit}
           label={label}
+          zero={zero}
           disabled={disabled}
           onChange={(min, max) => onChange({ control: "slider", min, max })}
         />
@@ -107,6 +116,7 @@ export function NumberPickerEditor({
           values={picker.values}
           unit={unit}
           label={label}
+          zero={zero}
           disabled={disabled}
           onChange={(values) => onChange({ control: picker.control, values })}
         />
@@ -136,31 +146,46 @@ function ValueList({
   values,
   unit,
   label,
+  zero,
   disabled,
   onChange,
 }: {
   values: number[];
   unit: string;
   label: string;
+  zero: boolean;
   disabled?: boolean;
   onChange: (values: number[]) => void;
 }) {
+  // With `zero`, the 0 stays and one other value must too.
+  const removable = values.length > (zero ? 2 : 1);
   return (
     <div className={styles.valueList}>
-      {values.map((v, i) => (
-        // By position: after sorting, each field shows whatever value is there now.
-        <ValueField
-          key={i}
-          value={v}
-          unit={unit}
-          label={`${label} ${i + 1}`}
-          disabled={disabled}
-          onCommit={(n) => onChange(cleanValues(values.map((x, j) => (j === i ? n : x))))}
-          onRemove={
-            values.length > 1 ? () => onChange(values.filter((_, j) => j !== i)) : undefined
-          }
-        />
-      ))}
+      {values.map((v, i) => {
+        const fixed = zero && v === 0;
+        return (
+          // By position: after sorting, each field shows whatever value is there now.
+          <ValueField
+            key={i}
+            value={v}
+            unit={unit}
+            label={`${label} ${i + 1}`}
+            fixed={fixed}
+            disabled={disabled}
+            onCommit={(n) =>
+              onChange(
+                cleanValues(
+                  values.map((x, j) => (j === i ? n : x)),
+                  zero,
+                ),
+              )
+            }
+            onRemove={
+              removable && !fixed ? () => onChange(values.filter((_, j) => j !== i)) : undefined
+            }
+          />
+        );
+      })}
       {values.length < MAX_VALUES && (
         <button
           type="button"
@@ -168,7 +193,7 @@ function ValueList({
           aria-label={`Add a ${label.toLowerCase()} value`}
           title="Add a value"
           disabled={disabled}
-          onClick={() => onChange(cleanValues([...values, nextValue(values)]))}
+          onClick={() => onChange(cleanValues([...values, nextValue(values)], zero))}
         >
           <PlusIcon />
         </button>
@@ -198,6 +223,7 @@ function ValueField({
   value,
   unit,
   label,
+  fixed = false,
   disabled,
   onCommit,
   onRemove,
@@ -205,6 +231,8 @@ function ValueField({
   value: number;
   unit: string;
   label: string;
+  /** Always offered, so not editable (the 0 of corner radii). */
+  fixed?: boolean;
   disabled?: boolean;
   onCommit: (value: number) => void;
   onRemove?: () => void;
@@ -216,13 +244,14 @@ function ValueField({
     else onCommit(n);
   };
   return (
-    <span className={styles.valueChip}>
+    <span className={styles.valueChip} title={fixed ? "Always offered: square corners" : undefined}>
       <span className={styles.chipValue} onMouseDown={focusAtEnd}>
         <input
           className={styles.valueInput}
           value={draft}
           inputMode="decimal"
           aria-label={label}
+          readOnly={fixed}
           disabled={disabled}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
@@ -255,6 +284,7 @@ function RangeFields({
   max,
   unit,
   label,
+  zero,
   disabled,
   onChange,
 }: {
@@ -262,12 +292,14 @@ function RangeFields({
   max: number;
   unit: string;
   label: string;
+  /** The range starts at 0, fixed. */
+  zero: boolean;
   disabled?: boolean;
   onChange: (min: number, max: number) => void;
 }) {
   const [minText, setMinText] = useDraft(String(min));
   const [maxText, setMaxText] = useDraft(String(max));
-  const [lo, hi] = [parseValue(minText), parseValue(maxText)];
+  const [lo, hi] = [zero ? 0 : parseValue(minText), parseValue(maxText)];
   const error = rangeError(lo, hi);
   const commit = () => {
     if (!error && (lo !== min || hi !== max)) onChange(lo!, hi!);
@@ -276,7 +308,7 @@ function RangeFields({
     setMinText(String(min));
     setMaxText(String(max));
   };
-  const field = (text: string, set: (t: string) => void, name: string) => (
+  const field = (text: string, set: (t: string) => void, name: string, fixed = false) => (
     <span className={styles.valueChip}>
       <span className={styles.chipValue} onMouseDown={focusAtEnd}>
         <input
@@ -284,6 +316,7 @@ function RangeFields({
           value={text}
           inputMode="decimal"
           aria-label={`${label}: ${name}`}
+          readOnly={fixed}
           disabled={disabled}
           onChange={(e) => set(e.target.value)}
           onBlur={commit}
@@ -300,7 +333,7 @@ function RangeFields({
     <div className={styles.stack}>
       <div className={styles.valueList}>
         <span className={styles.help}>From</span>
-        {field(minText, setMinText, "smallest")}
+        {field(zero ? "0" : minText, setMinText, "smallest", zero)}
         <span className={styles.help}>to</span>
         {field(maxText, setMaxText, "largest")}
       </div>
