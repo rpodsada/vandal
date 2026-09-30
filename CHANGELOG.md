@@ -66,6 +66,7 @@ All notable changes to Vandal are listed here. The format follows
 
 ### Changed
 
+- The capture shortcuts have moved to a new Settings page, Keyboard shortcuts.
 - Holding Shift while moving objects keeps the move horizontal or vertical.
 - In quick edit, a callout's options take two rows, with its text and colors on the second, so
   the toolbar is less wide.

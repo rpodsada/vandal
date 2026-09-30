@@ -2,10 +2,10 @@
 //
 // Pages follow the capture flow (PLAN §4.7): General (the app itself),
 // Capture (taking the shot), Copy & save (where the image goes), Markup (tools
-// and styles, shared by quick edit and the editor), About.
+// and styles, shared by quick edit and the editor), Keyboard shortcuts, About.
 import pkg from "../../package.json";
 import { commands } from "../shared/ipc";
-import { AboutIcon, CaptureIcon, GeneralIcon, MarkupIcon, SaveIcon } from "./icons";
+import { AboutIcon, CaptureIcon, GeneralIcon, KeyboardIcon, MarkupIcon, SaveIcon } from "./icons";
 import type { Section } from "./schema";
 
 export const sections: Section[] = [
@@ -96,28 +96,8 @@ export const sections: Section[] = [
     id: "capture",
     title: "Capture",
     icon: CaptureIcon,
-    description: "Taking a screenshot: shortcuts, the selection screen and quick edit.",
+    description: "Taking a screenshot: the selection screen and quick edit.",
     groups: [
-      {
-        title: "Keyboard shortcuts",
-        description: "They work anywhere in Windows. Click Change, then press the new shortcut.",
-        items: [
-          {
-            id: "hotkey-region",
-            kind: "hotkey",
-            path: "hotkeys.region",
-            label: "Capture a region",
-            keywords: ["hotkey", "shortcut", "keyboard", "key", "printscreen"],
-          },
-          {
-            id: "hotkey-fullscreen",
-            kind: "hotkey",
-            path: "hotkeys.fullscreen",
-            label: "Capture the full screen",
-            keywords: ["hotkey", "shortcut", "keyboard", "key", "all monitors", "printscreen"],
-          },
-        ],
-      },
       {
         title: "Selection screen",
         items: [
@@ -578,6 +558,34 @@ export const sections: Section[] = [
             label: "Step markers",
             widths: false,
             keywords: ["own", "custom", "override", "per tool", "palette", "color", "marker"],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "shortcuts",
+    title: "Keyboard shortcuts",
+    icon: KeyboardIcon,
+    description: "The capture shortcuts, which work anywhere in Windows.",
+    groups: [
+      {
+        title: "Capture",
+        description: "They work anywhere in Windows. Click Change, then press the new shortcut.",
+        items: [
+          {
+            id: "hotkey-region",
+            kind: "hotkey",
+            path: "hotkeys.region",
+            label: "Capture a region",
+            keywords: ["hotkey", "shortcut", "keyboard", "key", "printscreen"],
+          },
+          {
+            id: "hotkey-fullscreen",
+            kind: "hotkey",
+            path: "hotkeys.fullscreen",
+            label: "Capture the full screen",
+            keywords: ["hotkey", "shortcut", "keyboard", "key", "all monitors", "printscreen"],
           },
         ],
       },

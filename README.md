@@ -125,7 +125,7 @@ You can also left-click the tray icon to start a capture, or right-click it for 
 | **Win+F12**       | Select a region                        |
 | **Win+Shift+F12** | All monitors, straight into the editor |
 
-You can change both shortcuts in **Settings › Capture › Keyboard shortcuts**.
+You can change both shortcuts in **Settings › Keyboard shortcuts**.
 
 While you're selecting a region:
 
@@ -317,11 +317,11 @@ never touched.
 ## Troubleshooting
 
 **A shortcut doesn't do anything.** Another app (or Windows) may already use that key
-combination. Choose a different one in **Settings › Capture › Keyboard shortcuts**. Vandal
+combination. Choose a different one in **Settings › Keyboard shortcuts**. Vandal
 checks whether a new shortcut is free before saving it.
 
 **I want to use the PrintScreen key.** Windows 11 gives PrintScreen to Snipping Tool by default.
-Settings › Capture › Keyboard shortcuts has a button that opens the Windows setting to turn that
+Settings › Keyboard shortcuts has a button that opens the Windows setting to turn that
 off, and then you can record PrintScreen as your shortcut.
 
 **Parts of the capture are black.** Some apps and video players block screen capture for

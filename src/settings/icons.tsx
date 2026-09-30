@@ -49,6 +49,15 @@ export function MarkupIcon() {
   );
 }
 
+export function KeyboardIcon() {
+  return (
+    <svg {...props}>
+      <rect x="1.8" y="4" width="12.4" height="8" rx="1.5" />
+      <path d="M4.5 6.6h.01M6.8 6.6h.01M9.2 6.6h.01M11.5 6.6h.01M5.5 9.4h5" />
+    </svg>
+  );
+}
+
 export function AboutIcon() {
   return (
     <svg {...props}>
