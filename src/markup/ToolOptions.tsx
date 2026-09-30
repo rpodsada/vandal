@@ -14,6 +14,14 @@ import type {
   TextAlign,
 } from "./model/types";
 import { NumberPickerControl } from "./NumberPickerControl";
+import {
+  BLOCK_SIZE_ICON,
+  BLUR_RADIUS_ICON,
+  CORNER_ICON,
+  DARKNESS_ICON,
+  LINE_WIDTH_ICON,
+  TEXT_SIZE_ICON,
+} from "./pickerIcons";
 import { StepOptions } from "./StepOptions";
 import {
   applyStyle,
@@ -189,18 +197,10 @@ export function ToolOptions() {
   // Alt+digits its font (PLAN 3E), so its corners have no key.
   const callout = show.callout;
   const corner = show.corner && values.corner !== null && (
-    <span
-      className={styles.iconPicker}
-      {...hint(callout ? "corner.callout" : "corner")}
-      title="Corner radius"
-    >
-      {/* A rounded corner with an arrow pushing it in from outside (Richard's
-          idea), so it doesn't read as another shape button. */}
-      <svg className={`${styles.pickerIcon} ${styles.cornerIcon}`} viewBox="0 0 16 16" aria-hidden>
-        <path d="M5 15.5a10.5 10.5 0 0 1 10.5-10.5" />
-        <path d="M1.5 1.5l5.3 5.3M6.8 3.3v3.5H3.3" />
-      </svg>
+    <span className={styles.hintArea} {...hint(callout ? "corner.callout" : "corner")}>
       <NumberPickerControl
+        icon={CORNER_ICON}
+        iconAlways
         picker={config.styles.cornerRadius}
         value={values.corner}
         unit="px"
@@ -212,6 +212,103 @@ export function ToolOptions() {
         onDragEnd={endStyleDrag}
       />
     </span>
+  );
+
+  const colors = <ColorControls target={target} values={values} show={show} held={held} />;
+  // Text's font and size, and its bold, italic and alignment.
+  const textPickers = text && (
+    <div className={styles.section}>
+      <span className={styles.hintArea} {...hint("font")}>
+        <FontPickerControl
+          picker={config.styles.font}
+          fonts={fontChoices(config)}
+          value={text.fontFamily}
+          showKeys={hints && held.alt}
+          hints={hints}
+          onPick={(fontFamily) => applyStyle({ fontFamily })}
+        />
+      </span>
+      <span className={styles.hintArea} {...hint(callout ? "callout.size" : "size")}>
+        <NumberPickerControl
+          icon={TEXT_SIZE_ICON}
+          picker={config.styles.fontSize}
+          value={text.fontSize}
+          unit="pt"
+          label="Text size"
+          showKeys={hints && held.digit && !held.shiftDigit}
+          hints={hints}
+          onPick={(fontSize) => applyStyle({ fontSize })}
+          onDragStart={beginStyleDrag}
+          onDragEnd={endStyleDrag}
+        />
+      </span>
+    </div>
+  );
+  const textStyle = text && (
+    <>
+      <div className={styles.section}>
+        <div className={styles.group}>
+          <button
+            type="button"
+            className={`${styles.toggle} ${styles.letter}`}
+            aria-pressed={text.bold}
+            {...hint("bold")}
+            aria-label="Bold"
+            title={`Bold${hints ? " (Ctrl+B)" : ""}`}
+            onClick={() => applyStyle({ bold: !text.bold })}
+          >
+            <b>B</b>
+          </button>
+          <button
+            type="button"
+            className={`${styles.toggle} ${styles.letter}`}
+            aria-pressed={text.italic}
+            {...hint("italic")}
+            aria-label="Italic"
+            title={`Italic${hints ? " (Ctrl+I)" : ""}`}
+            onClick={() => applyStyle({ italic: !text.italic })}
+          >
+            <i>I</i>
+          </button>
+        </div>
+      </div>
+      <div className={styles.section}>
+        <div className={styles.group}>
+          {show.textBox && (
+            <button
+              type="button"
+              className={styles.toggle}
+              aria-pressed={text.background}
+              {...hint("box")}
+              aria-label="Background box"
+              title="Background box"
+              onClick={() => applyStyle({ background: !text.background })}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden>
+                <rect x="3" y="5" width="18" height="14" rx="2" className={styles.tint} />
+                <path d="M8 16l4-9 4 9M9.5 13h5" />
+              </svg>
+            </button>
+          )}
+          {ALIGNS.map((al) => (
+            <button
+              key={al.id}
+              type="button"
+              className={styles.toggle}
+              aria-pressed={text.align === al.id}
+              {...hint("align")}
+              aria-label={al.label}
+              title={al.label}
+              onClick={() => applyStyle({ align: al.id })}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden>
+                <path d={al.path} />
+              </svg>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
   );
 
   return (
@@ -266,20 +363,9 @@ export function ToolOptions() {
 
       {show.width && values.width !== null && (
         <div className={styles.section}>
-          <span
-            className={callout ? styles.iconPicker : styles.hintArea}
-            {...hint(callout ? "callout.width" : "width")}
-            title={callout ? "Pointer thickness" : undefined}
-          >
-            {callout && (
-              // Lines getting thicker.
-              <svg className={styles.pickerIcon} viewBox="0 0 16 16" aria-hidden>
-                <path d="M2 3.5h12" strokeWidth="1" />
-                <path d="M2 7.5h12" strokeWidth="2" />
-                <path d="M2 12.5h12" strokeWidth="3" />
-              </svg>
-            )}
+          <span className={styles.hintArea} {...hint(callout ? "callout.width" : "width")}>
             <NumberPickerControl
+              icon={LINE_WIDTH_ICON}
               picker={widthPicker}
               value={values.width}
               unit="px"
@@ -296,44 +382,18 @@ export function ToolOptions() {
         </div>
       )}
 
-      {show.text && text && (
-        <div className={styles.section}>
-          <span className={styles.hintArea} {...hint("font")}>
-            <FontPickerControl
-              picker={config.styles.font}
-              fonts={fontChoices(config)}
-              value={text.fontFamily}
-              showKeys={hints && held.alt}
-              hints={hints}
-              onPick={(fontFamily) => applyStyle({ fontFamily })}
-            />
-          </span>
-          <span
-            className={callout ? styles.iconPicker : styles.hintArea}
-            {...hint(callout ? "callout.size" : "size")}
-            title={callout ? "Text size" : undefined}
-          >
-            {callout && (
-              // A small and a large A.
-              <svg className={styles.pickerIcon} viewBox="0 0 16 16" aria-hidden>
-                <path d="M1 13l2.5-6 2.5 6M1.9 11h3.2" />
-                <path d="M7.5 13l3.5-10 3.5 10M8.8 9.7h4.4" />
-              </svg>
-            )}
-            <NumberPickerControl
-              picker={config.styles.fontSize}
-              value={text.fontSize}
-              unit="pt"
-              label={callout ? "Text size" : "Size"}
-              showKeys={hints && held.digit && !held.shiftDigit}
-              hints={hints}
-              onPick={(fontSize) => applyStyle({ fontSize })}
-              onDragStart={beginStyleDrag}
-              onDragEnd={endStyleDrag}
-            />
-          </span>
-        </div>
-      )}
+      {show.text &&
+        (callout ? (
+          // A callout's styling (text, then colors) wraps to the next line as
+          // one, under its shape controls (Richard: it looks more organized).
+          <div className={`${styles.section} ${styles.run}`}>
+            {textPickers}
+            {textStyle}
+            {show.color && colors}
+          </div>
+        ) : (
+          textPickers
+        ))}
 
       {step && (
         <StepOptions
@@ -364,17 +424,14 @@ export function ToolOptions() {
             ))}
           </div>
           {corner}
-          <span className={styles.iconPicker} {...hint("dim")} title="Darkness outside">
-            {/* Half light, half dark. */}
-            <svg className={styles.pickerIcon} viewBox="0 0 16 16" aria-hidden>
-              <circle cx="8" cy="8" r="5.5" />
-              <path d="M8 2.5a5.5 5.5 0 0 1 0 11z" className={styles.solid} />
-            </svg>
+          <span className={styles.hintArea} {...hint("dim")}>
             <NumberPickerControl
+              icon={DARKNESS_ICON}
+              iconAlways
               picker={config.styles.spotlight}
               value={values.spotlight.dim}
               unit="%"
-              label="Darkness"
+              label="Darkness outside"
               showKeys={hints && held.digit}
               hints={hints}
               onPick={(dim) => applyStyle({ dim })}
@@ -406,6 +463,7 @@ export function ToolOptions() {
           </div>
           <span className={styles.hintArea} {...hint("strength")}>
             <NumberPickerControl
+              icon={values.redact.mode === "pixelate" ? BLOCK_SIZE_ICON : BLUR_RADIUS_ICON}
               picker={strengthPickerFor(values.redact.mode, config)}
               value={values.redact.strength}
               unit="px"
@@ -442,72 +500,7 @@ export function ToolOptions() {
         </div>
       )}
 
-      {show.text && text && (
-        <>
-          <div className={styles.section}>
-            <div className={styles.group}>
-              <button
-                type="button"
-                className={`${styles.toggle} ${styles.letter}`}
-                aria-pressed={text.bold}
-                {...hint("bold")}
-                aria-label="Bold"
-                title={`Bold${hints ? " (Ctrl+B)" : ""}`}
-                onClick={() => applyStyle({ bold: !text.bold })}
-              >
-                <b>B</b>
-              </button>
-              <button
-                type="button"
-                className={`${styles.toggle} ${styles.letter}`}
-                aria-pressed={text.italic}
-                {...hint("italic")}
-                aria-label="Italic"
-                title={`Italic${hints ? " (Ctrl+I)" : ""}`}
-                onClick={() => applyStyle({ italic: !text.italic })}
-              >
-                <i>I</i>
-              </button>
-            </div>
-          </div>
-          <div className={styles.section}>
-            <div className={styles.group}>
-              {show.textBox && (
-                <button
-                  type="button"
-                  className={styles.toggle}
-                  aria-pressed={text.background}
-                  {...hint("box")}
-                  aria-label="Background box"
-                  title="Background box"
-                  onClick={() => applyStyle({ background: !text.background })}
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden>
-                    <rect x="3" y="5" width="18" height="14" rx="2" className={styles.tint} />
-                    <path d="M8 16l4-9 4 9M9.5 13h5" />
-                  </svg>
-                </button>
-              )}
-              {ALIGNS.map((al) => (
-                <button
-                  key={al.id}
-                  type="button"
-                  className={styles.toggle}
-                  aria-pressed={text.align === al.id}
-                  {...hint("align")}
-                  aria-label={al.label}
-                  title={al.label}
-                  onClick={() => applyStyle({ align: al.id })}
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden>
-                    <path d={al.path} />
-                  </svg>
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+      {show.text && !callout && textStyle}
 
       {show.head && values.head !== null && (
         <div className={styles.section}>
@@ -552,7 +545,7 @@ export function ToolOptions() {
         </div>
       )}
 
-      {show.color && <ColorControls target={target} values={values} show={show} held={held} />}
+      {show.color && !callout && colors}
     </div>
   );
 }

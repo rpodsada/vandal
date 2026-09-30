@@ -60,6 +60,8 @@ All notable changes to Vandal are listed here. The format follows
 
 ### Changed
 
+- In the options bar, a size, width or strength shown as a dropdown or slider has an icon before
+  it saying what it sets, and sliders are narrower.
 - The two-color chip in the options bar is clearer: two overlapping circles with thin borders, the
   active one in front with a dark edge. For text and step markers the top circle is the text color
   with an "A" on it; for shapes with a border and fill, the fill is now the top color and the

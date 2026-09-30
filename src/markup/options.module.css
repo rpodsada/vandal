@@ -85,6 +85,12 @@
   display: none;
 }
 
+/* Sections that wrap as one (a callout's styling: text, then colors): spaced
+   and separated inside like the bar's own sections. */
+.section.run {
+  gap: 21px;
+}
+
 /* ---- slot-number badges ---- */
 
 .badge,
@@ -167,8 +173,9 @@
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
-/* A picker led by an icon saying what it sets (corner radius, darkness), so
-   two pickers side by side don't read as one. */
+/* A picker led by an icon saying what it sets (pickerIcons.tsx): a dropdown
+   or slider, which doesn't say on its own, and corner radius and darkness,
+   so two pickers side by side don't read as one. */
 .iconPicker {
   display: flex;
   align-items: center;

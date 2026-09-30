@@ -5,6 +5,7 @@ import { boxOf, useMenuPlacement } from "./menuPlacement";
 import { useDoc } from "./model/store";
 import type { StepFormat, StepShape } from "./model/types";
 import { NumberPickerControl } from "./NumberPickerControl";
+import { MARKER_SIZE_ICON } from "./pickerIcons";
 import {
   applyStyle,
   beginStyleDrag,
@@ -68,10 +69,11 @@ export function StepOptions({ step, hints, showKeys, showFontKeys }: Props) {
         </span>
         <span className={styles.hintArea} {...hint("size")}>
           <NumberPickerControl
+            icon={MARKER_SIZE_ICON}
             picker={config.styles.stepSize}
             value={step.size}
             unit="px"
-            label="Size"
+            label="Marker size"
             showKeys={showKeys}
             hints={hints}
             onPick={(stepSize) => applyStyle({ stepSize })}

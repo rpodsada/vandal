@@ -709,7 +709,7 @@ mod tests {
         assert_eq!(v["editor"]["showButtonUnits"], false);
         assert_eq!(v["editor"]["drawingToolsSelect"], true);
         assert_eq!(v["editor"]["rememberToolStyles"], true);
-        assert_eq!(v["styles"]["width"]["control"], "buttons");
+        assert_eq!(v["styles"]["width"]["control"], "slider");
     }
 
     #[test]

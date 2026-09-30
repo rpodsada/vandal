@@ -235,8 +235,9 @@ impl Default for Styles {
                 "#ffffff",
             ]),
             color_control: ColorControl::Swatches,
-            width: NumberPicker::Buttons {
-                values: vec![2.0, 4.0, 6.0, 10.0],
+            width: NumberPicker::Slider {
+                min: 1.0,
+                max: 20.0,
             },
             font: FontPicker::default(),
             font_size: NumberPicker::Dropdown {
@@ -251,7 +252,7 @@ impl Default for Styles {
             spotlight: NumberPicker::Buttons {
                 values: vec![30.0, 50.0, 70.0, 85.0],
             },
-            step_size: NumberPicker::Buttons {
+            step_size: NumberPicker::Dropdown {
                 values: vec![24.0, 32.0, 44.0, 60.0],
             },
             corner_radius: NumberPicker::Dropdown {
@@ -598,8 +599,9 @@ mod tests {
         assert_eq!(v["palette"][0], "#e53935");
         assert_eq!(
             v["width"],
-            json!({ "control": "buttons", "values": [2.0, 4.0, 6.0, 10.0] })
+            json!({ "control": "slider", "min": 1.0, "max": 20.0 })
         );
+        assert_eq!(v["stepSize"]["control"], "dropdown");
         assert_eq!(
             v["tools"]["highlighter"]["width"],
             json!({ "control": "slider", "min": 8.0, "max": 40.0 })

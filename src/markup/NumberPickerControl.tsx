@@ -1,4 +1,4 @@
-import { useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import type { NumberPicker } from "../shared/ipc";
 import { Dropdown } from "./Dropdown";
 import { nearestValue, pickerFraction, slotKey, valueAtFraction } from "./pickers";
@@ -23,28 +23,41 @@ interface Props {
    * Default: the style config's; Settings passes the setting itself.
    */
   showUnits?: boolean;
+  /**
+   * What the picker sets (see pickerIcons.tsx), shown before a dropdown or
+   * slider; buttons show their values instead, unless `iconAlways`.
+   */
+  icon?: ReactNode;
+  /** Show the icon before buttons too (a picker beside other buttons). */
+  iconAlways?: boolean;
   onPick: (value: number) => void;
   /** A slider drag starts / ends: its steps are one undo entry. */
   onDragStart: () => void;
   onDragEnd: () => void;
 }
 
-const TRACK_WIDTH = 150;
+const TRACK_WIDTH = 84;
 /** Lines are drawn at most this thick in the controls. */
 const MAX_LINE = 12;
 
 /** One number picker in whichever control its spec asks for (PLAN "Style controls"). */
 export function NumberPickerControl(props: Props) {
-  const { picker } = props;
-  switch (picker.control) {
-    case "buttons":
-      return <Buttons {...props} values={picker.values} />;
-    case "dropdown":
-      return <NumberDropdown {...props} values={picker.values} />;
-    case "stepped":
-    case "slider":
-      return <Slider {...props} />;
-  }
+  const { picker, icon } = props;
+  const control =
+    picker.control === "buttons" ? (
+      <Buttons {...props} values={picker.values} />
+    ) : picker.control === "dropdown" ? (
+      <NumberDropdown {...props} values={picker.values} />
+    ) : (
+      <Slider {...props} />
+    );
+  if (!icon || (picker.control === "buttons" && !props.iconAlways)) return control;
+  return (
+    <span className={styles.iconPicker} title={props.label}>
+      {icon}
+      {control}
+    </span>
+  );
 }
 
 function keyHint(props: Props, i: number): string {
