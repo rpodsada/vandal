@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CustomColor } from "./CustomColor";
 import { Dropdown } from "./Dropdown";
 import { hint } from "./HintLine";
@@ -252,14 +252,36 @@ interface RowProps {
   badges: boolean;
   /** `custom`: from the custom color's picker, live as it's dragged. */
   onPick: (color: string, shift: boolean, custom: boolean) => void;
+  /** Start editing the color in use: its preset, or the custom color. */
+  editCurrent?: boolean;
 }
 
 /**
  * The presets, then the custom swatch (PLAN 2A.6c). Right-click a preset to
  * change or delete it.
  */
-function SwatchRow({ tool, palette, slot, position, hintId, hints, badges, onPick }: RowProps) {
+function SwatchRow({
+  tool,
+  palette,
+  slot,
+  position,
+  hintId,
+  hints,
+  badges,
+  onPick,
+  editCurrent = false,
+}: RowProps) {
   const [presetEdit, setPresetEdit] = useState<PresetEdit | null>(null);
+  const swatchRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const inUse = palette.findIndex((c) => c.toLowerCase() === slot.value.toLowerCase());
+  useEffect(() => {
+    // The custom color opens its own picker (startOpen below).
+    if (!editCurrent || inUse < 0) return;
+    const left = swatchRefs.current[inUse]?.offsetLeft ?? 0;
+    setPresetEdit({ tool, index: inUse, color: palette[inUse], left });
+    // Once, when the row is shown.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Only while that tool's palette is on show and the preset still exists.
   const edit = presetEdit?.tool === tool && presetEdit.index < palette.length ? presetEdit : null;
   const current = slot.value.toLowerCase();
@@ -272,6 +294,9 @@ function SwatchRow({ tool, palette, slot, position, hintId, hints, badges, onPic
         return (
           <button
             key={i}
+            ref={(el) => {
+              swatchRefs.current[i] = el;
+            }}
             type="button"
             className={styles.swatch}
             {...hint(hintId)}
@@ -308,6 +333,7 @@ function SwatchRow({ tool, palette, slot, position, hintId, hints, badges, onPic
         selected={edit ? false : undefined}
         tool={tool}
         onPick={(c) => onPick(c, false, true)}
+        startOpen={editCurrent && inUse < 0}
       />
     </>
   );
@@ -350,8 +376,9 @@ function ColorMenu({
         menuClassName={styles.colorGridMenu}
         title={`${label}${hints ? ` (${shortcut})` : ""}`}
         button={face}
+        rightClickOpens
       >
-        {(close) => (
+        {(close, byRightClick) => (
           <div className={`${styles.swatches} ${styles.swatchGrid}`}>
             <SwatchRow
               tool={tool}
@@ -361,6 +388,7 @@ function ColorMenu({
               hintId="swatch"
               hints={hints}
               badges={badges}
+              editCurrent={byRightClick}
               onPick={(c, _shift, custom) => {
                 onPick(c);
                 // A preset is a choice made; the picker stays open while it's used.

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { boxOf, useMenuPlacement } from "./menuPlacement";
 import styles from "./options.module.css";
 
@@ -7,8 +7,13 @@ interface Props {
   title: string;
   /** The button's content (a chevron is added). */
   button: ReactNode;
-  /** The menu rows; call `close` after a pick. */
-  children: (close: () => void) => ReactNode;
+  /**
+   * The menu rows; call `close` after a pick. `byRightClick`: opened with a
+   * right-click on the button (only with `rightClickOpens`).
+   */
+  children: (close: () => void, byRightClick: boolean) => ReactNode;
+  /** A right-click on the button opens the menu too, telling `children` so. */
+  rightClickOpens?: boolean;
   /** Extra class for the menu (e.g. a scrolling list). */
   menuClassName?: string;
   /** After the menu closes, however it closed. */
@@ -19,8 +24,19 @@ interface Props {
  * A button that opens a menu under it (or above, near the bottom of the
  * window). Esc or a click elsewhere closes it.
  */
-export function Dropdown({ className, title, button, children, menuClassName, onClose }: Props) {
+export function Dropdown({
+  className,
+  title,
+  button,
+  children,
+  menuClassName,
+  onClose,
+  rightClickOpens = false,
+}: Props) {
   const [open, setOpen] = useState(false);
+  const [byRightClick, setByRightClick] = useState(false);
+  // Each right-click starts the menu's contents afresh, even if it's open.
+  const [visit, setVisit] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -66,7 +82,20 @@ export function Dropdown({ className, title, button, children, menuClassName, on
         title={title}
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          setByRightClick(false);
+          setOpen((o) => !o);
+        }}
+        onContextMenu={
+          rightClickOpens
+            ? (e) => {
+                e.preventDefault();
+                setByRightClick(true);
+                setVisit((v) => v + 1);
+                setOpen(true);
+              }
+            : undefined
+        }
       >
         {button}
         <svg className={styles.chevron} viewBox="0 0 24 24" aria-hidden>
@@ -75,7 +104,7 @@ export function Dropdown({ className, title, button, children, menuClassName, on
       </button>
       {open && (
         <div ref={menuRef} className={`${styles.menu} ${menuClassName ?? ""}`} role="menu">
-          {children(() => setOpen(false))}
+          <Fragment key={visit}>{children(() => setOpen(false), byRightClick)}</Fragment>
         </div>
       )}
     </div>

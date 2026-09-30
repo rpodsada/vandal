@@ -233,7 +233,10 @@ export interface ColorSlot {
  * first, Ctrl+Shift+digit the second.
  */
 export interface ColorSlots {
-  /** What the second color is, which decides how the chip draws. */
+  /**
+   * What the colors are, which decides how they draw: "text" (text, with or
+   * without its box, or a step marker) marks the first with an "A".
+   */
   kind: "single" | "text" | "shape";
   first: ColorSlot;
   second: ColorSlot | null;
@@ -256,6 +259,10 @@ export function colorSlots(
       first: { key: "color", value: values.color },
       second: { key: "backgroundColor", value: values.text.backgroundColor },
     };
+  }
+  if (sections.text) {
+    // One color, but still text's: its dropdown keeps the "A".
+    return { kind: "text", first: { key: "color", value: values.color }, second: null };
   }
   if (sections.fill && values.fill === "both") {
     return {

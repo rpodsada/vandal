@@ -27,6 +27,8 @@ interface Props {
   selected?: boolean;
   /** Apply a color (live, while the picker is open). */
   onPick: (hex: string) => void;
+  /** Open the picker as soon as it's shown (right-click on a color's dropdown). */
+  startOpen?: boolean;
 }
 
 /**
@@ -37,8 +39,17 @@ interface Props {
  * undo step: Done, Enter or a click elsewhere keeps it, Esc puts things back.
  * Picked colors join the presets only through "Save as preset".
  */
-export function CustomColor({ value, slot, colorKey, palette, tool, selected, onPick }: Props) {
-  const [open, setOpen] = useState(false);
+export function CustomColor({
+  value,
+  slot,
+  colorKey,
+  palette,
+  tool,
+  selected,
+  onPick,
+  startOpen = false,
+}: Props) {
+  const [open, setOpen] = useState(startOpen);
   const [error, setError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const swatchRef = useRef<HTMLButtonElement>(null);
@@ -63,7 +74,8 @@ export function CustomColor({ value, slot, colorKey, palette, tool, selected, on
   // The tools' colors before the picker opened, for Esc.
   const before = useRef<Partial<ToolState>>({});
 
-  const show = () => {
+  // Before the picker changes anything: what Esc puts back, and one undo step.
+  const begin = () => {
     original.current = value;
     const t = useToolStore.getState();
     before.current = {
@@ -75,8 +87,12 @@ export function CustomColor({ value, slot, colorKey, palette, tool, selected, on
       textBackgroundColor: t.textBackgroundColor,
       stepTextColor: t.stepTextColor,
     };
-    setError(null);
     beginStyleDrag();
+  };
+
+  const show = () => {
+    begin();
+    setError(null);
     setOpen(true);
   };
 
@@ -93,6 +109,11 @@ export function CustomColor({ value, slot, colorKey, palette, tool, selected, on
     if (useToolStore.getState().editing) refocusTextEditor();
   };
   usePopover(open, rootRef, close, "keep");
+  useEffect(() => {
+    if (startOpen) begin();
+    // Once, when it's shown.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const full = palette.length >= MAX_PRESETS;
   const saveTitle = isPreset

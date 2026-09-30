@@ -321,6 +321,32 @@ describe("colorSlots", () => {
     expect(slotsNow()).toMatchObject({ kind: "single", first: { key: "color" }, second: null });
   });
 
+  it("keeps text's one color marked as text without its box", () => {
+    const id = docStore.getState().add({
+      kind: "text",
+      x: 0,
+      y: 0,
+      width: 10,
+      autoWidth: true,
+      rotation: 0,
+      text: "hi",
+      fontFamily: "Segoe UI",
+      fontSize: 12,
+      bold: false,
+      italic: false,
+      color: "#111111",
+      align: "left",
+      background: false,
+      backgroundColor: "#ffffff",
+    });
+    docStore.getState().select([id]);
+    expect(slotsNow()).toEqual({
+      kind: "text",
+      first: { key: "color", value: "#111111" },
+      second: null,
+    });
+  });
+
   it("sets the fill from the first slot", () => {
     const id = addRect("both");
     applyStyle({ [slotsNow().first.key]: "#00ff00" });
