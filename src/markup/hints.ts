@@ -47,6 +47,8 @@ export const CONTROL_HINTS = {
   "step.format": "Numbers or letters · shared by every marker",
   "step.start": "The first marker's label · the others count up from it",
   "step.resetStyles": "Give every marker the style shown here · [Ctrl+Z] undoes it",
+  "step.resetNumbering":
+    "Drop the labels you typed, so every marker counts up again · [Ctrl+Z] undoes it",
   size: "[1…0] Pick a size by number",
   font: "[Alt+1…0] Pick a font by number · Type to filter the list",
   fill: "Border only, filled, or border and fill",
@@ -124,6 +126,8 @@ function toolHint(tool: Exclude<ToolId, "select">, twoColors: boolean): string {
 const SELECTED =
   "[Del] delete · [Ctrl+D] duplicate · [←↑↓→] nudge, [Shift] 10 px · [Ctrl+[] [Ctrl+]] order · [Shift]+click adds or removes";
 const TEXT_SELECTED = `[Enter] edit the text · ${SELECTED}`;
+const STEP_SELECTED = `[Enter] or double-click to type its own label · ${SELECTED}`;
+const LABEL_TYPING = "[Enter] done · [Esc] cancel · Leave it empty to count up again";
 const SEGMENT_SELECTED = `Drag the ◆ handle to bend it, double-click it to straighten · ${SELECTED}`;
 const TYPING = "[Esc] done · [Ctrl+B] bold · [Ctrl+I] italic · [Alt+1…0] font";
 const CROP =
@@ -142,6 +146,10 @@ export interface HintState {
   textSelected: boolean;
   /** The one selected object is a line or an arrow (it can bend). */
   segmentSelected: boolean;
+  /** The one selected object is a step marker. */
+  stepSelected: boolean;
+  /** A step marker's label is being typed. */
+  labelTyping: boolean;
   typing: boolean;
   /** The pointer is over an object on the canvas. */
   overObject: boolean;
@@ -157,6 +165,10 @@ export function chooseHint(s: HintState): string {
   if (s.drag) return DRAG_HINTS[s.drag];
   if (s.mode === "crop") return CROP;
   if (s.typing) return `${TYPING} · ${colorKeys("text", s.twoColors)}`;
+  if (s.labelTyping) return LABEL_TYPING;
+  // With Select or the step tool (which selects what it places).
+  if (s.selected === 1 && s.stepSelected && (s.tool === "select" || s.tool === "step"))
+    return STEP_SELECTED;
   if (s.tool === "select") {
     if (s.selected === 1 && s.textSelected) return TEXT_SELECTED;
     if (s.selected === 1 && s.segmentSelected) return SEGMENT_SELECTED;

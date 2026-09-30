@@ -105,6 +105,8 @@ export interface ToolState {
   stepFormat: StepFormat;
   stepStart: number;
   editing: TextEditing | null;
+  /** The step marker whose label is being typed (PLAN 3D.12). */
+  labelEditing: AnnotationId | null;
   setTool: (tool: ToolId) => void;
   setEditing: (editing: TextEditing | null) => void;
 }
@@ -137,6 +139,7 @@ export const useToolStore = create<ToolState>((set) => ({
   stepFormat: "numbers",
   stepStart: 1,
   editing: null,
+  labelEditing: null,
   // Picking a drawing tool drops the selection, so the options show that tool.
   setTool: (tool) => {
     if (tool !== "select") docStore.getState().select([]);

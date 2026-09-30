@@ -9,6 +9,8 @@ const base: HintState = {
   selected: 0,
   textSelected: false,
   segmentSelected: false,
+  stepSelected: false,
+  labelTyping: false,
   typing: false,
   overObject: false,
   twoColors: false,
@@ -28,6 +30,13 @@ describe("chooseHint", () => {
     expect(chooseHint({ ...base, selected: 2 })).toMatch(/^\[Del\]/);
     expect(chooseHint({ ...base, selected: 1, textSelected: true })).toMatch(/^\[Enter\]/);
     expect(chooseHint({ ...base, selected: 1, segmentSelected: true })).toMatch(/^Drag the ◆/);
+    expect(chooseHint({ ...base, selected: 1, stepSelected: true })).toMatch(
+      /^\[Enter\] or double-click/,
+    );
+    expect(chooseHint({ ...base, tool: "step", selected: 1, stepSelected: true })).toMatch(
+      /type its own label/,
+    );
+    expect(chooseHint({ ...base, labelTyping: true })).toMatch(/^\[Enter\] done/);
   });
 
   it("says what Ctrl does over an object, following the setting", () => {

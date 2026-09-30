@@ -30,6 +30,12 @@ export function HintLine() {
     const kind = s.doc.annotations.find((a) => a.id === s.selection[0])?.kind;
     return kind === "line" || kind === "arrow";
   });
+  const stepSelected = useDoc(
+    (s) =>
+      s.selection.length === 1 &&
+      s.doc.annotations.find((a) => a.id === s.selection[0])?.kind === "step",
+  );
+  const labelTyping = useToolStore((s) => s.labelEditing !== null);
   const config = useStyleConfig();
   // For naming the second color only when there is one.
   const doc = useDoc((s) => s.doc);
@@ -70,6 +76,8 @@ export function HintLine() {
     selected,
     textSelected,
     segmentSelected,
+    stepSelected,
+    labelTyping,
     typing,
     overObject,
     twoColors,

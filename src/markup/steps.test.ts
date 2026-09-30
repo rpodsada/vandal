@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import { emptyDoc, type Doc, type StepAnnotation } from "./model/types";
 import {
   contrastingText,
+  customLabelCount,
   nextStepSeq,
   parseStepStart,
   stepLabel,
   stepLabels,
   stepResetEffect,
   stepStyleOf,
+  withTypedLabel,
 } from "./steps";
 
 function marker(id: string, seq: number, extra: Partial<StepAnnotation> = {}): StepAnnotation {
@@ -74,7 +76,24 @@ describe("step labels", () => {
   });
 });
 
-describe("Reset styles", () => {
+describe("typed labels", () => {
+  it("keep their label, and the others count on as if they weren't there", () => {
+    const doc = docWith(marker("a", 1), marker("b", 2, { label: "7" }), marker("c", 3));
+    expect(Object.fromEntries(stepLabels(doc))).toEqual({ a: "1", b: "7", c: "2" });
+    expect(customLabelCount(doc)).toBe(1);
+  });
+
+  it("are trimmed and cut to three characters; empty counts up again", () => {
+    const m = marker("a", 1);
+    expect(withTypedLabel(m, "  Step 1 ", "1").label).toBe("Ste");
+    expect(withTypedLabel(m, "1", "1")).toBe(m);
+    const typed = marker("a", 1, { label: "X" });
+    expect(withTypedLabel(typed, " ", "X").label).toBeUndefined();
+    expect(withTypedLabel(m, "", "1")).toBe(m);
+  });
+});
+
+describe("Sync style", () => {
   const style = stepStyleOf(marker("x", 1));
 
   it("has nothing to do when every marker already has the style", () => {

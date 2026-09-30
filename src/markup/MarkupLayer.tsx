@@ -46,6 +46,8 @@ import type {
   TextAnnotation,
 } from "./model/types";
 import { redactPixels, redactReads, redactRect, useRedactSource } from "./redact";
+import { editStepLabel } from "./stepEditing";
+import { StepLabelEditor } from "./StepLabelEditor";
 import { nextStepSeq, stepLabels } from "./steps";
 import {
   DEFAULT_TEXT_BACKGROUND,
@@ -190,6 +192,7 @@ export function MarkupLayer({
   const selection = useDoc((s) => s.selection);
   const tool = useToolStore((s) => s.tool);
   const editing = useToolStore((s) => s.editing);
+  const labelEditing = useToolStore((s) => s.labelEditing);
   const drawingToolsSelect = useStyleConfig((s) => s.drawingToolsSelect);
   const [ctrlHeld, setCtrlHeld] = useState(false);
   /** What the pointer last hovered, so the cursor can follow Ctrl without a move. */
@@ -645,6 +648,7 @@ export function MarkupLayer({
     if (e.target.name() !== "annotation") return;
     markTaken(e.evt);
     editText(e.target.id());
+    editStepLabel(e.target.id());
   };
 
   /** Turn the transformer's scale into real size, so strokes keep their width. */
@@ -699,6 +703,9 @@ export function MarkupLayer({
     (a): a is SpotlightAnnotation => a.kind === "spotlight",
   );
   const labels = stepLabels(doc);
+  const editedStep = doc.annotations.find(
+    (a): a is StepAnnotation => a.kind === "step" && a.id === labelEditing,
+  );
   const editedText = doc.annotations.find(
     (a): a is TextAnnotation => a.kind === "text" && a.id === editing?.id,
   );
@@ -754,7 +761,7 @@ export function MarkupLayer({
                   key={a.id}
                   a={a}
                   hitSlop={HIT_SLOP / scale}
-                  hidden={a.id === editing?.id}
+                  hidden={a.id === editing?.id || a.id === labelEditing}
                   label={labels.get(a.id)}
                 />
               ))}
@@ -834,7 +841,9 @@ export function MarkupLayer({
                 : [],
             )}
           {doc.annotations.map((a) =>
-            (isStroke(a) || a.kind === "step") && selection.includes(a.id) ? (
+            (isStroke(a) || a.kind === "step") &&
+            selection.includes(a.id) &&
+            a.id !== labelEditing ? (
               <SelectionBounds
                 key={`${a.id}-bounds`}
                 bounds={annotationBounds(a)}
@@ -860,6 +869,15 @@ export function MarkupLayer({
         </Layer>
       </Stage>
       {editedText && <TextEditor a={editedText} scale={scale} offset={offset} />}
+      {editedStep && (
+        <StepLabelEditor
+          key={editedStep.id}
+          a={editedStep}
+          label={labels.get(editedStep.id) ?? ""}
+          scale={scale}
+          offset={offset}
+        />
+      )}
     </div>
   );
 }
@@ -886,7 +904,7 @@ function AnnotationShape({
   /** A step marker's label. */
   label?: string;
 }) {
-  if (a.kind === "step") return <StepMarker a={a} label={label} />;
+  if (a.kind === "step") return <StepMarker a={a} label={label} hidden={hidden} />;
   if (a.kind === "text") {
     return (
       <Text
@@ -1094,7 +1112,7 @@ function stepPath(c: CanvasRenderingContext2D, shape: StepShape, r: number): voi
  * A step marker (PLAN 3D.11): its shape filled, and the label in bold,
  * centred, shrunk to fit when it's long. Positioned about its centre.
  */
-function StepMarker({ a, label }: { a: StepAnnotation; label: string }) {
+function StepMarker({ a, label, hidden }: { a: StepAnnotation; label: string; hidden: boolean }) {
   const r = a.size / 2;
   return (
     <Shape
@@ -1102,6 +1120,7 @@ function StepMarker({ a, label }: { a: StepAnnotation; label: string }) {
       name="annotation"
       x={a.x}
       y={a.y}
+      visible={!hidden}
       // For the hit area only; the scene draws itself.
       fill={a.color}
       perfectDrawEnabled={false}

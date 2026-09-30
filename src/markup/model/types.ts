@@ -183,6 +183,11 @@ export interface StepAnnotation extends Base {
   format: StepFormat;
   /** The first auto label (1 is "1" or "A"). Shared, like `format`. */
   start: number;
+  /**
+   * A label typed for this marker (PLAN 3D.12): kept as is, and the auto
+   * labels count on as if this marker weren't there. Absent: counts up.
+   */
+  label?: string;
 }
 
 export type Annotation =

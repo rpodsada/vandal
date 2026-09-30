@@ -414,7 +414,7 @@ function widthTool(tool: ToolId): boolean {
 }
 
 /**
- * Reset styles (PLAN 3D.11): give every step marker `style`, in one undo
+ * Sync style (PLAN 3D.11): give every step marker `style`, in one undo
  * step. It becomes the tool's style too.
  */
 export function resetStepStyles(style: StepStyle): void {

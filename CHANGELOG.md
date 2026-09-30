@@ -21,8 +21,11 @@ All notable changes to Vandal are listed here. The format follows
 - Step tool (N): click to place numbered markers (1, 2, 3… or A, B, C…) that count up in the order
   you placed them, and renumber when one is deleted. Choose the start value, the shape (circle,
   square or rounded square), size, marker color and label color; each new marker takes the last
-  style used. Reset styles gives every marker the current style, and asks first if you had
+  style used. Sync style gives every marker the current style, and asks first if you had
   styled them differently.
+- Step markers can have their own label: double-click one (or select it and press Enter) and type
+  up to three characters. The other markers keep counting around it, and Renumber puts every
+  marker back to counting.
 - Settings: the open page's groups are listed under it in the sidebar. Click one to scroll to it; the
   one you're looking at is highlighted.
 - Settings › Markup › Per-tool styles: each tool's custom colors and custom widths switches now

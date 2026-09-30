@@ -1,5 +1,6 @@
 import { useRef, useState, type ReactNode } from "react";
 import { hint } from "./HintLine";
+import type { ControlHint } from "./hints";
 import { boxOf, useMenuPlacement } from "./menuPlacement";
 import { useDoc } from "./model/store";
 import type { StepFormat, StepShape } from "./model/types";
@@ -11,7 +12,15 @@ import {
   resetStepStyles,
   type TargetValues,
 } from "./restyle";
-import { parseStepStart, stepLabel, stepResetEffect, stepsOf, type StepStyle } from "./steps";
+import { resetStepNumbering } from "./stepEditing";
+import {
+  customLabelCount,
+  parseStepStart,
+  stepLabel,
+  stepResetEffect,
+  stepsOf,
+  type StepStyle,
+} from "./steps";
 import { STEP_SIZE_PICKER } from "./styles";
 import { usePopover } from "./usePopover";
 import styles from "./options.module.css";
@@ -37,7 +46,7 @@ interface Props {
   showKeys: boolean;
 }
 
-/** The step marker's options (PLAN 3D.11): shape, size, labels, and Reset styles. */
+/** The step marker's options (PLAN 3D.11): shape, size, labels, and Sync style. */
 export function StepOptions({ step, hints, showKeys }: Props) {
   return (
     <>
@@ -90,7 +99,10 @@ export function StepOptions({ step, hints, showKeys }: Props) {
           ))}
         </div>
         <StartField format={step.format} start={step.start} />
-        <ResetStyles style={step} />
+        <div className={styles.group}>
+          <ResetStyles style={step} />
+          <ResetNumbering />
+        </div>
       </div>
     </>
   );
@@ -136,46 +148,91 @@ function StartField({ format, start }: { format: StepFormat; start: number }) {
  */
 function ResetStyles({ style }: { style: StepStyle }) {
   const doc = useDoc((s) => s.doc);
+  const effect = stepResetEffect(doc, style);
+  return (
+    <ConfirmButton
+      label="Sync style"
+      hintId="step.resetStyles"
+      disabled={effect === "none"}
+      question={
+        effect === "mixed"
+          ? `Your markers have different styles. Give all ${stepsOf(doc).length} of them this style?`
+          : null
+      }
+      onConfirm={() => resetStepStyles(style)}
+    />
+  );
+}
+
+/** Drops every typed label so all markers count up again; always asks first. */
+function ResetNumbering() {
+  const count = useDoc((s) => customLabelCount(s.doc));
+  return (
+    <ConfirmButton
+      label="Renumber"
+      hintId="step.resetNumbering"
+      disabled={count === 0}
+      question={
+        count === 1
+          ? "Replace the label you typed with automatic numbering?"
+          : `Replace the ${count} labels you typed with automatic numbering?`
+      }
+      onConfirm={resetStepNumbering}
+    />
+  );
+}
+
+/**
+ * A button that asks `question` in a popover before doing `onConfirm`
+ * (Enter confirms, Esc cancels), or does it at once when `question` is null.
+ */
+function ConfirmButton({
+  label,
+  hintId,
+  disabled,
+  question,
+  onConfirm,
+}: {
+  label: string;
+  hintId: ControlHint;
+  disabled: boolean;
+  question: string | null;
+  onConfirm: () => void;
+}) {
   const [confirming, setConfirming] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   useMenuPlacement(confirming, menuRef, () => boxOf(buttonRef.current));
-  const effect = stepResetEffect(doc, style);
-  const reset = () => resetStepStyles(style);
   usePopover(
     confirming,
     rootRef,
     (keep) => {
       setConfirming(false);
-      if (keep) reset();
+      if (keep) onConfirm();
     },
     "cancel",
   );
-  const count = stepsOf(doc).length;
   return (
     <div ref={rootRef} className={styles.dropdownRoot}>
       <button
         ref={buttonRef}
         type="button"
         className={`${styles.toggle} ${styles.labelled}`}
-        {...hint("step.resetStyles")}
-        disabled={effect === "none"}
+        {...hint(hintId)}
+        disabled={disabled}
         aria-expanded={confirming}
-        onClick={() => (effect === "mixed" ? setConfirming((c) => !c) : reset())}
+        onClick={() => (question ? setConfirming((c) => !c) : onConfirm())}
       >
         <svg viewBox="0 0 24 24" aria-hidden>
           <path d="M4 12a8 8 0 1 0 2.3-5.7" />
           <path d="M4 4v4h4" />
         </svg>
-        <span>Reset styles</span>
+        <span>{label}</span>
       </button>
       {confirming && (
         <div ref={menuRef} className={`${styles.menu} ${styles.confirm}`} role="alertdialog">
-          <p>
-            Your markers have different styles. Give all {count} of them this style? You can undo it
-            with Ctrl+Z.
-          </p>
+          <p>{question} You can undo it with Ctrl+Z.</p>
           <div className={styles.colorActions}>
             <button
               type="button"
@@ -189,10 +246,10 @@ function ResetStyles({ style }: { style: StepStyle }) {
               className={styles.accentButton}
               onClick={() => {
                 setConfirming(false);
-                reset();
+                onConfirm();
               }}
             >
-              Reset styles
+              {label}
             </button>
           </div>
         </div>

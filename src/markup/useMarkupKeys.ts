@@ -17,6 +17,7 @@ import {
   useStyleConfig,
   widthPickerFor,
 } from "./styles";
+import { editStepLabel } from "./stepEditing";
 import { nextStepSeq } from "./steps";
 import { editText } from "./textEditing";
 import type { Annotation, NewAnnotation, StepAnnotation } from "./model/types";
@@ -148,11 +149,14 @@ function handlePlain(e: KeyboardEvent): boolean {
   switch (e.code) {
     case "Enter":
     case "NumpadEnter": {
-      // Enter on one selected text object starts typing into it.
+      // Enter on one selected text object starts typing into it, and on a
+      // step marker, its label.
       const [id] = store.selection;
       const a = store.doc.annotations.find((x) => x.id === id);
-      if (store.selection.length !== 1 || a?.kind !== "text") return false;
-      editText(id);
+      if (store.selection.length !== 1) return false;
+      if (a?.kind === "text") editText(id);
+      else if (a?.kind === "step") editStepLabel(id);
+      else return false;
       return true;
     }
     case "Delete":

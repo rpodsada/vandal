@@ -42,16 +42,39 @@ export function parseStepStart(text: string, format: StepFormat): number | null 
   return [...t.toUpperCase()].reduce((n, c) => n * 26 + (c.charCodeAt(0) - 64), 0);
 }
 
-/** Every marker's label, counting up in creation order. */
+/** Longest label that can be typed for a marker. */
+export const STEP_LABEL_MAX = 3;
+
+/**
+ * Every marker's label: its own if one was typed, else counting up in
+ * creation order, skipping the markers with their own.
+ */
 export function stepLabels(doc: Doc): Map<AnnotationId, string> {
   const steps = stepsOf(doc);
   const labels = new Map<AnnotationId, string>();
   if (!steps.length) return labels;
   const { format, start } = steps[0];
-  [...steps]
-    .sort((a, b) => a.seq - b.seq)
-    .forEach((s, i) => labels.set(s.id, stepLabel(start + i, format)));
+  let n = start;
+  for (const s of [...steps].sort((a, b) => a.seq - b.seq)) {
+    labels.set(s.id, s.label ?? stepLabel(n++, format));
+  }
   return labels;
+}
+
+/** How many markers have a label of their own. */
+export function customLabelCount(doc: Doc): number {
+  return stepsOf(doc).filter((s) => s.label !== undefined).length;
+}
+
+/**
+ * A marker after its label was edited to `typed`: trimmed and cut to
+ * {@link STEP_LABEL_MAX}; empty goes back to counting. Unchanged if the text
+ * is what it already shows.
+ */
+export function withTypedLabel(s: StepAnnotation, typed: string, shown: string): StepAnnotation {
+  const label = typed.trim().slice(0, STEP_LABEL_MAX);
+  if (label === "") return s.label === undefined ? s : { ...s, label: undefined };
+  return label === shown ? s : { ...s, label };
 }
 
 /** A `seq` after every marker's. */
@@ -80,7 +103,7 @@ export function sameStepStyle(a: StepStyle, b: StepStyle): boolean {
 }
 
 /**
- * What Reset styles would do with `style`: nothing (every marker has it
+ * What Sync style would do with `style`: nothing (every marker has it
  * already), or restyle markers that all look alike (no warning), or overwrite
  * markers styled differently from each other (warn first).
  */

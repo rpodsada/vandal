@@ -269,7 +269,7 @@ describe("applyStyle on step markers", () => {
     expect(step(b)).toMatchObject({ format: "letters", start: 5 });
   });
 
-  it("Reset styles gives every marker the style, as one undo step", () => {
+  it("Sync style gives every marker the style, as one undo step", () => {
     const a = addStep(1);
     const b = addStep(2);
     const style = {

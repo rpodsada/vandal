@@ -69,6 +69,19 @@
   inset: 0;
 }
 
+/* Typing a step marker's label: a field in the marker's place (PLAN 3D.12). */
+.stepLabelEditor {
+  position: absolute;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 1px dashed #4c8dff;
+  outline-offset: 3px;
+  font-weight: bold;
+  text-align: center;
+}
+
 /* In-place text editing: a textarea exactly over the canvas text. */
 .textEditor {
   position: absolute;
