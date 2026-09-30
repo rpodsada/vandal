@@ -1,33 +1,22 @@
-import { CustomColor } from "./CustomColor";
+import { ColorControls } from "./ColorControls";
 import { hint } from "./HintLine";
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { Dropdown } from "./Dropdown";
 import { useDoc } from "./model/store";
 import { FontPickerControl } from "./FontPickerControl";
 import type { ArrowHead, RedactMode, ShapeFill, SpotlightShape, TextAlign } from "./model/types";
 import { NumberPickerControl } from "./NumberPickerControl";
-import { PresetEditor } from "./PresetEditor";
 import { StepOptions } from "./StepOptions";
-import { contrastingText } from "./steps";
-import { slotKey } from "./pickers";
 import {
   applyStyle,
-  colorSlots,
   beginStyleDrag,
   endStyleDrag,
   styleTarget,
-  swapColors,
   targetSections,
   targetValues,
 } from "./restyle";
-import {
-  fontChoices,
-  paletteFor,
-  strengthPickerFor,
-  useStyleConfig,
-  widthPickerFor,
-} from "./styles";
-import { useToolStore, type ToolId } from "./toolStore";
+import { fontChoices, strengthPickerFor, useStyleConfig, widthPickerFor } from "./styles";
+import { useToolStore } from "./toolStore";
 import { useHeldKeys } from "./useHeldKeys";
 import { useLineStarts } from "./useLineStarts";
 import styles from "./options.module.css";
@@ -111,22 +100,10 @@ const SPOTLIGHT_SHAPES: { id: SpotlightShape; label: string; icon: ReactNode }[]
   { id: "ellipse", label: "Ellipse", icon: <ellipse cx="12" cy="12" rx="8" ry="6" /> },
 ];
 
-/** The "A" on the text color's chip, in its 20-unit viewBox. */
-const CHIP_LETTER_SIZE = 12;
-
 /**
  * The options for what's being drawn or selected (mockup: ToolOptions):
  * colors, line width, fill and arrow head. Shared by quick edit and the editor.
  */
-/** A preset being changed (right-click on a swatch): its draft color and where it sits. */
-interface PresetEdit {
-  tool: ToolId;
-  index: number;
-  color: string;
-  /** The swatch's offset in the swatch row, to put the editor under it. */
-  left: number;
-}
-
 export function ToolOptions() {
   const doc = useDoc((s) => s.doc);
   const selection = useDoc((s) => s.selection);
@@ -141,7 +118,7 @@ export function ToolOptions() {
   useToolStore((s) => s.widths);
   useToolStore((s) => s.fills);
   useToolStore((s) => s.fillColors);
-  const colorSlot = useToolStore((s) => s.colorSlot);
+  useToolStore((s) => s.colorSlot);
   useToolStore((s) => s.arrowHead);
   useToolStore((s) => s.arrowEnds);
   useToolStore((s) => s.fontFamily);
@@ -162,8 +139,6 @@ export function ToolOptions() {
   useToolStore((s) => s.stepStart);
   const config = useStyleConfig();
   const held = useHeldKeys();
-  // The preset being edited (right-click on a swatch).
-  const [presetEdit, setPresetEdit] = useState<PresetEdit | null>(null);
   const hints = config.showShortcutHints;
 
   const target = styleTarget(doc, selection, tool, editing);
@@ -174,33 +149,9 @@ export function ToolOptions() {
 
   const values = targetValues(target, doc);
   const show = targetSections(target);
-  const palette = paletteFor(target.tool, config);
   const widthPicker = widthPickerFor(target.tool, config);
   const text = values.text;
   const step = show.step ? values.step : null;
-  // With border + fill, text on a box, or a step marker, the chip picks which
-  // color the swatches set.
-  const slots = colorSlots(values, show);
-  const second = slots.second;
-  const twoColors = second !== null;
-  const editingSecond = twoColors && colorSlot === "second";
-  const current = (second && editingSecond ? second : slots.first).value.toLowerCase();
-  // Only while that tool's palette is on show and the preset still exists.
-  const edit =
-    presetEdit?.tool === target.tool && presetEdit.index < palette.length ? presetEdit : null;
-  const pickColor = (c: string, toSecond: boolean) =>
-    applyStyle({ [(toSecond && second ? second : slots.first).key]: c });
-  const labels = step
-    ? ["Label color", "Marker color"]
-    : show.text
-      ? ["Text color", "Box color"]
-      : ["Fill color", "Border color"];
-  const colorHints = step
-    ? (["chip.label", "swatch.label"] as const)
-    : show.text
-      ? (["chip.box", "swatch.box"] as const)
-      : (["chip.fill", "swatch.fill"] as const);
-  const setSlot = (slot: "first" | "second") => useToolStore.setState({ colorSlot: slot });
 
   return (
     // Clicks here must not take focus: text being typed keeps it, and Space
@@ -468,125 +419,7 @@ export function ToolOptions() {
         </div>
       )}
 
-      {/* Last, so the chip appearing (border + fill, text box) moves nothing
-          else from under the pointer. */}
-      {show.color && (
-        <div className={`${styles.section} ${styles.swatches}`}>
-          {second && (
-            <div className={styles.chip} {...hint(colorHints[0])}>
-              <button
-                type="button"
-                className={`${styles.chipDot} ${styles.chipFirst}`}
-                style={{ background: slots.first.value }}
-                aria-pressed={!editingSecond}
-                aria-label={labels[0]}
-                title={`${labels[0]}${hints ? " (Ctrl+1…0)" : ""}`}
-                onClick={() => setSlot("first")}
-              >
-                {slots.kind === "text" && (
-                  // Marks the text's color; black or white to read on it.
-                  // SVG text so the capital itself is centred: CSS centres the
-                  // line box, which leaves room for descenders an "A" hasn't got.
-                  <svg
-                    className={styles.chipLetter}
-                    viewBox="0 0 20 20"
-                    aria-hidden
-                    style={{ color: contrastingText(slots.first.value) }}
-                  >
-                    {/* Baseline: the middle plus half a cap height (0.7 em). */}
-                    <text
-                      x="10"
-                      fontSize={CHIP_LETTER_SIZE}
-                      y={10 + (0.7 * CHIP_LETTER_SIZE) / 2}
-                      textAnchor="middle"
-                    >
-                      A
-                    </text>
-                  </svg>
-                )}
-              </button>
-              <button
-                type="button"
-                className={`${styles.chipDot} ${styles.chipSecond}`}
-                // A shape's border is a ring, like the outline it draws.
-                style={
-                  slots.kind === "shape"
-                    ? { borderColor: second.value, background: "transparent" }
-                    : { background: second.value }
-                }
-                data-hollow={slots.kind === "shape" || undefined}
-                aria-pressed={editingSecond}
-                aria-label={labels[1]}
-                title={`${labels[1]}${hints ? " (Shift+click a color, Ctrl+Shift+1…0)" : ""}`}
-                onClick={() => setSlot("second")}
-              />
-              <button
-                type="button"
-                className={styles.chipSwap}
-                {...hint("chip.swap")}
-                aria-label="Swap colors"
-                title={`Swap colors${hints ? " (X)" : ""}`}
-                onClick={() => swapColors()}
-              >
-                <svg viewBox="0 0 12 12" aria-hidden>
-                  <path d="M3 3.5h3.5a3 3 0 0 1 3 3V9" />
-                  <path d="M5 1.5l-2 2 2 2M7.5 7l2 2 2-2" />
-                </svg>
-              </button>
-            </div>
-          )}
-          {palette.map((preset, i) => {
-            // The preset being edited shows its draft, and is the only one ringed.
-            const editingThis = edit?.index === i;
-            const c = editingThis ? edit.color : preset;
-            return (
-              <button
-                key={i}
-                type="button"
-                className={styles.swatch}
-                {...hint(twoColors ? colorHints[1] : "swatch")}
-                style={{ background: c }}
-                aria-pressed={edit ? editingThis : c.toLowerCase() === current}
-                aria-label={`Color ${i + 1}`}
-                title={`Color ${i + 1}${hints ? ` (Ctrl+${slotKey(i)})` : ""}`}
-                // Shift+click sets the second color without switching the chip.
-                onClick={(e) => pickColor(c, e.shiftKey || editingSecond)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setPresetEdit({
-                    tool: target.tool,
-                    index: i,
-                    color: preset,
-                    left: e.currentTarget.offsetLeft,
-                  });
-                }}
-              >
-                {hints && held.ctrl && <span className={styles.badge}>{slotKey(i)}</span>}
-              </button>
-            );
-          })}
-          {edit && (
-            <PresetEditor
-              palette={palette}
-              index={edit.index}
-              tool={target.tool}
-              color={edit.color}
-              left={edit.left}
-              onChange={(color) => setPresetEdit({ ...edit, color })}
-              onClose={() => setPresetEdit(null)}
-            />
-          )}
-          <CustomColor
-            value={current}
-            slot={editingSecond ? "second" : "first"}
-            colorKey={(second && editingSecond ? second : slots.first).key}
-            palette={palette}
-            selected={edit ? false : undefined}
-            tool={target.tool}
-            onPick={(c) => pickColor(c, editingSecond)}
-          />
-        </div>
-      )}
+      {show.color && <ColorControls target={target} values={values} show={show} held={held} />}
     </div>
   );
 }

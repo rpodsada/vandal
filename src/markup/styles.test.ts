@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  colorControlFor,
   DEFAULT_STYLE_CONFIG,
   setCustomColor,
   stepFontChoices,
@@ -103,5 +104,27 @@ describe("step marker fonts", () => {
     withFonts({}, {});
     useToolStore.setState({ stepFont: "Georgia" });
     expect(toolStepStyle().fontFamily).toBe("Georgia");
+  });
+});
+
+describe("colorControlFor", () => {
+  it("uses a tool's own choice, else the one for all tools", () => {
+    useStyleConfig.setState(
+      {
+        ...DEFAULT_STYLE_CONFIG,
+        styles: {
+          ...DEFAULT_STYLE_CONFIG.styles,
+          colorControl: "dropdown",
+          tools: {
+            ...DEFAULT_STYLE_CONFIG.styles.tools,
+            step: { palette: null, width: null, colorControl: "swatches" },
+          },
+        },
+      },
+      true,
+    );
+    expect(colorControlFor("pen")).toBe("dropdown");
+    expect(colorControlFor("highlighter")).toBe("dropdown"); // own palette, no own choice
+    expect(colorControlFor("step")).toBe("swatches");
   });
 });

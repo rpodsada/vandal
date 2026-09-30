@@ -43,6 +43,8 @@ export function Dropdown({ className, title, button, children, menuClassName, on
     // Esc closes the menu only, not a step of the editor's Esc ladder.
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
+      // A picker open inside the menu (the colors' custom color) takes Esc first.
+      if (menuRef.current?.querySelector('[role="dialog"]')) return;
       e.stopImmediatePropagation();
       e.preventDefault();
       setOpen(false);

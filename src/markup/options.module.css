@@ -435,6 +435,84 @@
   stroke-width: 1.4;
 }
 
+/* ---- colors as dropdowns (PLAN 3D.16) ---- */
+
+.colorButtons {
+  gap: 2px;
+}
+
+/* A button showing one color, opening the palette. */
+.colorButton {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px 0 5px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+}
+
+.colorButton:hover,
+.colorButton[aria-expanded="true"] {
+  background: var(--hover);
+}
+
+/* Drawn like the chip's circles (ring for a border, "A" for text). */
+.colorDot {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--control-border);
+}
+
+.colorDot[data-hollow] {
+  border: 5px solid;
+  box-shadow:
+    0 0 0 1px var(--control-border),
+    inset 0 0 0 1px var(--control-border);
+}
+
+.swapButton {
+  width: 22px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-2);
+}
+
+.swapButton:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.options .swapButton svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 1.4;
+}
+
+.colorGridMenu {
+  min-width: 0;
+  padding: 10px;
+}
+
+/* The palette in the menu: five to a row. */
+.swatchGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 22px);
+  gap: 8px;
+  padding: 0;
+}
+
 /* Text's color: the circle is filled with it, with an "A" that reads on it. */
 .options svg.chipLetter {
   width: 100%;

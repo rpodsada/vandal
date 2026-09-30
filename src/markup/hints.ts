@@ -40,6 +40,9 @@ export const CONTROL_HINTS = {
   "chip.label":
     "Choose which color the swatches set · [X] swaps them · [Shift]+click a swatch sets the marker",
   "chip.swap": "[X] Swap the two colors",
+  colorMenu: "[Ctrl+1…0] Pick a color by number · Click for the palette and a custom color",
+  "colorMenu.second":
+    "[Ctrl+Shift+1…0] Pick this color by number · Click for the palette and a custom color",
   customColor:
     "Your custom color · Click it again, or right-click, to change it · [Esc] in the picker puts the old one back",
   width: "[1…0] Pick a width by number",

@@ -191,6 +191,13 @@ export type CaptureTarget =
 /**  The answer to "save before closing?". */
 export type CloseChoice = "save" | "discard" | "cancel";
 
+/**  How the options bar shows the colors (PLAN 3D.16). */
+export type ColorControl = 
+/**  The palette as a row of swatches (with the two-color chip). */
+"swatches" | 
+/**  A button per color that opens the palette. */
+"dropdown";
+
 /**  Editor page → Rust on mount: what to show. */
 export type EditorInit = {
 	editorId: number,
@@ -508,6 +515,8 @@ export type Startup = {
 export type Styles = {
 	/**  Color presets in the user's order, `#rrggbb`. */
 	palette?: string[],
+	/**  How the colors show in the options bar. */
+	colorControl?: ColorControl,
 	/**  Line width in source px. */
 	width?: NumberPicker,
 	/**  The text tool's font. */
@@ -531,10 +540,14 @@ export type Styles = {
 /**  Light, dark, or following Windows. */
 export type ThemeMode = "system" | "light" | "dark";
 
-/**  A tool's own palette and/or width picker, used instead of the global ones. */
+/**
+ *  A tool's own palette, width picker and/or color control, used instead of
+ *  the global ones.
+ */
 export type ToolStyles = {
 	palette?: string[] | null,
 	width?: NumberPicker | null,
+	colorControl?: ColorControl | null,
 };
 
 /**  How frame pixels are encoded for the overlay (benchmarked in docs/perf.md). */

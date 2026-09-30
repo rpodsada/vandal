@@ -340,6 +340,28 @@ export const sections: Section[] = [
               "The colors the tools offer, in order. Ctrl+1–9 and Ctrl+0 pick them while you draw. Click a color to change or remove it; drag it to reorder.",
             keywords: ["color", "colour", "palette", "preset", "swatch", "reorder"],
           },
+          {
+            id: "styles-color-control",
+            kind: "choice",
+            path: "styles.colorControl",
+            label: "Show colors as",
+            description:
+              "Swatches show every color in the options bar. A dropdown takes less room: a button per color that opens the palette. The keys work the same either way. A tool can have its own choice under Per-tool styles.",
+            options: [
+              { value: "swatches", label: "Swatches" },
+              { value: "dropdown", label: "Dropdown" },
+            ],
+            keywords: [
+              "color",
+              "colour",
+              "swatch",
+              "dropdown",
+              "menu",
+              "compact",
+              "space",
+              "toolbar",
+            ],
+          },
         ],
       },
       {
@@ -457,7 +479,7 @@ export const sections: Section[] = [
       {
         title: "Per-tool styles",
         description:
-          "Give a tool its own colors or widths instead of the ones above. The highlighter comes with its own.",
+          "Give a tool its own colors, widths or way of showing colors instead of the ones above. The highlighter comes with its own colors.",
         items: [
           {
             id: "tool-style-pen",

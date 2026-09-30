@@ -45,6 +45,7 @@ export const DEFAULT_STYLE_CONFIG: StyleConfig = {
       "#000000",
       "#ffffff",
     ],
+    colorControl: "swatches",
     width: { control: "buttons", values: [2, 4, 6, 10] },
     font: { source: "system", fonts: [], control: "dropdown" },
     fontSize: { control: "dropdown", values: [8, 10, 12, 14, 16, 18, 20, 36, 48, 72] },
@@ -57,6 +58,7 @@ export const DEFAULT_STYLE_CONFIG: StyleConfig = {
       highlighter: {
         palette: ["#ffeb3b", "#76ff03", "#ff4081", "#40c4ff", "#ffab40"],
         width: { control: "slider", min: 8, max: 40 },
+        colorControl: null,
       },
     },
   },
@@ -97,6 +99,14 @@ export function hasOwnPalette(tool: ToolId, cfg = useStyleConfig.getState()): bo
 
 export function paletteFor(tool: ToolId, cfg = useStyleConfig.getState()): string[] {
   return override(tool, cfg)?.palette ?? cfg.styles.palette;
+}
+
+/** How the options bar shows a tool's colors: its own choice, else the global one (PLAN 3D.16). */
+export function colorControlFor(
+  tool: ToolId,
+  cfg = useStyleConfig.getState(),
+): StyleSettings["colorControl"] {
+  return override(tool, cfg)?.colorControl ?? cfg.styles.colorControl;
 }
 
 export function widthPickerFor(tool: ToolId, cfg = useStyleConfig.getState()): NumberPicker {

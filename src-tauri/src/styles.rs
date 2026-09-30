@@ -146,12 +146,25 @@ impl FontPicker {
     }
 }
 
-/// A tool's own palette and/or width picker, used instead of the global ones.
+/// How the options bar shows the colors (PLAN 3D.16).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ColorControl {
+    /// The palette as a row of swatches (with the two-color chip).
+    #[default]
+    Swatches,
+    /// A button per color that opens the palette.
+    Dropdown,
+}
+
+/// A tool's own palette, width picker and/or color control, used instead of
+/// the global ones.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Type)]
 #[serde(default, rename_all = "camelCase")]
 pub struct ToolStyles {
     pub palette: Option<Vec<String>>,
     pub width: Option<NumberPicker>,
+    pub color_control: Option<ColorControl>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -159,6 +172,8 @@ pub struct ToolStyles {
 pub struct Styles {
     /// Color presets in the user's order, `#rrggbb`.
     pub palette: Vec<String>,
+    /// How the colors show in the options bar.
+    pub color_control: ColorControl,
     /// Line width in source px.
     pub width: NumberPicker,
     /// The text tool's font.
@@ -187,6 +202,7 @@ impl Default for Styles {
                 "#e53935", "#fb8c00", "#fdd835", "#43a047", "#1e88e5", "#8e24aa", "#000000",
                 "#ffffff",
             ]),
+            color_control: ColorControl::Swatches,
             width: NumberPicker::Buttons {
                 values: vec![2.0, 4.0, 6.0, 10.0],
             },
@@ -220,6 +236,7 @@ impl Default for Styles {
                         min: 8.0,
                         max: 40.0,
                     }),
+                    color_control: None,
                 },
             )]),
         }
@@ -264,6 +281,7 @@ impl Styles {
         let defaults = Self::default();
         Self {
             palette: normalize_palette(self.palette).unwrap_or(defaults.palette),
+            color_control: self.color_control,
             width: self.width.normalized().unwrap_or(defaults.width),
             font: self.font.normalized(false),
             font_size: self.font_size.normalized().unwrap_or(defaults.font_size),
@@ -282,10 +300,13 @@ impl Styles {
                     let o = ToolStyles {
                         palette: o.palette.and_then(normalize_palette),
                         width: o.width.and_then(NumberPicker::normalized),
+                        color_control: o.color_control,
                     };
                     (tool, o)
                 })
-                .filter(|(_, o)| o.palette.is_some() || o.width.is_some())
+                .filter(|(_, o)| {
+                    o.palette.is_some() || o.width.is_some() || o.color_control.is_some()
+                })
                 .collect(),
         }
     }
@@ -393,6 +414,24 @@ mod tests {
         }
         .normalized();
         assert_eq!(s.spotlight, Styles::default().spotlight);
+    }
+
+    #[test]
+    fn a_tool_can_keep_only_its_color_control() {
+        let mut s = Styles::default();
+        s.tools.insert(
+            "step".into(),
+            ToolStyles {
+                color_control: Some(ColorControl::Dropdown),
+                ..ToolStyles::default()
+            },
+        );
+        let s = s.normalized();
+        assert_eq!(s.tools["step"].color_control, Some(ColorControl::Dropdown));
+        assert_eq!(s.color_control, ColorControl::Swatches);
+        // Files from before 3D.16.
+        let old: Styles = serde_json::from_value(json!({ "palette": ["#000000"] })).unwrap();
+        assert_eq!(old.color_control, ColorControl::Swatches);
     }
 
     #[test]
@@ -572,6 +611,7 @@ mod tests {
                 ToolStyles {
                     palette: Some(vec![]),
                     width: None,
+                    color_control: None,
                 },
             )]),
             ..Styles::default()
