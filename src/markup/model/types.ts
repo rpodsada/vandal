@@ -94,6 +94,8 @@ export interface ShapeAnnotation extends Base {
   fill: ShapeFill;
   /** The fill with `fill: "both"`. */
   fillColor: string;
+  /** Rectangles: rounded corners, in source px (PLAN 3D.17). Absent: square. */
+  cornerRadius?: number;
   style: StrokeStyle;
 }
 
@@ -152,6 +154,8 @@ export interface SpotlightAnnotation extends Base {
   shape: SpotlightShape;
   /** How dark outside, in %. Shared: every spotlight in a document has the same. */
   dim: number;
+  /** The rectangle's rounded corners, in source px (PLAN 3D.17). Absent: square. */
+  cornerRadius?: number;
 }
 
 export type StepShape = "circle" | "square" | "rounded";

@@ -51,8 +51,10 @@ import { StepLabelEditor } from "./StepLabelEditor";
 import { nextStepSeq, stepLabels } from "./steps";
 import {
   DEFAULT_TEXT_BACKGROUND,
+  drawnCornerRadius,
   stepNumbering,
   toolColor,
+  toolCornerRadius,
   toolFill,
   toolFont,
   toolRedact,
@@ -399,6 +401,7 @@ export function MarkupLayer({
         kind: "spotlight",
         rect: { x: p.x, y: p.y, width: 0, height: 0 },
         ...toolSpotlight(),
+        cornerRadius: toolCornerRadius("spotlight"),
       });
       drag = { mode: "draw", start: p, id };
     } else if (tool === "step") {
@@ -431,6 +434,7 @@ export function MarkupLayer({
                 rotation: 0,
                 fill: shapeFill.fill,
                 fillColor: shapeFill.color ?? style.color,
+                ...(tool === "rect" && { cornerRadius: toolCornerRadius("rect") }),
                 style,
               });
       drag = { mode: "draw", start: p, id };
@@ -1012,6 +1016,7 @@ function AnnotationShape({
       height={rect.height}
       offsetX={rect.width / 2}
       offsetY={rect.height / 2}
+      cornerRadius={drawnCornerRadius(a.cornerRadius, rect.width, rect.height)}
     />
   ) : (
     <Ellipse {...common} radiusX={rect.width / 2} radiusY={rect.height / 2} />
@@ -1042,7 +1047,8 @@ function SpotlightDim({
         c.fillRect(0, 0, source.width, source.height);
         c.globalCompositeOperation = "destination-out";
         c.fillStyle = "#000";
-        for (const { rect: r, shape } of spots) {
+        for (const spot of spots) {
+          const { rect: r, shape } = spot;
           c.beginPath();
           if (shape === "ellipse") {
             c.ellipse(
@@ -1055,7 +1061,13 @@ function SpotlightDim({
               2 * Math.PI,
             );
           } else {
-            c.rect(r.x, r.y, r.width, r.height);
+            c.roundRect(
+              r.x,
+              r.y,
+              r.width,
+              r.height,
+              drawnCornerRadius(spot.cornerRadius, r.width, r.height),
+            );
           }
           c.fill();
         }
@@ -1091,6 +1103,7 @@ function SpotlightEdge({ a, hitSlop }: { a: SpotlightAnnotation; hitSlop: number
       height={rect.height}
       offsetX={rect.width / 2}
       offsetY={rect.height / 2}
+      cornerRadius={drawnCornerRadius(a.cornerRadius, rect.width, rect.height)}
     />
   );
 }

@@ -15,7 +15,13 @@ import {
   targetSections,
   targetValues,
 } from "./restyle";
-import { fontChoices, strengthPickerFor, useStyleConfig, widthPickerFor } from "./styles";
+import {
+  CORNER_RADIUS_PICKER,
+  fontChoices,
+  strengthPickerFor,
+  useStyleConfig,
+  widthPickerFor,
+} from "./styles";
 import { useToolStore } from "./toolStore";
 import { useHeldKeys } from "./useHeldKeys";
 import { useLineStarts } from "./useLineStarts";
@@ -152,6 +158,28 @@ export function ToolOptions() {
   const widthPicker = widthPickerFor(target.tool, config);
   const text = values.text;
   const step = show.step ? values.step : null;
+  // Rectangles, after the width, and rectangular spotlights, after the shape (PLAN 3D.17).
+  const corner = show.corner && values.corner !== null && (
+    <span className={styles.iconPicker} {...hint("corner")} title="Corner radius">
+      {/* A rounded corner with an arrow pushing it in from outside (Richard's
+          idea), so it doesn't read as another shape button. */}
+      <svg className={`${styles.pickerIcon} ${styles.cornerIcon}`} viewBox="0 0 16 16" aria-hidden>
+        <path d="M5 15.5a10.5 10.5 0 0 1 10.5-10.5" />
+        <path d="M1.5 1.5l5.3 5.3M6.8 3.3v3.5H3.3" />
+      </svg>
+      <NumberPickerControl
+        picker={CORNER_RADIUS_PICKER}
+        value={values.corner}
+        unit="px"
+        label="Corner radius"
+        showKeys={hints && held.alt}
+        hints={hints}
+        onPick={(cornerRadius) => applyStyle({ cornerRadius })}
+        onDragStart={beginStyleDrag}
+        onDragEnd={endStyleDrag}
+      />
+    </span>
+  );
 
   return (
     // Clicks here must not take focus: text being typed keeps it, and Space
@@ -207,6 +235,7 @@ export function ToolOptions() {
               onDragEnd={endStyleDrag}
             />
           </span>
+          {corner}
         </div>
       )}
 
@@ -238,7 +267,13 @@ export function ToolOptions() {
               </button>
             ))}
           </div>
-          <span className={styles.hintArea} {...hint("dim")}>
+          {corner}
+          <span className={styles.iconPicker} {...hint("dim")} title="Darkness outside">
+            {/* Half light, half dark. */}
+            <svg className={styles.pickerIcon} viewBox="0 0 16 16" aria-hidden>
+              <circle cx="8" cy="8" r="5.5" />
+              <path d="M8 2.5a5.5 5.5 0 0 1 0 11z" className={styles.solid} />
+            </svg>
             <NumberPickerControl
               picker={config.styles.spotlight}
               value={values.spotlight.dim}

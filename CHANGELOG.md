@@ -46,6 +46,8 @@ All notable changes to Vandal are listed here. The format follows
   color that opens the palette (with the custom color and the swap button between two colors).
   Right-click a color's button to edit the color in use straight away. Choose it in Settings ›
   Markup › Colors, or for one tool under Per-tool styles. The keys work the same either way.
+- Rounded corners for rectangles and the spotlight's rectangle: pick a corner radius in the options
+  bar, or with Alt+1–9 and Alt+0.
 
 ### Changed
 

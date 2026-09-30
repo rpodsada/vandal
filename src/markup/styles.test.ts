@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   colorControlFor,
   DEFAULT_STYLE_CONFIG,
+  drawnCornerRadius,
   setCustomColor,
   stepFontChoices,
   toolStepStyle,
@@ -126,5 +127,14 @@ describe("colorControlFor", () => {
     expect(colorControlFor("pen")).toBe("dropdown");
     expect(colorControlFor("highlighter")).toBe("dropdown"); // own palette, no own choice
     expect(colorControlFor("step")).toBe("swatches");
+  });
+});
+
+describe("drawnCornerRadius", () => {
+  it("is at most half the shorter side, and never negative", () => {
+    expect(drawnCornerRadius(8, 100, 50)).toBe(8);
+    expect(drawnCornerRadius(40, 100, 50)).toBe(25); // a pill
+    expect(drawnCornerRadius(undefined, 100, 50)).toBe(0);
+    expect(drawnCornerRadius(8, -20, 10)).toBe(5);
   });
 });

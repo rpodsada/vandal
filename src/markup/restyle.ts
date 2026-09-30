@@ -30,6 +30,7 @@ import {
   toolFont,
   toolRedact,
   stepNumbering,
+  toolCornerRadius,
   toolSpotlight,
   toolStepStyle,
   toolWidth,
@@ -93,10 +94,30 @@ export interface TargetValues {
   spotlight: { shape: SpotlightShape; dim: number } | null;
   /** Step markers only (`color` is the marker's). */
   step: (StepStyle & { format: StepFormat; start: number }) | null;
+  /** Rectangles and rectangular spotlights: the corner radius (PLAN 3D.17). */
+  corner: number | null;
 }
 
 /** What the controls show: the first object's style, or the tool's. */
 export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
+  return { ...styleValues(target, doc), corner: cornerValue(target, doc) };
+}
+
+/** The corner radius on show, or null where corners don't apply (ellipses, round spotlights). */
+function cornerValue(target: StyleTarget, doc: Doc): number | null {
+  const a = doc.annotations.find((x) => x.id === target.ids[0]);
+  if (!a) {
+    if (target.tool === "rect") return toolCornerRadius("rect");
+    if (target.tool === "spotlight" && useToolStore.getState().spotlightShape === "rect")
+      return toolCornerRadius("spotlight");
+    return null;
+  }
+  if (a.kind === "rect" || (a.kind === "spotlight" && a.shape === "rect"))
+    return a.cornerRadius ?? 0;
+  return null;
+}
+
+function styleValues(target: StyleTarget, doc: Doc): Omit<TargetValues, "corner"> {
   const a = doc.annotations.find((x) => x.id === target.ids[0]);
   const tools = useToolStore.getState();
   if (!a) {
@@ -215,6 +236,8 @@ export function targetSections(target: StyleTarget) {
     redact: all((k) => k === "redact"),
     spotlight: all((k) => k === "spotlight"),
     step: all((k) => k === "step"),
+    // Also needs a rectangle's shape (see TargetValues.corner).
+    corner: all((k) => k === "rect" || k === "spotlight"),
   };
 }
 
@@ -301,9 +324,13 @@ export interface StylePatch {
   /** Step markers' labels: apply to every marker in the document. */
   stepFormat?: StepFormat;
   stepStart?: number;
+  /** Rectangles and spotlights (PLAN 3D.17), in source px. */
+  cornerRadius?: number;
 }
 
 function patchAnnotation(a: Annotation, p: StylePatch): Annotation {
+  if (p.cornerRadius !== undefined && (a.kind === "rect" || a.kind === "spotlight"))
+    a = { ...a, cornerRadius: p.cornerRadius };
   if (a.kind === "step") {
     return {
       ...a,
@@ -405,6 +432,10 @@ export function applyStyle(patch: StylePatch, target = styleTarget()): void {
   for (const tool of tools) {
     if (patch.color !== undefined) rememberColor(tool, patch.color);
     if (patch.width !== undefined && widthTool(tool)) rememberWidth(tool, patch.width);
+    if (patch.cornerRadius !== undefined && (tool === "rect" || tool === "spotlight"))
+      useToolStore.setState((t) => ({
+        cornerRadii: { ...t.cornerRadii, [tool]: patch.cornerRadius },
+      }));
     if (tool === "step") {
       const t = useToolStore.getState();
       useToolStore.setState({

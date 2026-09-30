@@ -95,6 +95,8 @@ export interface ToolState {
   /** Redact: pixelate or blur, and each mode's strength once picked. */
   redactMode: RedactMode;
   redactStrengths: Partial<Record<RedactMode, number>>;
+  /** Rectangle and Spotlight: the corner radius once picked (PLAN 3D.17). */
+  cornerRadii: Partial<Record<ToolId, number>>;
   /** Spotlight: its shape, and the darkness once picked (%). */
   spotlightShape: SpotlightShape;
   spotlightDim: number | null;
@@ -136,6 +138,7 @@ export const useToolStore = create<ToolState>((set) => ({
   textBackgroundColor: null,
   redactMode: "pixelate",
   redactStrengths: {},
+  cornerRadii: {},
   spotlightShape: "rect",
   spotlightDim: null,
   stepShape: "circle",

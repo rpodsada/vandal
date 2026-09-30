@@ -17,6 +17,7 @@ import {
   targetValues,
 } from "./restyle";
 import {
+  CORNER_RADIUS_PICKER,
   fontChoices,
   paletteFor,
   stepFontChoices,
@@ -52,7 +53,7 @@ export function useMarkupKeys(active?: () => boolean): void {
       // Ctrl/Alt+digit and Ctrl+B/I still restyle text while typing into it (PLAN Phase 2).
       if (isTyping(e.target) && !styleDigit && !boldItalic) return;
       if (e.altKey) {
-        if (styleDigit && !e.shiftKey && pickFont(slot)) e.preventDefault();
+        if (styleDigit && !e.shiftKey && pickAlt(slot)) e.preventDefault();
         return;
       }
       if (e.ctrlKey ? handleCtrl(e) : handlePlain(e)) e.preventDefault();
@@ -94,11 +95,20 @@ function pickWidth(slot: number): boolean {
   return true;
 }
 
-/** Alt+digit: font slot (tenths of the way along a long list), for text or step markers. */
-function pickFont(slot: number): boolean {
+/**
+ * Alt+digit: a font slot (tenths of the way along a long list) for text or
+ * step markers, or a corner radius for rectangles and spotlights (PLAN 3D.17).
+ */
+function pickAlt(slot: number): boolean {
   const target = styleTarget();
   if (!target) return false;
   const sections = targetSections(target);
+  if (sections.corner) {
+    if (targetValues(target, docStore.getState().doc).corner === null) return false;
+    const cornerRadius = pickByDigit(CORNER_RADIUS_PICKER, slot);
+    if (cornerRadius !== null) applyStyle({ cornerRadius });
+    return true;
+  }
   if (!sections.text && !sections.step) return false;
   const fonts = sections.step ? stepFontChoices() : fontChoices();
   const i = slotIndex(fonts.length, slot);

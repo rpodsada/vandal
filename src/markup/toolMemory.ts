@@ -38,6 +38,7 @@ export interface ToolMemory {
   textBackgroundColor: string | null;
   redactMode: RedactMode;
   redactStrengths: Partial<Record<RedactMode, number>>;
+  cornerRadii: Partial<Record<ToolId, number>>;
   spotlightShape: SpotlightShape;
   spotlightDim: number | null;
   stepShape: StepShape;
@@ -71,6 +72,7 @@ export function snapshotToolMemory(): ToolMemory {
     textBackgroundColor: t.textBackgroundColor,
     redactMode: t.redactMode,
     redactStrengths: t.redactStrengths,
+    cornerRadii: t.cornerRadii,
     spotlightShape: t.spotlightShape,
     spotlightDim: t.spotlightDim,
     stepShape: t.stepShape,
@@ -151,6 +153,10 @@ export function restoreToolMemory(stored: unknown): void {
     textBackgroundColor: pick("textBackgroundColor", nullable(isColor), t.textBackgroundColor),
     redactMode: pick("redactMode", isRedactMode, t.redactMode),
     redactStrengths: redactStrengths(s.redactStrengths),
+    cornerRadii: perTool(
+      s.cornerRadii,
+      (x): x is number => typeof x === "number" && isFinite(x) && x >= 0,
+    ),
     spotlightShape: pick(
       "spotlightShape",
       oneOf<SpotlightShape>("rect", "ellipse"),

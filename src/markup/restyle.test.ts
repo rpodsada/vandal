@@ -406,3 +406,51 @@ describe("swapColors", () => {
     expect(docStore.getState().past).toHaveLength(1);
   });
 });
+
+describe("corner radius", () => {
+  beforeEach(() => {
+    docStore.getState().load(emptyDoc({ width: 100, height: 100 }));
+    useToolStore.setState({ tool: "select", cornerRadii: {}, spotlightShape: "rect" });
+  });
+
+  const valuesNow = () => targetValues(styleTarget()!, docStore.getState().doc);
+
+  it("starts square and rounds the selected rectangle, remembering it", () => {
+    const id = addRect("none");
+    expect(valuesNow().corner).toBe(0); // older rectangles have none
+    applyStyle({ cornerRadius: 8 });
+    expect(rect(id).cornerRadius).toBe(8);
+    expect(useToolStore.getState().cornerRadii.rect).toBe(8);
+  });
+
+  it("doesn't apply to ellipses or round spotlights", () => {
+    const store = docStore.getState();
+    const e = store.add({
+      kind: "ellipse",
+      rect: { x: 0, y: 0, width: 10, height: 10 },
+      rotation: 0,
+      fill: "none",
+      fillColor: "#000000",
+      style,
+    });
+    store.select([e]);
+    expect(valuesNow().corner).toBeNull();
+    const s = store.add({
+      kind: "spotlight",
+      rect: { x: 0, y: 0, width: 10, height: 10 },
+      shape: "ellipse",
+      dim: 50,
+    });
+    store.select([s]);
+    expect(valuesNow().corner).toBeNull();
+    applyStyle({ spotlightShape: "rect" });
+    expect(valuesNow().corner).toBe(0);
+  });
+
+  it("follows the spotlight tool's shape with nothing selected", () => {
+    useToolStore.setState({ tool: "spotlight", cornerRadii: { spotlight: 16 } });
+    expect(valuesNow().corner).toBe(16);
+    useToolStore.setState({ spotlightShape: "ellipse" });
+    expect(valuesNow().corner).toBeNull();
+  });
+});

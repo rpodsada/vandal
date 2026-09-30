@@ -22,6 +22,7 @@ describe("tool memory", () => {
       textBackground: true,
       redactMode: "blur",
       redactStrengths: { pixelate: 16, blur: 6 },
+      cornerRadii: { rect: 8, spotlight: 0 },
       spotlightShape: "ellipse",
       spotlightDim: 70,
       stepShape: "rounded",

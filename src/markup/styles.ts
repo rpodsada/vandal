@@ -271,6 +271,23 @@ export function toolRedact(mode?: RedactMode): { mode: RedactMode; strength: num
   };
 }
 
+/**
+ * Corner radii (source px). Never buttons (Richard: beside Spotlight's
+ * darkness buttons it read as one row of numbers). Moves to Settings as
+ * `styles.cornerRadius` in 3D.18.
+ */
+export const CORNER_RADIUS_PICKER: NumberPicker = { control: "dropdown", values: [0, 4, 8, 16] };
+
+/** A rectangle's or spotlight's corner radius now: 0 (square) until one is picked. */
+export function toolCornerRadius(tool: ToolId): number {
+  return useToolStore.getState().cornerRadii[tool] ?? nearestValue(CORNER_RADIUS_PICKER, 0);
+}
+
+/** The radius a rectangle is drawn with: at most half its shorter side. */
+export function drawnCornerRadius(radius: number | undefined, width: number, height: number) {
+  return Math.max(0, Math.min(radius ?? 0, Math.abs(width) / 2, Math.abs(height) / 2));
+}
+
 /** The darkness a spotlight starts with before one is picked (%). */
 const PREFERRED_DIM = 50;
 

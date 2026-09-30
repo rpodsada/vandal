@@ -50,6 +50,7 @@ export const CONTROL_HINTS = {
   "redact.mode": "Pixelate or blur · the export's pixels are really changed",
   strength: "[1…0] Pick a strength by number",
   "spotlight.shape": "The bright area's shape",
+  corner: "[Alt+1…0] Round the corners · 0 is square",
   dim: "[1…0] How dark outside · shared by every spotlight",
   "step.shape": "The marker's shape",
   "step.format": "Numbers or letters · shared by every marker",
@@ -117,7 +118,7 @@ function toolHint(tool: Exclude<ToolId, "select">, twoColors: boolean): string {
     case "arrow":
       return `[Shift] 45° steps · [1…0] width · ${colors}`;
     case "rect":
-      return `[Shift] square · [1…0] width · ${colors}`;
+      return `[Shift] square · [1…0] width · [Alt+1…0] corners · ${colors}`;
     case "ellipse":
       return `[Shift] circle · [1…0] width · ${colors}`;
     case "text":
@@ -125,7 +126,7 @@ function toolHint(tool: Exclude<ToolId, "select">, twoColors: boolean): string {
     case "redact":
       return "Drag over what to hide · [1…0] strength";
     case "spotlight":
-      return "Drag the area to keep bright · [Shift] square or circle · [1…0] darkness";
+      return "Drag the area to keep bright · [Shift] square or circle · [1…0] darkness · [Alt+1…0] corners";
     case "step":
       return `Click to place the next marker · [1…0] size · [Alt+1…0] font · ${colors}`;
   }
