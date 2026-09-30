@@ -26,6 +26,7 @@ export interface ToolMemory {
   fills: Partial<Record<ToolId, ShapeFill>>;
   fillColors: Partial<Record<ToolId, string>>;
   customColors: Partial<Record<PaletteKey, string>>;
+  customSecondColors: Partial<Record<PaletteKey, string>>;
   arrowHead: ArrowHead;
   arrowEnds: ArrowEnds;
   fontFamily: string | null;
@@ -58,6 +59,7 @@ export function snapshotToolMemory(): ToolMemory {
     fills: t.fills,
     fillColors: t.fillColors,
     customColors: t.customColors,
+    customSecondColors: t.customSecondColors,
     arrowHead: t.arrowHead,
     arrowEnds: t.arrowEnds,
     fontFamily: t.fontFamily,
@@ -129,6 +131,7 @@ export function restoreToolMemory(stored: unknown): void {
     fills: perTool(s.fills, oneOf<ShapeFill>("none", "solid", "both")),
     fillColors: perTool(s.fillColors, isColor),
     customColors: perTool(s.customColors, isColor, ["shared"]),
+    customSecondColors: perTool(s.customSecondColors, isColor, ["shared"]),
     arrowHead: pick("arrowHead", oneOf<ArrowHead>("filled", "open"), t.arrowHead),
     arrowEnds: pick("arrowEnds", oneOf<ArrowEnds>("end", "start", "both"), t.arrowEnds),
     fontFamily: pick(

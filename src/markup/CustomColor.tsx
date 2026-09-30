@@ -4,7 +4,8 @@ import { ColorPicker } from "./ColorPicker";
 import { hint } from "./HintLine";
 import { beginStyleDrag, cancelStyleDrag, endStyleDrag } from "./restyle";
 import { KEEPS_TEXT_EDITING, refocusTextEditor } from "./TextEditor";
-import { paletteKey, setCustomColor } from "./styles";
+import type { ColorKey } from "./restyle";
+import { paletteKey, setCustomColor, type ColorSlotPosition } from "./styles";
 import { useToolStore, type ToolId, type ToolState } from "./toolStore";
 import { boxOf, useMenuPlacement } from "./menuPlacement";
 import { usePopover } from "./usePopover";
@@ -14,6 +15,10 @@ import styles from "./options.module.css";
 interface Props {
   /** The color the swatches currently set (border, fill, text or box). */
   value: string;
+  /** Which of the chip's colors that is: each has its own custom color (PLAN 3D.14). */
+  slot: ColorSlotPosition;
+  /** What `value` is on the target (the shared current color follows only `color`). */
+  colorKey: ColorKey;
   /** The presets on show: the custom swatch is "on" when `value` isn't one. */
   palette: string[];
   /** Whose presets "Save as preset" adds to. */
@@ -32,7 +37,7 @@ interface Props {
  * undo step: Done, Enter or a click elsewhere keeps it, Esc puts things back.
  * Picked colors join the presets only through "Save as preset".
  */
-export function CustomColor({ value, palette, tool, selected, onPick }: Props) {
+export function CustomColor({ value, slot, colorKey, palette, tool, selected, onPick }: Props) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -47,12 +52,14 @@ export function CustomColor({ value, palette, tool, selected, onPick }: Props) {
 
   const isPreset = palette.some((c) => c.toLowerCase() === value.toLowerCase());
   // What the swatch holds: the color in use if it isn't a preset, else the
-  // palette's last custom color, if it has one. Like the presets, it's shared
-  // by the tools on the shared palette.
+  // palette's last custom color for this chip color, if it has one. Like the
+  // presets, it's shared by the tools on the shared palette.
   const key = paletteKey(tool);
-  const remembered = useToolStore((s) => s.customColors[key]);
+  const remembered = useToolStore((s) =>
+    slot === "first" ? s.customColors[key] : s.customSecondColors[key],
+  );
   const custom = isPreset ? remembered : value;
-  const rememberCustom = (c: string | undefined) => setCustomColor(key, c);
+  const rememberCustom = (c: string | undefined) => setCustomColor(key, c, slot, colorKey);
   // The tools' colors before the picker opened, for Esc.
   const before = useRef<Partial<ToolState>>({});
 
@@ -61,10 +68,12 @@ export function CustomColor({ value, palette, tool, selected, onPick }: Props) {
     const t = useToolStore.getState();
     before.current = {
       customColors: t.customColors,
+      customSecondColors: t.customSecondColors,
       colors: t.colors,
       fillColors: t.fillColors,
       sharedColor: t.sharedColor,
       textBackgroundColor: t.textBackgroundColor,
+      stepTextColor: t.stepTextColor,
     };
     setError(null);
     beginStyleDrag();

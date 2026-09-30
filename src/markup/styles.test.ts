@@ -19,18 +19,43 @@ describe("setCustomColor", () => {
   it("moves the tools on the custom swatch, not the ones on a preset", () => {
     useToolStore.setState({
       colors: { rect: "#123456", arrow: "#1e88e5", highlighter: "#654321" },
+      fills: { ellipse: "both" },
       fillColors: { ellipse: "#abcdef" },
-      textBackgroundColor: "#fedcba",
     });
     setCustomColor("shared", "#00ff00");
     const t = useToolStore.getState();
     expect(t.customColors).toEqual({ shared: "#00ff00" });
     expect(t.colors.rect).toBe("#00ff00"); // was on the old custom color
     expect(t.colors.arrow).toBe("#1e88e5"); // a preset: kept
+    // An ellipse with border and fill: its fill is its first color.
     expect(t.fillColors.ellipse).toBe("#00ff00");
-    expect(t.textBackgroundColor).toBe("#00ff00");
     // The highlighter has its own palette, and its own custom swatch.
     expect(t.colors.highlighter).toBe("#654321");
+  });
+
+  it("keeps a custom color for each of the chip's colors", () => {
+    // A step marker's label (first) and marker (second) both custom.
+    useToolStore.setState({ stepTextColor: "#00ff00", colors: { step: "#123456" } });
+    setCustomColor("shared", "#abcdef", "second");
+    let t = useToolStore.getState();
+    expect(t.colors.step).toBe("#abcdef");
+    expect(t.stepTextColor).toBe("#00ff00"); // the other color: kept
+    expect(t.customSecondColors).toEqual({ shared: "#abcdef" });
+    expect(t.customColors).toEqual({});
+
+    setCustomColor("shared", "#fedcba", "first");
+    t = useToolStore.getState();
+    expect(t.stepTextColor).toBe("#fedcba");
+    expect(t.colors.step).toBe("#abcdef");
+    expect(t.customColors).toEqual({ shared: "#fedcba" });
+  });
+
+  it("moves text's box color only as a second color", () => {
+    useToolStore.setState({ colors: { text: "#111111" }, textBackgroundColor: "#222222" });
+    setCustomColor("shared", "#333333", "second");
+    const t = useToolStore.getState();
+    expect(t.textBackgroundColor).toBe("#333333");
+    expect(t.colors.text).toBe("#111111");
   });
 
   it("empties the swatch without moving anyone", () => {

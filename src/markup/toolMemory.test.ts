@@ -14,6 +14,7 @@ describe("tool memory", () => {
       fills: { rect: "both" },
       fillColors: { rect: "#ffffff" },
       customColors: { shared: "#123456", highlighter: "#abcdef" },
+      customSecondColors: { shared: "#654321" },
       arrowEnds: "both",
       fontFamily: "Consolas",
       fontSize: 36,

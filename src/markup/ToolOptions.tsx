@@ -564,6 +564,8 @@ export function ToolOptions() {
           )}
           <CustomColor
             value={current}
+            slot={editingSecond ? "second" : "first"}
+            colorKey={(second && editingSecond ? second : slots.first).key}
             palette={palette}
             selected={edit ? false : undefined}
             tool={target.tool}

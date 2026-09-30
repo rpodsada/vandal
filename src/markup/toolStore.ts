@@ -77,6 +77,8 @@ export interface ToolState {
    * the shared palette ("shared"), and one per tool with its own palette.
    */
   customColors: Partial<Record<PaletteKey, string>>;
+  /** The same for the chip's second color (PLAN 3D.14): each keeps its own. */
+  customSecondColors: Partial<Record<PaletteKey, string>>;
   /** Which color the swatches set when there are two (the chip's top or bottom). */
   colorSlot: "first" | "second";
   arrowHead: ArrowHead;
@@ -121,6 +123,7 @@ export const useToolStore = create<ToolState>((set) => ({
   fills: {},
   fillColors: {},
   customColors: {},
+  customSecondColors: {},
   colorSlot: "first",
   arrowHead: "filled",
   arrowEnds: "end",

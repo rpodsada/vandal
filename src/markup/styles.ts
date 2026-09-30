@@ -16,6 +16,7 @@ import type {
   StrokeStyle,
 } from "./model/types";
 import { nearestValue } from "./pickers";
+import type { ColorKey } from "./restyle";
 import { contrastingText, stepsOf, type StepStyle } from "./steps";
 import { TOOLS, useToolStore, type PaletteKey, type ToolId } from "./toolStore";
 
@@ -177,17 +178,30 @@ export function paletteKey(tool: ToolId, cfg = useStyleConfig.getState()): Palet
   return hasOwnPalette(tool, cfg) ? tool : "shared";
 }
 
+/** Which of the chip's colors (the only one, when there's one). */
+export type ColorSlotPosition = "first" | "second";
+
 /**
- * Put `color` on the custom swatch of palette `key`. Every tool on that
- * palette with the custom swatch selected (a remembered color that isn't a
- * preset, in any of its color slots) moves to it too; tools on a preset keep
- * theirs. `undefined` empties the swatch and moves no one.
+ * Put `color` on the custom swatch of palette `key`, for the chip's `slot`:
+ * the first and second colors each have their own (PLAN 3D.14). Every tool on
+ * that palette whose color in the same position is on the custom swatch (a
+ * remembered color that isn't a preset) moves to it too; tools on a preset,
+ * and the other position, keep theirs. `undefined` empties the swatch and
+ * moves no one. `colorKey` is what the color sets on the current target: the
+ * shared current color moves only with `color`.
  */
-export function setCustomColor(key: PaletteKey, color: string | undefined): void {
+export function setCustomColor(
+  key: PaletteKey,
+  color: string | undefined,
+  slot: ColorSlotPosition = "first",
+  colorKey: ColorKey = "color",
+): void {
   const cfg = useStyleConfig.getState();
   useToolStore.setState((t) => {
     const next = {
-      customColors: { ...t.customColors, [key]: color },
+      customColors: slot === "first" ? { ...t.customColors, [key]: color } : t.customColors,
+      customSecondColors:
+        slot === "second" ? { ...t.customSecondColors, [key]: color } : t.customSecondColors,
       colors: { ...t.colors },
       fillColors: { ...t.fillColors },
       sharedColor: t.sharedColor,
@@ -198,13 +212,24 @@ export function setCustomColor(key: PaletteKey, color: string | undefined): void
     for (const tool of TOOLS) {
       if (tool === "select" || paletteKey(tool, cfg) !== key) continue;
       const palette = paletteFor(tool, cfg);
-      if (isCustom(next.colors[tool], palette)) next.colors[tool] = color;
-      if (isCustom(next.fillColors[tool], palette)) next.fillColors[tool] = color;
-      if (tool === "text" && isCustom(next.textBackgroundColor, palette))
-        next.textBackgroundColor = color;
-      if (tool === "step" && isCustom(next.stepTextColor, palette)) next.stepTextColor = color;
+      const onCustom = (c: string | null | undefined) => isCustom(c, palette);
+      // Where each chip color lives in the tool's memory (see colorSlots).
+      const both = (tool === "rect" || tool === "ellipse") && t.fills[tool] === "both";
+      if (slot === "first") {
+        if (both) {
+          if (onCustom(next.fillColors[tool])) next.fillColors[tool] = color;
+        } else if (tool === "step") {
+          if (onCustom(next.stepTextColor)) next.stepTextColor = color;
+        } else if (onCustom(next.colors[tool])) {
+          next.colors[tool] = color;
+        }
+      } else if (both || tool === "step") {
+        if (onCustom(next.colors[tool])) next.colors[tool] = color;
+      } else if (tool === "text") {
+        if (onCustom(next.textBackgroundColor)) next.textBackgroundColor = color;
+      }
     }
-    if (key === "shared" && isCustom(next.sharedColor, cfg.styles.palette))
+    if (key === "shared" && colorKey === "color" && isCustom(next.sharedColor, cfg.styles.palette))
       next.sharedColor = color;
     return next;
   });

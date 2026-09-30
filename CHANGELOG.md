@@ -56,6 +56,9 @@ All notable changes to Vandal are listed here. The format follows
 
 ### Fixed
 
+- With two colors (a shape's fill and border, text on a box, a step marker), picking a custom
+  color for one no longer changes the other. Each keeps its own custom color, and the custom
+  swatch shows the one for the color you're setting.
 - In quick edit, right-clicking a color swatch to edit it no longer cancels the capture.
 
 ## [0.3.0-beta.1] - 2026-09-28
