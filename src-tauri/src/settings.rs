@@ -226,6 +226,9 @@ pub struct EditorSettings {
     pub share_color: bool,
     /// Slot-number badges and shortcut tooltips on the style pickers.
     pub show_shortcut_hints: bool,
+    /// Number buttons in the options bar show their unit ("50%", "10px").
+    /// Off by default: it adds clutter (Richard's call).
+    pub show_button_units: bool,
     /// With a drawing tool, pressing on an object selects it (off: drawing
     /// tools always draw). Ctrl flips this for one press.
     pub drawing_tools_select: bool,
@@ -261,6 +264,7 @@ impl Default for EditorSettings {
             on_close: EditorOnClose::default(),
             share_color: false,
             show_shortcut_hints: true,
+            show_button_units: false,
             drawing_tools_select: true,
             remember_tool_styles: true,
             confirm_overwrite: true,
@@ -678,6 +682,7 @@ mod tests {
         assert_eq!(v["history"]["keepFramesInMemory"], 3);
         assert_eq!(v["editor"]["shareColor"], false);
         assert_eq!(v["editor"]["showShortcutHints"], true);
+        assert_eq!(v["editor"]["showButtonUnits"], false);
         assert_eq!(v["editor"]["drawingToolsSelect"], true);
         assert_eq!(v["editor"]["rememberToolStyles"], true);
         assert_eq!(v["styles"]["width"]["control"], "buttons");

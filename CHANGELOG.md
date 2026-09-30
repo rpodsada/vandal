@@ -60,7 +60,8 @@ All notable changes to Vandal are listed here. The format follows
   Closing the editor without changes no longer copies the image again.
 - The editor's "Copied" and "Saved" messages in the status bar now start with a green check.
 - Number buttons in the options bar (spotlight darkness, redact strength, marker and font sizes)
-  show their unit after the number, as the sliders and dropdowns already did.
+  can show their unit after the number, as the sliders and dropdowns do: turn on "Show units on
+  number buttons" in Settings › Markup (off by default).
 
 ### Fixed
 

@@ -326,6 +326,15 @@ export const sections: Section[] = [
               "Slot numbers on the widths, sizes, colors and fonts while you hold a number key, Ctrl or Alt, and the keys in their tooltips. The shortcuts work either way.",
             keywords: ["shortcut", "hint", "badge", "number", "keyboard", "tooltip", "digit"],
           },
+          {
+            id: "editor-button-units",
+            kind: "toggle",
+            path: "editor.showButtonUnits",
+            label: "Show units on number buttons",
+            description:
+              'Buttons for sizes, strengths and darkness show their unit after the number, like "50%" or "10px". Off keeps them shorter.',
+            keywords: ["unit", "units", "px", "percent", "pt", "button", "number", "label"],
+          },
         ],
       },
       {

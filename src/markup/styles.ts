@@ -26,6 +26,8 @@ export interface StyleConfig {
   shareColor: boolean;
   /** Slot-number badges and shortcut tooltips on the pickers. */
   showShortcutHints: boolean;
+  /** Number buttons show their unit (`editor.showButtonUnits`). */
+  showButtonUnits: boolean;
   /** Drawing tools select an object pressed on (else they draw over it); Ctrl flips it. */
   drawingToolsSelect: boolean;
   /** Installed font families (from the host), for the system font picker. */
@@ -64,6 +66,7 @@ export const DEFAULT_STYLE_CONFIG: StyleConfig = {
   },
   shareColor: false,
   showShortcutHints: true,
+  showButtonUnits: false,
   drawingToolsSelect: true,
   fonts: [],
 };

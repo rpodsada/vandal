@@ -75,6 +75,8 @@ export function NumberPickerEditor({
   // The list in use before switching to the slider, to bring it back.
   const remembered = useRef<number[] | undefined>(undefined);
   const [previewValue, setPreviewValue] = useState(() => valuesOf(picker)[0]);
+  // The preview shows units as the options bar would.
+  const showUnits = useSettingsStore((s) => s.settings?.editor.showButtonUnits ?? false);
 
   const setControl = (control: PickerControl) => {
     if (picker.control !== "slider") remembered.current = picker.values;
@@ -120,6 +122,7 @@ export function NumberPickerEditor({
           showKeys={false}
           hints={false}
           lines={lines}
+          showUnits={showUnits}
           onPick={setPreviewValue}
           onDragStart={() => {}}
           onDragEnd={() => {}}

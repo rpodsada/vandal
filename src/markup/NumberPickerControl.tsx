@@ -2,6 +2,7 @@ import { useRef, type PointerEvent as ReactPointerEvent } from "react";
 import type { NumberPicker } from "../shared/ipc";
 import { Dropdown } from "./Dropdown";
 import { nearestValue, pickerFraction, slotKey, valueAtFraction } from "./pickers";
+import { useStyleConfig } from "./styles";
 import styles from "./options.module.css";
 
 interface Props {
@@ -17,6 +18,11 @@ interface Props {
   hints: boolean;
   /** Draw each value as a line of that thickness (line width). */
   lines?: boolean;
+  /**
+   * Buttons show the unit after each number (`editor.showButtonUnits`).
+   * Default: the style config's; Settings passes the setting itself.
+   */
+  showUnits?: boolean;
   onPick: (value: number) => void;
   /** A slider drag starts / ends: its steps are one undo entry. */
   onDragStart: () => void;
@@ -56,6 +62,8 @@ function Line({ width, length }: { width: number; length: number }) {
 
 function Buttons(props: Props & { values: number[] }) {
   const current = nearestValue(props.picker, props.value);
+  const configUnits = useStyleConfig((s) => s.showButtonUnits);
+  const showUnits = props.showUnits ?? configUnits;
   return (
     <div className={styles.group}>
       {props.values.map((v, i) => (
@@ -74,7 +82,7 @@ function Buttons(props: Props & { values: number[] }) {
             <>
               {v}
               {/* Smaller and lighter, like the value boxes in Settings. */}
-              <span className={styles.buttonUnit}>{props.unit}</span>
+              {showUnits && <span className={styles.buttonUnit}>{props.unit}</span>}
             </>
           )}
           {props.showKeys && <span className={styles.badge}>{slotKey(i)}</span>}

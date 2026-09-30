@@ -254,6 +254,11 @@ export type EditorSettings = {
 	/**  Slot-number badges and shortcut tooltips on the style pickers. */
 	showShortcutHints?: boolean,
 	/**
+	 *  Number buttons in the options bar show their unit ("50%", "10px").
+	 *  Off by default: it adds clutter (Richard's call).
+	 */
+	showButtonUnits?: boolean,
+	/**
 	 *  With a drawing tool, pressing on an object selects it (off: drawing
 	 *  tools always draw). Ctrl flips this for one press.
 	 */
