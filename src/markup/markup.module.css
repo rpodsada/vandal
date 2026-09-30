@@ -96,6 +96,10 @@
   overflow-wrap: break-word;
   transform-origin: 0 0;
   min-width: 2px;
+  /* Unhinted advances, as the canvas measures them: hinting rounds each
+     character's width, which adds up along a line (a monospace font drifts
+     a character's width past the box the canvas draws). */
+  text-rendering: geometricPrecision;
 }
 
 /* ---- hint line (status bar) ---- */

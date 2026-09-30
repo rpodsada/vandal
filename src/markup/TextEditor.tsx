@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { TEXT_LINE_HEIGHT, textPx } from "./geometry";
 import { docStore } from "./model/store";
 import type { CalloutAnnotation, Point, TextAnnotation } from "./model/types";
+import { growCallout } from "./callout";
 import { finishTextEdit } from "./textEditing";
 import { measureTextWidth, textBoxPadding } from "./textMeasure";
 import styles from "./markup.module.css";
@@ -55,17 +56,14 @@ export function TextEditor({ a, scale, offset }: Props) {
   });
 
   const onChange = (text: string) => {
-    docStore.getState().update(a.id, (t) =>
-      t.kind === "text" || t.kind === "callout"
-        ? {
-            ...t,
-            text,
-            width: t.autoWidth
-              ? measureTextWidth(text, textPx(t.fontSize), t.fontFamily, t.bold, t.italic)
-              : t.width,
-          }
-        : t,
-    );
+    docStore.getState().update(a.id, (t) => {
+      if (t.kind !== "text" && t.kind !== "callout") return t;
+      const next = { ...t, text };
+      if (!t.autoWidth) return next;
+      const width = measureTextWidth(text, textPx(t.fontSize), t.fontFamily, t.bold, t.italic);
+      // A callout grows away from what it points at (PLAN 3E.5).
+      return next.kind === "callout" ? growCallout(next, width) : { ...next, width };
+    });
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -85,8 +83,12 @@ export function TextEditor({ a, scale, offset }: Props) {
     finishTextEdit();
   };
 
-  // Room for the caret after the last character of a growing box.
-  const width = a.autoWidth ? a.width + px * 0.6 : a.width;
+  // Room for the caret after the last character of a growing box, on the
+  // side the aligned text grows toward, so the text itself doesn't move:
+  // after it (left), before it (right), or half each side (centred).
+  const room = a.autoWidth ? px * 0.6 : 0;
+  const width = a.width + room;
+  const before = a.align === "right" ? room : a.align === "center" ? room / 2 : 0;
   const pad = textBoxPadding(px) * scale;
   const text = a.kind === "text" ? a : null;
   return (
@@ -102,7 +104,14 @@ export function TextEditor({ a, scale, offset }: Props) {
         left: offset.x + a.x * scale,
         top: offset.y + a.y * scale,
         width: width * scale,
-        transform: text?.rotation ? `rotate(${text.rotation}deg)` : undefined,
+        // Shifted along the text's own (maybe rotated) line.
+        transform:
+          [
+            text?.rotation ? `rotate(${text.rotation}deg)` : "",
+            before ? `translateX(${-before * scale}px)` : "",
+          ]
+            .filter(Boolean)
+            .join(" ") || undefined,
         fontFamily: `"${a.fontFamily}"`,
         fontSize: px * scale,
         fontWeight: a.bold ? "bold" : "normal",

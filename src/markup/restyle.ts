@@ -20,6 +20,7 @@ import type {
   StepShape,
   TextAlign,
 } from "./model/types";
+import { growCallout } from "./callout";
 import { textPx } from "./geometry";
 import { measureTextWidth } from "./textMeasure";
 import {
@@ -390,12 +391,10 @@ function refit<T extends Extract<Annotation, { kind: "text" | "callout" }>>(t: T
     t.fontSize !== a.fontSize ||
     t.bold !== a.bold ||
     t.italic !== a.italic;
-  if (t.autoWidth && fontChanged)
-    return {
-      ...t,
-      width: measureTextWidth(t.text, textPx(t.fontSize), t.fontFamily, t.bold, t.italic),
-    };
-  return t;
+  if (!t.autoWidth || !fontChanged) return t;
+  const width = measureTextWidth(t.text, textPx(t.fontSize), t.fontFamily, t.bold, t.italic);
+  // A callout grows away from what it points at (PLAN 3E.5).
+  return (t.kind === "callout" ? growCallout(t, width) : { ...t, width }) as T;
 }
 
 function patchAnnotation(a: Annotation, p: StylePatch): Annotation {

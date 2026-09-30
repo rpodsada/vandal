@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { pointerGeometry, pointerStart, segmentQuad, underlineLayout } from "./callout";
+import {
+  growCallout,
+  pointerGeometry,
+  pointerPivot,
+  pointerStart,
+  segmentQuad,
+  underlineLayout,
+} from "./callout";
+import type { CalloutAnnotation } from "./model/types";
 
 const box = { x: 0, y: 0, width: 100, height: 40 };
 
@@ -73,22 +81,23 @@ describe("pointerGeometry", () => {
 });
 
 describe("underlineLayout", () => {
-  // 20pt: 26.67px text, padding 8, so the line sits 4 px off the text.
+  // 20pt: 26.67px text, padding 8, so the line sits 4 px off the text,
+  // then a tenth of the text's size lower.
+  const drop = 0.1 * ((20 * 96) / 72);
   const at = (tip: { x: number; y: number }) => underlineLayout(100, 100, 80, 30, 20, tip);
 
   it("runs under the text, a little wider, when the tip is lower", () => {
     const u = at({ x: 400, y: 300 });
-    expect(u.line).toEqual([
-      { x: 96, y: 134 },
-      { x: 184, y: 134 },
-    ]);
-    expect(u.start).toEqual({ x: 184, y: 134 });
+    expect(u.line.map((p) => p.x)).toEqual([96, 184]);
+    expect(u.line[0].y).toBeCloseTo(134 + drop);
+    expect(u.line[1].y).toBeCloseTo(134 + drop);
+    expect(u.start).toEqual(u.line[1]);
   });
 
   it("goes over the text when the tip is higher than its middle", () => {
     const u = at({ x: 400, y: 50 });
-    expect(u.line[0].y).toBe(96);
-    expect(u.start).toEqual({ x: 184, y: 96 });
+    expect(u.line[0].y).toBeCloseTo(96 + drop);
+    expect(u.start).toEqual(u.line[1]);
   });
 
   it("starts from the end on the tip's side of the text's centre", () => {
@@ -98,5 +107,78 @@ describe("underlineLayout", () => {
 
   it("hides the pointer while the tip is inside the text's box", () => {
     expect(at({ x: 120, y: 110 }).start).toBeNull();
+  });
+});
+
+describe("growCallout", () => {
+  const callout = (tip: { x: number; y: number }): CalloutAnnotation => ({
+    id: "c",
+    kind: "callout",
+    x: 100,
+    y: 100,
+    width: 40,
+    autoWidth: true,
+    text: "Hi",
+    fontFamily: "Segoe UI",
+    fontSize: 20,
+    bold: false,
+    italic: false,
+    align: "left",
+    shape: "box",
+    color: "#e53935",
+    textColor: "#ffffff",
+    lineWidth: 4,
+    cornerRadius: 5,
+    tip,
+    end: "line",
+  });
+
+  it("grows away from a tip on its right, keeping that edge", () => {
+    expect(growCallout(callout({ x: 300, y: 110 }), 60)).toMatchObject({ x: 80, width: 60 });
+  });
+
+  it("grows right, as text does, from a tip on its left", () => {
+    expect(growCallout(callout({ x: 10, y: 110 }), 60)).toMatchObject({ x: 100, width: 60 });
+  });
+
+  it("grows both ways from a tip above or below", () => {
+    expect(growCallout(callout({ x: 120, y: 300 }), 60)).toMatchObject({ x: 90, width: 60 });
+    expect(growCallout(callout({ x: 110, y: 0 }), 20)).toMatchObject({ x: 110, width: 20 });
+  });
+});
+
+describe("pointerPivot", () => {
+  const base = {
+    id: "c",
+    kind: "callout",
+    x: 100,
+    y: 100,
+    width: 80,
+    autoWidth: false,
+    text: "Hi",
+    fontFamily: "Segoe UI",
+    fontSize: 20,
+    bold: false,
+    italic: false,
+    align: "left",
+    color: "#e53935",
+    textColor: "#ffffff",
+    lineWidth: 4,
+    cornerRadius: 5,
+    end: "line",
+  } as const;
+
+  it("is a box's centre", () => {
+    const a: CalloutAnnotation = { ...base, shape: "box", tip: { x: 0, y: 0 } };
+    const p = pointerPivot(a, 80, 30);
+    expect(p.x).toBe(140);
+    expect(p.y).toBeCloseTo(115 + 0.1 * ((20 * 96) / 72));
+  });
+
+  it("is the underline's end on the tip's side", () => {
+    const a: CalloutAnnotation = { ...base, shape: "underline", tip: { x: 400, y: 300 } };
+    const p = pointerPivot(a, 80, 30);
+    expect(p.x).toBe(184);
+    expect(p.y).toBeCloseTo(134 + 0.1 * ((20 * 96) / 72));
   });
 });

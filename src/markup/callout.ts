@@ -1,10 +1,18 @@
 // Callout geometry (PLAN 3E), in source px: the box around the text and where
 // the pointer leaves it.
 
-import type { CalloutEnd, Point, Rect } from "./model/types";
+import type { CalloutAnnotation, CalloutEnd, Point, Rect } from "./model/types";
 import { drawnCornerRadius } from "./styles";
 import { textBoxPadding } from "./textMeasure";
 import { arrowGeometry, textPx } from "./geometry";
+
+/**
+ * How far below the text's line boxes the box and underline sit, as a share
+ * of the text's size: a line box has more room above the letters than below,
+ * so centred on it they looked low (Richard). Moving the box, not the text,
+ * keeps the text editor lined up.
+ */
+const TEXT_DROP = 0.1;
 
 /** The box around a callout's text (`width` × `height` as laid out), with the text box padding. */
 export function calloutBox(
@@ -14,8 +22,14 @@ export function calloutBox(
   height: number,
   fontSize: number,
 ): Rect {
-  const pad = textBoxPadding(textPx(fontSize));
-  return { x: x - pad, y: y - pad, width: width + 2 * pad, height: height + 2 * pad };
+  const px = textPx(fontSize);
+  const pad = textBoxPadding(px);
+  return {
+    x: x - pad,
+    y: y - pad + TEXT_DROP * px,
+    width: width + 2 * pad,
+    height: height + 2 * pad,
+  };
 }
 
 /**
@@ -57,6 +71,35 @@ function insideRoundedBox(dx: number, dy: number, hw: number, hh: number, r: num
   return Math.hypot(ax - (hw - r), ay - (hh - r)) <= r;
 }
 
+/**
+ * A growing callout at its new `width` (PLAN 3E.5): it grows away from what
+ * it points at, so its text never grows over the tip. The edge toward the
+ * tip stays put, or the centre when the tip is above or below the text.
+ */
+export function growCallout(a: CalloutAnnotation, width: number): CalloutAnnotation {
+  const x =
+    a.tip.x > a.x + a.width
+      ? a.x + a.width - width
+      : a.tip.x < a.x
+        ? a.x
+        : a.x + (a.width - width) / 2;
+  return { ...a, x, width };
+}
+
+/**
+ * What Shift snaps a callout's tip around, so the pointer itself takes 45°
+ * steps: a box's centre (its pointer lies on the line from there), or the
+ * underline's end on the tip's side. `width` × `height`: the text as laid out.
+ */
+export function pointerPivot(a: CalloutAnnotation, width: number, height: number): Point {
+  if (a.shape === "underline") {
+    const [left, right] = underlineLayout(a.x, a.y, width, height, a.fontSize, a.tip).line;
+    return a.tip.x < a.x + width / 2 ? left : right;
+  }
+  const box = calloutBox(a.x, a.y, width, height, a.fontSize);
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
 /** An underline callout's line and where its pointer starts (PLAN 3E.3). */
 export interface UnderlineLayout {
   /** Under the text, or over it when the tip is higher than the text's middle. */
@@ -78,9 +121,10 @@ export function underlineLayout(
   fontSize: number,
   tip: Point,
 ): UnderlineLayout {
-  const pad = textBoxPadding(textPx(fontSize));
+  const px = textPx(fontSize);
+  const pad = textBoxPadding(px);
   const above = tip.y < y + height / 2;
-  const lineY = above ? y - pad / 2 : y + height + pad / 2;
+  const lineY = (above ? y - pad / 2 : y + height + pad / 2) + TEXT_DROP * px;
   const left = { x: x - pad / 2, y: lineY };
   const right = { x: x + width + pad / 2, y: lineY };
   const box = calloutBox(x, y, width, height, fontSize);

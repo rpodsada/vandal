@@ -15,7 +15,14 @@ import {
   Transformer,
 } from "react-konva";
 import { bendFromPoint, bendPoint } from "./bend";
-import { calloutBox, pointerGeometry, pointerStart, segmentQuad, underlineLayout } from "./callout";
+import {
+  calloutBox,
+  pointerGeometry,
+  pointerPivot,
+  pointerStart,
+  segmentQuad,
+  underlineLayout,
+} from "./callout";
 import { layerOf, registerAnnotationGroup } from "./export";
 import {
   annotationBounds,
@@ -142,6 +149,8 @@ type Drag =
       client: Point;
       originals: Map<AnnotationId, Annotation>;
       began: boolean;
+      /** A lone callout's laid-out text, for Shift's 45° pointer (PLAN 3E.5). */
+      textSize: { width: number; height: number } | null;
     }
   | { mode: "draw"; start: Point; id: AnnotationId }
   | { mode: "place"; id: AnnotationId }
@@ -150,7 +159,7 @@ type Drag =
   | { mode: "stroke"; id: AnnotationId; start: Point; last: Point }
   | { mode: "text"; start: Point; client: Point }
   | { mode: "callout"; start: Point; client: Point }
-  | { mode: "tip"; id: AnnotationId }
+  | { mode: "tip"; id: AnnotationId; pivot: Point }
   | { mode: "marquee"; start: Point; base: AnnotationId[] };
 
 /** Line-like annotations get endpoint handles instead of the transformer. */
@@ -250,7 +259,16 @@ export function MarkupLayer({
       .filter((a) => selection.includes(a.id) && isBoxed(a))
       .map((a) => a.id);
     const nodes = boxed.map((id) => stage.findOne(`#${id}`)).filter((n): n is Konva.Node => !!n);
-    tr.nodes(nodes);
+    // Setting the nodes turns the frame upright for several of them. Keep a
+    // group's frame at the angle it was rotated to until the selection
+    // changes, so the rotation can be fine-tuned (Richard); one node's frame
+    // always follows that node's own rotation.
+    const current = tr.nodes();
+    const sameGroup =
+      nodes.length > 1 &&
+      nodes.length === current.length &&
+      nodes.every((n, i) => n === current[i]);
+    if (!sameGroup) tr.nodes(nodes);
     tr.forceUpdate();
     tr.getLayer()?.batchDraw();
   }, [selection, doc, scale, offset.x, offset.y]);
@@ -360,9 +378,15 @@ export function MarkupLayer({
       const { annotationId: id, end } = attrs;
       const a = store.doc.annotations.find((x) => x.id === id);
       if (a?.kind === "callout") {
-        // A callout's one handle: where its pointer points (PLAN 3E).
+        // A callout's one handle: where its pointer points (PLAN 3E). Shift
+        // snaps the pointer to 45° steps around where it starts.
+        const node = stageRef.current?.findOne(`#${id}`);
         store.beginGesture();
-        drag = { mode: "tip", id };
+        drag = {
+          mode: "tip",
+          id,
+          pivot: pointerPivot(a, node?.width() ?? a.width, node?.height() ?? 0),
+        };
       } else {
         if (!a || !hasEndpoints(a) || end === "tip") return;
         store.beginGesture();
@@ -391,12 +415,14 @@ export function MarkupLayer({
       const originals = new Map(
         store.doc.annotations.filter((a) => sel.includes(a.id)).map((a) => [a.id, a]),
       );
+      const node = sel.length === 1 ? stageRef.current?.findOne(`#${sel[0]}`) : undefined;
       drag = {
         mode: "move",
         start: p,
         client: { x: ev.clientX, y: ev.clientY },
         originals,
         began: false,
+        textSize: node ? { width: node.width(), height: node.height() } : null,
       };
     } else if (tool === "select") {
       const base = ev.shiftKey ? store.selection : [];
@@ -468,6 +494,7 @@ export function MarkupLayer({
       drag.mode === "stroke"
         ? "stroke"
         : drag.mode === "endpoint" ||
+            drag.mode === "tip" ||
             (drag.mode === "draw" && (tool === "line" || tool === "arrow"))
           ? "segment"
           : drag.mode === "draw"
@@ -500,7 +527,15 @@ export function MarkupLayer({
           // A callout moved on its own keeps pointing where it did (PLAN 3E).
           const alone = drag.originals.size === 1;
           for (const [id, original] of drag.originals) {
-            s.update(id, () => translateAnnotation(original, dx, dy, alone));
+            let moved = translateAnnotation(original, dx, dy, alone);
+            // Shift: the pointer in 45° steps from where it points, as when
+            // drawing it or dragging its end.
+            if (alone && m.shiftKey && moved.kind === "callout" && drag.textSize) {
+              const pivot = pointerPivot(moved, drag.textSize.width, drag.textSize.height);
+              const snapped = snapAngle(moved.tip, pivot);
+              moved = translateAnnotation(moved, snapped.x - pivot.x, snapped.y - pivot.y, true);
+            }
+            s.update(id, () => moved);
           }
           break;
         }
@@ -516,11 +551,13 @@ export function MarkupLayer({
         case "place":
           s.update(drag.id, (a) => (a.kind === "step" ? { ...a, x: q.x, y: q.y } : a));
           break;
-        case "tip":
-          s.update(drag.id, (a) => (a.kind === "callout" ? { ...a, tip: q } : a));
+        case "tip": {
+          const tip = m.shiftKey ? snapAngle(drag.pivot, q) : q;
+          s.update(drag.id, (a) => (a.kind === "callout" ? { ...a, tip } : a));
           break;
+        }
         case "callout":
-          setPointerPreview({ from: drag.start, to: q });
+          setPointerPreview({ from: drag.start, to: m.shiftKey ? snapAngle(drag.start, q) : q });
           break;
         case "endpoint": {
           const pt = m.shiftKey ? snapAngle(drag.anchor, q) : q;
@@ -602,7 +639,9 @@ export function MarkupLayer({
         case "callout": {
           // A drag puts the text where it ends; a click, up and to the right.
           setPointerPreview(null);
-          const q = toSource(u.clientX, u.clientY);
+          // Shift: the pointer in 45° steps, as for lines.
+          const raw = toSource(u.clientX, u.clientY);
+          const q = u.shiftKey ? snapAngle(drag.start, raw) : raw;
           const dragged =
             Math.hypot(u.clientX - drag.client.x, u.clientY - drag.client.y) >= 2 * DRAG_THRESHOLD;
           const off = CALLOUT_OFFSET / view.current.scale;
@@ -772,6 +811,10 @@ export function MarkupLayer({
 
   const crop = clip ?? doc.crop;
   const textSelected = doc.annotations.some((a) => isTextual(a) && selection.includes(a.id));
+  // Several objects with text among them don't resize: scaling the group
+  // moved and stretched the text boxes, which wasn't useful (Richard).
+  const textGroup = textSelected && selection.length > 1;
+  const anchors = textGroup ? [] : textSelected ? TEXT_ANCHORS : ALL_ANCHORS;
   // Redactions (Rust bakes whole-pixel rectangles) and spotlights stay axis-aligned.
   const unrotatableSelected = doc.annotations.some(
     (a) => isUnrotatable(a) && selection.includes(a.id),
@@ -853,7 +896,7 @@ export function MarkupLayer({
             rotateEnabled={!unrotatableSelected}
             // Corners resize freely; Shift keeps the proportions.
             keepRatio={false}
-            enabledAnchors={textSelected ? TEXT_ANCHORS : ALL_ANCHORS}
+            enabledAnchors={anchors}
             borderStroke={CHROME}
             anchorStroke={CHROME}
             anchorFill="#ffffff"
@@ -875,7 +918,15 @@ export function MarkupLayer({
                 container.style.cursor = ROTATE_CURSOR;
               }
             }}
-            onTransform={bakeTransform}
+            onTransform={() => {
+              // Rotating several objects: the frame turns them as one and
+              // they're saved on release. Saving each step re-fitted an
+              // upright frame around them, and the next step then rotated
+              // from that frame, so the turns compounded into a spin.
+              const tr = trRef.current;
+              if (tr && tr.nodes().length > 1 && tr.getActiveAnchor() === "rotater") return;
+              bakeTransform();
+            }}
             onTransformEnd={() => {
               setDragHint(null);
               bakeTransform();
