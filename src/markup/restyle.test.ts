@@ -516,6 +516,18 @@ describe("callouts", () => {
     expect(t.calloutTextColor).toBe("#000000");
   });
 
+  it("keeps both colors when the shape changes", () => {
+    const id = addCallout(); // white on red
+    applyStyle({ calloutShape: "underline" });
+    expect(callout(id)).toMatchObject({
+      shape: "underline",
+      color: "#e53935",
+      textColor: "#ffffff",
+    });
+    applyStyle({ calloutShape: "box" });
+    expect(callout(id)).toMatchObject({ color: "#e53935", textColor: "#ffffff" });
+  });
+
   it("swaps its two colors", () => {
     const id = addCallout();
     swapColors();

@@ -19,7 +19,7 @@ use tauri_specta::Event;
 use crate::state::AppState;
 use crate::styles::Styles;
 
-pub const CURRENT_VERSION: u32 = 3;
+pub const CURRENT_VERSION: u32 = 4;
 const STORE_FILE: &str = "settings.json";
 const STORE_KEY: &str = "settings";
 
@@ -410,6 +410,15 @@ pub fn migrate(stored: Option<Value>) -> (Settings, bool) {
             if version < 3 {
                 settings.editor.share_color = false;
             }
+            // v3 → v4: the callout tool (PLAN 3E) comes with its own thickness
+            // dropdown. Stored per-tool styles replace the default map, so add it.
+            if version < 4 {
+                settings
+                    .styles
+                    .tools
+                    .entry("callout".to_string())
+                    .or_insert_with(crate::styles::ToolStyles::callout_default);
+            }
             // Hand edits can leave picker specs the pages can't draw.
             let styles = settings.styles.clone().normalized();
             let changed = version != u64::from(CURRENT_VERSION) || styles != settings.styles;
@@ -532,13 +541,28 @@ mod tests {
     #[test]
     fn partial_file_fills_defaults() {
         let (s, changed) = migrate(Some(json!({
-            "version": 3,
+            "version": 4,
             "afterCapture": { "autoSave": true },
         })));
         assert!(!changed);
         assert!(s.after_capture.auto_save);
         assert!(s.after_capture.copy_to_clipboard, "missing field defaults");
         assert_eq!(s.save, SaveSettings::default());
+    }
+
+    #[test]
+    fn v3_stored_tool_styles_gain_the_callout_default() {
+        let v3 = json!({ "version": 3, "styles": { "tools": { "pen": { "width": { "control": "slider", "min": 1, "max": 9 } } } } });
+        let (s, changed) = migrate(Some(v3));
+        assert!(changed);
+        assert!(s.styles.tools.contains_key("pen"), "stored overrides kept");
+        assert_eq!(
+            s.styles.tools["callout"],
+            crate::styles::ToolStyles::callout_default()
+        );
+        // From v4 on, a removed callout override stays removed.
+        let v4 = json!({ "version": 4, "styles": { "tools": {} } });
+        assert!(migrate(Some(v4)).0.styles.tools.is_empty());
     }
 
     #[test]
@@ -572,8 +596,8 @@ mod tests {
         assert!(!s.after_capture.open_editor);
         assert!(s.after_capture.auto_save, "other fields kept");
 
-        let v3 = json!({ "version": 3, "afterCapture": { "openEditor": true } });
-        let (s, changed) = migrate(Some(v3));
+        let v4 = json!({ "version": 4, "afterCapture": { "openEditor": true } });
+        let (s, changed) = migrate(Some(v4));
         assert!(!changed);
         assert!(s.after_capture.open_editor, "a later choice is kept");
     }
@@ -667,7 +691,7 @@ mod tests {
     #[test]
     fn default_shape_matches_plan() {
         let v = serde_json::to_value(Settings::default()).unwrap();
-        assert_eq!(v["version"], 3);
+        assert_eq!(v["version"], 4);
         let region = if cfg!(debug_assertions) {
             "Ctrl+Win+F12"
         } else {

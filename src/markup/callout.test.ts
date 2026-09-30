@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pointerGeometry, pointerStart, segmentQuad } from "./callout";
+import { pointerGeometry, pointerStart, segmentQuad, underlineLayout } from "./callout";
 
 const box = { x: 0, y: 0, width: 100, height: 40 };
 
@@ -69,5 +69,34 @@ describe("pointerGeometry", () => {
     expect(g.dot?.center).toEqual(tip);
     expect(g.dot!.radius * 2).toBeGreaterThan(4);
     expect(g.shaft).toEqual([start, tip]);
+  });
+});
+
+describe("underlineLayout", () => {
+  // 20pt: 26.67px text, padding 8, so the line sits 4 px off the text.
+  const at = (tip: { x: number; y: number }) => underlineLayout(100, 100, 80, 30, 20, tip);
+
+  it("runs under the text, a little wider, when the tip is lower", () => {
+    const u = at({ x: 400, y: 300 });
+    expect(u.line).toEqual([
+      { x: 96, y: 134 },
+      { x: 184, y: 134 },
+    ]);
+    expect(u.start).toEqual({ x: 184, y: 134 });
+  });
+
+  it("goes over the text when the tip is higher than its middle", () => {
+    const u = at({ x: 400, y: 50 });
+    expect(u.line[0].y).toBe(96);
+    expect(u.start).toEqual({ x: 184, y: 96 });
+  });
+
+  it("starts from the end on the tip's side of the text's centre", () => {
+    expect(at({ x: 130, y: 300 }).start?.x).toBe(96);
+    expect(at({ x: 150, y: 300 }).start?.x).toBe(184);
+  });
+
+  it("hides the pointer while the tip is inside the text's box", () => {
+    expect(at({ x: 120, y: 110 }).start).toBeNull();
   });
 });

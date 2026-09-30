@@ -9,6 +9,7 @@ import type {
   AnnotationId,
   AnnotationKind,
   CalloutEnd,
+  CalloutShape,
   ArrowEnds,
   ArrowHead,
   Doc,
@@ -99,7 +100,7 @@ export interface TargetValues {
   /** Rectangles, rectangular spotlights and callouts: the corner radius (PLAN 3D.17). */
   corner: number | null;
   /** Callouts only (`color` is the box's, `width` the pointer's). */
-  callout: { textColor: string; end: CalloutEnd } | null;
+  callout: { textColor: string; end: CalloutEnd; shape: CalloutShape } | null;
 }
 
 /** What the controls show: the first object's style, or the tool's. */
@@ -126,8 +127,9 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
       redact: null,
       spotlight: null,
       step: null,
-      corner: c.cornerRadius,
-      callout: { textColor: c.textColor, end: c.end },
+      // An underline has no box to round.
+      corner: c.shape === "box" ? c.cornerRadius : null,
+      callout: { textColor: c.textColor, end: c.end, shape: c.shape },
     };
   }
   return { ...styleValues(target, a, doc), corner: cornerValue(target, doc), callout: null };
@@ -372,6 +374,8 @@ export interface StylePatch {
   cornerRadius?: number;
   /** A callout pointer's end (PLAN 3E.2). */
   pointerEnd?: CalloutEnd;
+  /** A callout's shape (PLAN 3E.3). */
+  calloutShape?: CalloutShape;
 }
 
 /** Tools whose corners round. */
@@ -398,8 +402,10 @@ function patchAnnotation(a: Annotation, p: StylePatch): Annotation {
   if (p.cornerRadius !== undefined && (a.kind === "rect" || a.kind === "spotlight"))
     a = { ...a, cornerRadius: p.cornerRadius };
   if (a.kind === "callout") {
+    // A new shape keeps both colors (Richard: the colors are chosen, not the shape's).
     const c = {
       ...a,
+      shape: p.calloutShape ?? a.shape,
       color: p.color ?? a.color,
       textColor: p.textColor ?? a.textColor,
       lineWidth: p.width ?? a.lineWidth,
@@ -559,6 +565,7 @@ export function applyStyle(patch: StylePatch, target = styleTarget()): void {
         calloutAlign: patch.align ?? t.calloutAlign,
         calloutTextColor: patch.textColor ?? t.calloutTextColor,
         calloutEnd: patch.pointerEnd ?? t.calloutEnd,
+        calloutShape: patch.calloutShape ?? t.calloutShape,
       });
     }
     if (patch.head !== undefined && tool === "arrow")

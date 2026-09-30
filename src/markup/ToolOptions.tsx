@@ -7,6 +7,7 @@ import { FontPickerControl } from "./FontPickerControl";
 import type {
   ArrowHead,
   CalloutEnd,
+  CalloutShape,
   RedactMode,
   ShapeFill,
   SpotlightShape,
@@ -107,6 +108,26 @@ const SPOTLIGHT_SHAPES: { id: SpotlightShape; label: string; icon: ReactNode }[]
   { id: "ellipse", label: "Ellipse", icon: <ellipse cx="12" cy="12" rx="8" ry="6" /> },
 ];
 
+/** A callout's shapes (PLAN 3E.3). */
+// Outlines only, each with its pointer down to the right (Richard's mockup).
+const CALLOUT_SHAPES: { id: CalloutShape; label: string; icon: ReactNode }[] = [
+  {
+    id: "box",
+    label: "Box",
+    icon: (
+      <>
+        <rect x="2.5" y="3" width="12" height="8" rx="2" />
+        <path d="M9 11l9.5 9.5M14 20.5h4.5V16" />
+      </>
+    ),
+  },
+  {
+    id: "underline",
+    label: "Underline",
+    icon: <path d="M2 7h11l8 8M16.5 15H21v-4.5" />,
+  },
+];
+
 /** A callout pointer's ends (PLAN 3E.2), pointing up and to the right like the tool's own. */
 const POINTER_ENDS: { id: CalloutEnd; label: string; icon: ReactNode }[] = [
   { id: "line", label: "Plain end", icon: <path d="M4 20L19 5" /> },
@@ -203,6 +224,78 @@ export function ToolOptions() {
         if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
       }}
     >
+      {/* A callout: shape and end, thickness and corners, then its text (Richard's order). */}
+      {callout && values.callout && (
+        <div className={styles.section}>
+          <div className={styles.group} {...hint("callout.shape")}>
+            {CALLOUT_SHAPES.map((sh) => (
+              <button
+                key={sh.id}
+                type="button"
+                className={styles.toggle}
+                aria-pressed={values.callout?.shape === sh.id}
+                aria-label={sh.label}
+                title={sh.label}
+                onClick={() => applyStyle({ calloutShape: sh.id })}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden>
+                  {sh.icon}
+                </svg>
+              </button>
+            ))}
+          </div>
+          <div className={styles.group} {...hint("callout.end")}>
+            {POINTER_ENDS.map((e) => (
+              <button
+                key={e.id}
+                type="button"
+                className={styles.toggle}
+                aria-pressed={values.callout?.end === e.id}
+                aria-label={e.label}
+                title={e.label}
+                onClick={() => applyStyle({ pointerEnd: e.id })}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden>
+                  {e.icon}
+                </svg>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {show.width && values.width !== null && (
+        <div className={styles.section}>
+          <span
+            className={callout ? styles.iconPicker : styles.hintArea}
+            {...hint(callout ? "callout.width" : "width")}
+            title={callout ? "Pointer thickness" : undefined}
+          >
+            {callout && (
+              // Lines getting thicker.
+              <svg className={styles.pickerIcon} viewBox="0 0 16 16" aria-hidden>
+                <path d="M2 3.5h12" strokeWidth="1" />
+                <path d="M2 7.5h12" strokeWidth="2" />
+                <path d="M2 12.5h12" strokeWidth="3" />
+              </svg>
+            )}
+            <NumberPickerControl
+              picker={widthPicker}
+              value={values.width}
+              unit="px"
+              label={callout ? "Pointer thickness" : "Line width"}
+              lines
+              showKeys={hints && held.digit && (callout ? held.shiftDigit : !held.shiftDigit)}
+              hints={hints}
+              onPick={(width) => applyStyle({ width })}
+              onDragStart={beginStyleDrag}
+              onDragEnd={endStyleDrag}
+            />
+          </span>
+          {corner}
+        </div>
+      )}
+
       {show.text && text && (
         <div className={styles.section}>
           <span className={styles.hintArea} {...hint("font")}>
@@ -239,60 +332,6 @@ export function ToolOptions() {
               onDragEnd={endStyleDrag}
             />
           </span>
-        </div>
-      )}
-
-      {show.width && values.width !== null && (
-        <div className={styles.section}>
-          <span
-            className={callout ? styles.iconPicker : styles.hintArea}
-            {...hint(callout ? "callout.width" : "width")}
-            title={callout ? "Pointer thickness" : undefined}
-          >
-            {callout && (
-              // Lines getting thicker.
-              <svg className={styles.pickerIcon} viewBox="0 0 16 16" aria-hidden>
-                <path d="M2 3.5h12" strokeWidth="1" />
-                <path d="M2 7.5h12" strokeWidth="2" />
-                <path d="M2 12.5h12" strokeWidth="3" />
-              </svg>
-            )}
-            <NumberPickerControl
-              picker={widthPicker}
-              value={values.width}
-              unit="px"
-              label={callout ? "Pointer thickness" : "Line width"}
-              lines
-              showKeys={hints && held.digit && (callout ? held.shiftDigit : !held.shiftDigit)}
-              hints={hints}
-              onPick={(width) => applyStyle({ width })}
-              onDragStart={beginStyleDrag}
-              onDragEnd={endStyleDrag}
-            />
-          </span>
-          {corner}
-        </div>
-      )}
-
-      {callout && values.callout && (
-        <div className={styles.section}>
-          <div className={styles.group} {...hint("callout.end")}>
-            {POINTER_ENDS.map((e) => (
-              <button
-                key={e.id}
-                type="button"
-                className={styles.toggle}
-                aria-pressed={values.callout?.end === e.id}
-                aria-label={e.label}
-                title={e.label}
-                onClick={() => applyStyle({ pointerEnd: e.id })}
-              >
-                <svg viewBox="0 0 24 24" aria-hidden>
-                  {e.icon}
-                </svg>
-              </button>
-            ))}
-          </div>
         </div>
       )}
 

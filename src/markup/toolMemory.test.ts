@@ -36,6 +36,7 @@ describe("tool memory", () => {
       calloutAlign: "center",
       calloutTextColor: "#ffffff",
       calloutEnd: "dot",
+      calloutShape: "underline",
     });
     const saved = JSON.stringify(snapshotToolMemory());
     useToolStore.setState(initial, true);

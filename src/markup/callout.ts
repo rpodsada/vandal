@@ -57,6 +57,41 @@ function insideRoundedBox(dx: number, dy: number, hw: number, hh: number, r: num
   return Math.hypot(ax - (hw - r), ay - (hh - r)) <= r;
 }
 
+/** An underline callout's line and where its pointer starts (PLAN 3E.3). */
+export interface UnderlineLayout {
+  /** Under the text, or over it when the tip is higher than the text's middle. */
+  line: [Point, Point];
+  /** The line's end on the tip's side, or null while the tip is inside the text's box. */
+  start: Point | null;
+}
+
+/**
+ * Lay out an underline callout whose text is at (x, y), `width` × `height`: a
+ * line a little wider than the text, half a padding below it (or above), and
+ * the pointer from the end on the tip's side of the text's centre.
+ */
+export function underlineLayout(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  fontSize: number,
+  tip: Point,
+): UnderlineLayout {
+  const pad = textBoxPadding(textPx(fontSize));
+  const above = tip.y < y + height / 2;
+  const lineY = above ? y - pad / 2 : y + height + pad / 2;
+  const left = { x: x - pad / 2, y: lineY };
+  const right = { x: x + width + pad / 2, y: lineY };
+  const box = calloutBox(x, y, width, height, fontSize);
+  const inside =
+    tip.x >= box.x && tip.x <= box.x + box.width && tip.y >= box.y && tip.y <= box.y + box.height;
+  return {
+    line: [left, right],
+    start: inside ? null : tip.x < x + width / 2 ? left : right,
+  };
+}
+
 /** A dot end's radius for a pointer thickness: clearly wider than the line. */
 export function dotRadius(width: number): number {
   return 2 + 1.25 * width;

@@ -60,6 +60,7 @@ export const CONTROL_HINTS = {
   "callout.size": "[1…0] Pick a text size by number",
   "callout.width": "[Shift+1…0] Pick the pointer's thickness by number",
   "callout.end": "The end of the pointer: plain, an arrow or a dot",
+  "callout.shape": "A box behind the text, or a line under it (over it when the pointer points up)",
   dim: "[1…0] How dark outside · shared by every spotlight",
   "step.shape": "The marker's shape",
   "step.format": "Numbers or letters · shared by every marker",

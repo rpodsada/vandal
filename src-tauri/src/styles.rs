@@ -261,19 +261,36 @@ impl Default for Styles {
                 source: FontSource::Text,
                 ..FontPicker::default()
             },
-            tools: BTreeMap::from([(
-                "highlighter".to_string(),
-                ToolStyles {
-                    palette: Some(colors(&[
-                        "#ffeb3b", "#76ff03", "#ff4081", "#40c4ff", "#ffab40",
-                    ])),
-                    width: Some(NumberPicker::Slider {
-                        min: 8.0,
-                        max: 40.0,
-                    }),
-                    color_control: None,
-                },
-            )]),
+            tools: BTreeMap::from([
+                (
+                    "highlighter".to_string(),
+                    ToolStyles {
+                        palette: Some(colors(&[
+                            "#ffeb3b", "#76ff03", "#ff4081", "#40c4ff", "#ffab40",
+                        ])),
+                        width: Some(NumberPicker::Slider {
+                            min: 8.0,
+                            max: 40.0,
+                        }),
+                        color_control: None,
+                    },
+                ),
+                ("callout".to_string(), ToolStyles::callout_default()),
+            ]),
+        }
+    }
+}
+
+impl ToolStyles {
+    /// The callout's default override (PLAN 3E.3): its thicknesses as a
+    /// dropdown, which keeps its busy options bar compact beside the icon.
+    pub fn callout_default() -> Self {
+        Self {
+            palette: None,
+            width: Some(NumberPicker::Dropdown {
+                values: vec![2.0, 4.0, 6.0, 10.0],
+            }),
+            color_control: None,
         }
     }
 }

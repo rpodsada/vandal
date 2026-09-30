@@ -15,7 +15,7 @@ import {
   Transformer,
 } from "react-konva";
 import { bendFromPoint, bendPoint } from "./bend";
-import { calloutBox, pointerGeometry, pointerStart, segmentQuad } from "./callout";
+import { calloutBox, pointerGeometry, pointerStart, segmentQuad, underlineLayout } from "./callout";
 import { layerOf, registerAnnotationGroup } from "./export";
 import {
   annotationBounds,
@@ -1130,8 +1130,8 @@ function AnnotationShape({
 }
 
 /**
- * A callout (PLAN 3E): the pointer, then the box over its start, then the
- * text. One Konva text node, so the transformer resizes its width like text's
+ * A callout (PLAN 3E): the pointer, then the box over its start (or the
+ * underline, PLAN 3E.3), then the text. One Konva text node, so the transformer resizes its width like text's
  * and the pointer follows the laid-out box. While it's being typed into, the
  * box and pointer stay and the text editor shows the text.
  */
@@ -1144,12 +1144,22 @@ function CalloutShape({
   hitSlop: number;
   typing: boolean;
 }) {
-  // The box and the pointer from where it leaves it, relative to the text's top-left.
+  // The box (drawn, or with an underline only hit), the underline, and the
+  // pointer from where it starts, relative to the text's top-left.
   const layout = (t: Konva.Text) => {
-    const box = calloutBox(0, 0, t.width(), t.height(), a.fontSize);
+    const w = t.width();
+    const h = t.height();
+    const box = calloutBox(0, 0, w, h, a.fontSize);
     const tip = { x: a.tip.x - a.x, y: a.tip.y - a.y };
-    const start = pointerStart(box, a.cornerRadius, tip);
-    return { box, tip, start, pointer: start && pointerGeometry(start, tip, a.end, a.lineWidth) };
+    const under = a.shape === "underline" ? underlineLayout(0, 0, w, h, a.fontSize, tip) : null;
+    const start = under ? under.start : pointerStart(box, a.cornerRadius, tip);
+    return {
+      box,
+      tip,
+      under,
+      start,
+      pointer: start && pointerGeometry(start, tip, a.end, a.lineWidth),
+    };
   };
   return (
     <Text
@@ -1169,7 +1179,7 @@ function CalloutShape({
       perfectDrawEnabled={false}
       sceneFunc={(ctx, shape) => {
         const t = shape as Konva.Text;
-        const { box, pointer } = layout(t);
+        const { box, under, pointer } = layout(t);
         const c = (ctx as unknown as { _context: CanvasRenderingContext2D })._context;
         c.save();
         if (pointer) {
@@ -1197,22 +1207,33 @@ function CalloutShape({
             c.fill();
           }
         }
-        c.beginPath();
-        c.roundRect(
-          box.x,
-          box.y,
-          box.width,
-          box.height,
-          drawnCornerRadius(a.cornerRadius, box.width, box.height),
-        );
-        c.fillStyle = a.color;
-        c.fill();
+        if (under) {
+          const [l, r] = under.line;
+          c.beginPath();
+          c.moveTo(l.x, l.y);
+          c.lineTo(r.x, r.y);
+          c.strokeStyle = a.color;
+          c.lineWidth = a.lineWidth;
+          c.lineCap = "round";
+          c.stroke();
+        } else {
+          c.beginPath();
+          c.roundRect(
+            box.x,
+            box.y,
+            box.width,
+            box.height,
+            drawnCornerRadius(a.cornerRadius, box.width, box.height),
+          );
+          c.fillStyle = a.color;
+          c.fill();
+        }
         c.restore();
         if (!typing) t._sceneFunc(ctx as Parameters<Konva.Text["_sceneFunc"]>[0]);
       }}
       // The box and the pointer (a text node has no stroke to hit with).
       hitFunc={(ctx, shape) => {
-        const { box, tip, start, pointer } = layout(shape as Konva.Text);
+        const { box, tip, under, start, pointer } = layout(shape as Konva.Text);
         const fillPath = (points: Point[]) => {
           ctx.beginPath();
           ctx.moveTo(points[0].x, points[0].y);
@@ -1226,6 +1247,7 @@ function CalloutShape({
           { x: box.x + box.width, y: box.y + box.height },
           { x: box.x, y: box.y + box.height },
         ]);
+        if (under) fillPath(segmentQuad(under.line[0], under.line[1], a.lineWidth + hitSlop));
         if (!start || !pointer) return;
         fillPath(segmentQuad(start, tip, a.lineWidth + hitSlop));
         if (pointer.head) fillPath(pointer.head);

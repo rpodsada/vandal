@@ -67,6 +67,12 @@ export const DEFAULT_STYLE_CONFIG: StyleConfig = {
         width: { control: "slider", min: 8, max: 40 },
         colorControl: null,
       },
+      // Compact beside its icon in a busy options bar (PLAN 3E.3).
+      callout: {
+        palette: null,
+        width: { control: "dropdown", values: [2, 4, 6, 10] },
+        colorControl: null,
+      },
     },
   },
   shareColor: false,
@@ -357,8 +363,9 @@ export function toolCalloutStyle(): CalloutStyle {
   const color = toolColor("callout");
   const font = toolFont();
   return {
-    shape: "box",
+    shape: t.calloutShape,
     color,
+    // Until one is picked: black or white, whichever reads better on the callout color.
     textColor: t.calloutTextColor ?? contrastingText(color),
     lineWidth: toolWidth("callout"),
     cornerRadius: toolCornerRadius("callout"),
