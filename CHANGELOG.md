@@ -59,6 +59,8 @@ All notable changes to Vandal are listed here. The format follows
   quick edit's annotations are still editable, and the crop can grow back out to the whole screen.
   Closing the editor without changes no longer copies the image again.
 - The editor's "Copied" and "Saved" messages in the status bar now start with a green check.
+- Number buttons in the options bar (spotlight darkness, redact strength, marker and font sizes)
+  show their unit after the number, as the sliders and dropdowns already did.
 
 ### Fixed
 

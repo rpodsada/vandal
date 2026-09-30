@@ -68,7 +68,15 @@ function Buttons(props: Props & { values: number[] }) {
           title={`${v} ${props.unit}${keyHint(props, i)}`}
           onClick={() => props.onPick(v)}
         >
-          {props.lines ? <Line width={v} length={20} /> : v}
+          {props.lines ? (
+            <Line width={v} length={20} />
+          ) : (
+            <>
+              {v}
+              {/* Smaller and lighter, like the value boxes in Settings. */}
+              <span className={styles.buttonUnit}>{props.unit}</span>
+            </>
+          )}
           {props.showKeys && <span className={styles.badge}>{slotKey(i)}</span>}
         </button>
       ))}
