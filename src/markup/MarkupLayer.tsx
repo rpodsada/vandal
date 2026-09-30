@@ -17,6 +17,9 @@ import {
 import { bendFromPoint, bendPoint } from "./bend";
 import {
   calloutBox,
+  calloutExtent,
+  grabsTip,
+  orbitCallout,
   pointerGeometry,
   pointerPivot,
   pointerStart,
@@ -108,6 +111,8 @@ const ALL_ANCHORS = [
 const BEND_SNAP = 6;
 /** Screen px up and right of a click where a callout's text goes (its tip is at the click). */
 const CALLOUT_OFFSET = 48;
+/** Screen px around a callout's pointer end that grab it, as its handle would (radius plus hit margin). */
+const TIP_GRAB = 10;
 /** Degrees from a 45° step within which rotation snaps to it. */
 const ROTATION_SNAP = 6;
 
@@ -151,6 +156,8 @@ type Drag =
       began: boolean;
       /** A lone callout's laid-out text, for Shift's 45° pointer (PLAN 3E.5). */
       textSize: { width: number; height: number } | null;
+      /** A callout grabbed by its pointer line: it moves with its tip (PLAN 3E.7). */
+      rigid: boolean;
     }
   | { mode: "draw"; start: Point; id: AnnotationId }
   | { mode: "place"; id: AnnotationId }
@@ -192,9 +199,21 @@ function isBoxed(a: Annotation): boolean {
   return hasRect(a) || isTextual(a);
 }
 
-/** Kept axis-aligned: no rotate handle. */
-function isUnrotatable(a: Annotation): boolean {
-  return a.kind === "redact" || a.kind === "spotlight" || a.kind === "callout";
+/**
+ * Kept axis-aligned: no rotate handle. A callout turns only in a group, where
+ * it orbits upright (PLAN 3E.6).
+ */
+function isUnrotatable(a: Annotation, inGroup: boolean): boolean {
+  return a.kind === "redact" || a.kind === "spotlight" || (a.kind === "callout" && !inGroup);
+}
+
+/**
+ * Is `p` on a callout's text (its box, padding included) rather than its
+ * pointer? The text wins where they overlap, as on a very short pointer.
+ */
+function onCalloutText(a: CalloutAnnotation, p: Point, node: Konva.Node | undefined): boolean {
+  const box = calloutBox(a.x, a.y, node?.width() ?? a.width, node?.height() ?? 0, a.fontSize);
+  return p.x >= box.x && p.x <= box.x + box.width && p.y >= box.y && p.y <= box.y + box.height;
 }
 
 /**
@@ -226,6 +245,25 @@ export function MarkupLayer({
   const highlightLayerRef = useRef<Konva.Layer>(null);
   const redactionsRef = useRef<Konva.Group>(null);
   const trRef = useRef<Konva.Transformer>(null);
+  /**
+   * A callout selected by its pointer line (PLAN 3E.7): selected as a whole,
+   * it moves rigidly and rotates, with no resize handles. Only while it is
+   * the one thing selected (see `whole` below).
+   */
+  const [wholeId, setWholeId] = useState<AnnotationId | null>(null);
+  const whole = wholeId !== null && selection.length === 1 && selection[0] === wholeId;
+  /**
+   * In a multi-selection each callout is in the transformer as an invisible
+   * stand-in the size of everything it draws (PLAN 3E.6), so the frame takes
+   * in its pointer, and a group rotation turns the stand-in, which carries
+   * the callout around upright.
+   */
+  const proxies = useRef(new Map<AnnotationId, Konva.Rect>());
+  /** Callouts as a group rotation began, with their text's laid-out size and extent. */
+  const orbiting = useRef<Map<
+    AnnotationId,
+    { a: CalloutAnnotation; width: number; height: number; extent: Rect }
+  > | null>(null);
   const [marquee, setMarquee] = useState<Rect | null>(null);
   /** A callout being dragged out: from its tip to where the text goes. */
   const [pointerPreview, setPointerPreview] = useState<{ from: Point; to: Point } | null>(null);
@@ -255,23 +293,27 @@ export function MarkupLayer({
     const tr = trRef.current;
     const stage = stageRef.current;
     if (!tr || !stage) return;
-    const boxed = doc.annotations
+    const proxied = selection.length > 1 || whole;
+    const nodes = doc.annotations
       .filter((a) => selection.includes(a.id) && isBoxed(a))
-      .map((a) => a.id);
-    const nodes = boxed.map((id) => stage.findOne(`#${id}`)).filter((n): n is Konva.Node => !!n);
+      .map((a) =>
+        // A callout in a group, or selected whole: its stand-in (see `proxies`).
+        proxied && a.kind === "callout" ? proxies.current.get(a.id) : stage.findOne(`#${a.id}`),
+      )
+      .filter((n): n is Konva.Node => !!n);
     // Setting the nodes turns the frame upright for several of them. Keep a
     // group's frame at the angle it was rotated to until the selection
     // changes, so the rotation can be fine-tuned (Richard); one node's frame
     // always follows that node's own rotation.
     const current = tr.nodes();
     const sameGroup =
-      nodes.length > 1 &&
+      (nodes.length > 1 || whole) &&
       nodes.length === current.length &&
       nodes.every((n, i) => n === current[i]);
     if (!sameGroup) tr.nodes(nodes);
     tr.forceUpdate();
     tr.getLayer()?.batchDraw();
-  }, [selection, doc, scale, offset.x, offset.y]);
+  }, [selection, doc, scale, offset.x, offset.y, whole]);
 
   // The host's cursor (e.g. the pan hand) wins while tools are off.
   useEffect(() => {
@@ -361,6 +403,9 @@ export function MarkupLayer({
     const p = toSource(ev.clientX, ev.clientY);
     const picks = picksObjects(ev.ctrlKey);
     const hit = picks && e.target.name() === "annotation" ? e.target.id() : null;
+    const hitCallout = store.doc.annotations.find(
+      (a): a is CalloutAnnotation => a.id === hit && a.kind === "callout",
+    );
     let drag: Drag;
 
     if (tool === "pen" || tool === "highlighter") {
@@ -402,9 +447,39 @@ export function MarkupLayer({
               }
             : { mode: "endpoint", id, end, anchor: end === "from" ? a.to : a.from };
       }
+    } else if (
+      hitCallout &&
+      !ev.shiftKey &&
+      !(store.selection.includes(hitCallout.id) && store.selection.length > 1) &&
+      grabsTip(hitCallout, p, TIP_GRAB / view.current.scale) &&
+      // The text wins where they meet, as for the pointer line.
+      !onCalloutText(hitCallout, p, e.target)
+    ) {
+      // The pointer's end before its handle shows: select the callout as its
+      // text would and move the end, as the handle does (PLAN 3E.7).
+      setWholeId(null);
+      store.select([hitCallout.id]);
+      store.beginGesture();
+      drag = {
+        mode: "tip",
+        id: hitCallout.id,
+        pivot: pointerPivot(hitCallout, e.target.width(), e.target.height()),
+      };
     } else if (hit) {
       let sel = store.selection;
-      if (ev.shiftKey) {
+      // A callout's pointer line selects it whole, unless it's being moved
+      // with others; its text selects it as before (PLAN 3E.7).
+      const hitA = store.doc.annotations.find((a) => a.id === hit);
+      const rigid =
+        !ev.shiftKey &&
+        !(sel.includes(hit) && sel.length > 1) &&
+        hitA?.kind === "callout" &&
+        !onCalloutText(hitA, p, e.target);
+      setWholeId(rigid ? hit : null);
+      if (rigid) {
+        sel = [hit];
+        store.select(sel);
+      } else if (ev.shiftKey) {
         sel = sel.includes(hit) ? sel.filter((id) => id !== hit) : [...sel, hit];
         store.select(sel);
         if (!sel.includes(hit)) return;
@@ -423,8 +498,10 @@ export function MarkupLayer({
         originals,
         began: false,
         textSize: node ? { width: node.width(), height: node.height() } : null,
+        rigid,
       };
     } else if (tool === "select") {
+      setWholeId(null);
       const base = ev.shiftKey ? store.selection : [];
       store.select(base);
       drag = { mode: "marquee", start: p, base };
@@ -525,7 +602,7 @@ export function MarkupLayer({
           const dx = q.x - drag.start.x;
           const dy = q.y - drag.start.y;
           // A callout moved on its own keeps pointing where it did (PLAN 3E).
-          const alone = drag.originals.size === 1;
+          const alone = drag.originals.size === 1 && !drag.rigid;
           for (const [id, original] of drag.originals) {
             let moved = translateAnnotation(original, dx, dy, alone);
             // Shift: the pointer in 45° steps from where it points, as when
@@ -814,11 +891,23 @@ export function MarkupLayer({
   // Several objects with text among them don't resize: scaling the group
   // moved and stretched the text boxes, which wasn't useful (Richard).
   const textGroup = textSelected && selection.length > 1;
-  const anchors = textGroup ? [] : textSelected ? TEXT_ANCHORS : ALL_ANCHORS;
+  const anchors = textGroup || whole ? [] : textSelected ? TEXT_ANCHORS : ALL_ANCHORS;
   // Redactions (Rust bakes whole-pixel rectangles) and spotlights stay axis-aligned.
   const unrotatableSelected = doc.annotations.some(
-    (a) => isUnrotatable(a) && selection.includes(a.id),
+    (a) => isUnrotatable(a, selection.length > 1 || whole) && selection.includes(a.id),
   );
+  // Callouts shown by their stand-ins: in a group, or one selected whole.
+  const groupCallouts = doc.annotations.filter(
+    (a): a is CalloutAnnotation =>
+      a.kind === "callout" && (selection.length > 1 || whole) && selection.includes(a.id),
+  );
+  /** Everything a callout draws, as laid out now (or as a group rotation began). */
+  const extentOf = (a: CalloutAnnotation): Rect => {
+    const frozen = orbiting.current?.get(a.id);
+    if (frozen) return frozen.extent;
+    const node = stageRef.current?.findOne(`#${a.id}`);
+    return calloutExtent(a, node?.width() ?? a.width, node?.height() ?? 0);
+  };
   const spotlights = doc.annotations.filter(
     (a): a is SpotlightAnnotation => a.kind === "spotlight",
   );
@@ -888,6 +977,22 @@ export function MarkupLayer({
           </Group>
         </Layer>
         <Layer>
+          {/* Invisible: only the frame measures them (see `proxies`). */}
+          <Group x={offset.x} y={offset.y} scaleX={scale} scaleY={scale} listening={false}>
+            {groupCallouts.map((a) => (
+              <KRect
+                key={`${a.id}-proxy`}
+                ref={(node) => {
+                  if (!node) {
+                    proxies.current.delete(a.id);
+                    return;
+                  }
+                  proxies.current.set(a.id, node);
+                  node.getSelfRect = () => extentOf(a);
+                }}
+              />
+            ))}
+          </Group>
           <Transformer
             ref={trRef}
             listening={handlesLive}
@@ -911,6 +1016,17 @@ export function MarkupLayer({
             }
             onTransformStart={() => {
               docStore.getState().beginGesture();
+              // A group rotation carries its callouts from where they are now.
+              if (trRef.current?.getActiveAnchor() === "rotater" && groupCallouts.length) {
+                orbiting.current = new Map(
+                  groupCallouts.map((a) => {
+                    const node = stageRef.current?.findOne(`#${a.id}`);
+                    const width = node?.width() ?? a.width;
+                    const height = node?.height() ?? 0;
+                    return [a.id, { a, width, height, extent: calloutExtent(a, width, height) }];
+                  }),
+                );
+              }
               setDragHint(trRef.current?.getActiveAnchor() === "rotater" ? "rotate" : "resize");
               // Keep the rotate cursor while dragging, even off the handle.
               const container = stageRef.current?.container();
@@ -924,12 +1040,36 @@ export function MarkupLayer({
               // upright frame around them, and the next step then rotated
               // from that frame, so the turns compounded into a spin.
               const tr = trRef.current;
-              if (tr && tr.nodes().length > 1 && tr.getActiveAnchor() === "rotater") return;
+              if (
+                tr &&
+                (tr.nodes().length > 1 || orbiting.current) &&
+                tr.getActiveAnchor() === "rotater"
+              ) {
+                // Callouts follow live: each goes where its turning stand-in
+                // carries its text's centre and its tip.
+                const store = docStore.getState();
+                for (const [id, o] of orbiting.current ?? []) {
+                  const turn = proxies.current.get(id)?.getTransform();
+                  if (!turn) continue;
+                  const moved = orbitCallout(o.a, o.width, o.height, (p) => turn.point(p));
+                  store.update(id, () => moved);
+                }
+                return;
+              }
               bakeTransform();
             }}
             onTransformEnd={() => {
               setDragHint(null);
               bakeTransform();
+              // The callouts are where they belong now: stand their stand-ins
+              // back up, around them.
+              if (orbiting.current) {
+                for (const id of orbiting.current.keys()) {
+                  proxies.current.get(id)?.setAttrs({ x: 0, y: 0, rotation: 0 });
+                }
+                orbiting.current = null;
+                trRef.current?.forceUpdate();
+              }
               docStore.getState().endGesture();
             }}
           />

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  calloutExtent,
+  grabsTip,
   growCallout,
+  orbitCallout,
   pointerGeometry,
   pointerPivot,
   pointerStart,
@@ -180,5 +183,80 @@ describe("pointerPivot", () => {
     const p = pointerPivot(a, 80, 30);
     expect(p.x).toBe(184);
     expect(p.y).toBeCloseTo(134 + 0.1 * ((20 * 96) / 72));
+  });
+});
+
+describe("calloutExtent and orbitCallout", () => {
+  const a: CalloutAnnotation = {
+    id: "c",
+    kind: "callout",
+    x: 100,
+    y: 100,
+    width: 80,
+    autoWidth: false,
+    text: "Hi",
+    fontFamily: "Segoe UI",
+    fontSize: 20,
+    bold: false,
+    italic: false,
+    align: "left",
+    shape: "box",
+    color: "#e53935",
+    textColor: "#ffffff",
+    lineWidth: 4,
+    cornerRadius: 5,
+    tip: { x: 300, y: 250 },
+    end: "dot",
+  };
+
+  it("takes in the box and the pointer's end", () => {
+    const e = calloutExtent(a, 80, 30);
+    expect(e.x).toBe(92); // the box's padding
+    expect(e.x + e.width).toBe(300 + 7); // the dot's radius past the tip
+    expect(e.y + e.height).toBe(250 + 7);
+  });
+
+  it("moves the text's centre and the tip, keeping the text's size", () => {
+    // A half turn about (200, 200).
+    const turn = (p: { x: number; y: number }) => ({ x: 400 - p.x, y: 400 - p.y });
+    const o = orbitCallout(a, 80, 30, turn);
+    expect(o.tip).toEqual({ x: 100, y: 150 });
+    // The centre (140, 115) goes to (260, 285): the text's corner follows.
+    expect(o).toMatchObject({ x: 220, y: 270, width: 80 });
+  });
+});
+
+describe("grabsTip", () => {
+  const a = (end: "line" | "arrow" | "dot"): CalloutAnnotation => ({
+    id: "c",
+    kind: "callout",
+    x: 0,
+    y: 0,
+    width: 50,
+    autoWidth: false,
+    text: "Hi",
+    fontFamily: "Segoe UI",
+    fontSize: 20,
+    bold: false,
+    italic: false,
+    align: "left",
+    shape: "box",
+    color: "#e53935",
+    textColor: "#ffffff",
+    lineWidth: 4,
+    cornerRadius: 5,
+    tip: { x: 200, y: 200 },
+    end,
+  });
+
+  it("takes the handle's reach around the end", () => {
+    expect(grabsTip(a("line"), { x: 208, y: 200 }, 10)).toBe(true);
+    expect(grabsTip(a("line"), { x: 215, y: 200 }, 10)).toBe(false);
+  });
+
+  it("takes in a long arrow head", () => {
+    // Head length for 4 px: 18.
+    expect(grabsTip(a("arrow"), { x: 185, y: 200 }, 10)).toBe(true);
+    expect(grabsTip(a("line"), { x: 185, y: 200 }, 10)).toBe(false);
   });
 });

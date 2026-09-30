@@ -150,7 +150,7 @@ const SELECTED =
   "[Del] delete · [Ctrl+D] duplicate · [←↑↓→] nudge, [Shift] 10 px · [Ctrl+[] [Ctrl+]] order · [Shift]+click select multiple";
 const TEXT_SELECTED = `[Enter] edit the text · ${SELECTED}`;
 const STEP_SELECTED = `[Enter] or double-click to type its own label · ${SELECTED}`;
-const CALLOUT_SELECTED = `Drag the ● handle to point it · [Shift]+drag keeps the pointer at 45° steps · [Enter] edit the text · ${SELECTED}`;
+const CALLOUT_SELECTED = `Drag the text to move it, the pointer line to move it all · Drag the ● handle to point it · [Shift]+drag 45° steps · [Enter] edit the text · ${SELECTED}`;
 const LABEL_TYPING = "[Enter] done · [Esc] cancel · Leave it empty to count up again";
 const SEGMENT_SELECTED = `Drag the ◆ handle to bend it, double-click it to straighten · ${SELECTED}`;
 const TYPING = "[Esc] done · [Ctrl+B] bold · [Ctrl+I] italic · [Alt+1…0] font";

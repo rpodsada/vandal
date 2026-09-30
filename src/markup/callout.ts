@@ -4,7 +4,7 @@
 import type { CalloutAnnotation, CalloutEnd, Point, Rect } from "./model/types";
 import { drawnCornerRadius } from "./styles";
 import { textBoxPadding } from "./textMeasure";
-import { arrowGeometry, textPx } from "./geometry";
+import { arrowGeometry, arrowHeadSize, textPx } from "./geometry";
 
 /**
  * How far below the text's line boxes the box and underline sit, as a share
@@ -69,6 +69,57 @@ function insideRoundedBox(dx: number, dy: number, hw: number, hh: number, r: num
   if (ax > hw || ay > hh) return false;
   if (ax <= hw - r || ay <= hh - r) return true;
   return Math.hypot(ax - (hw - r), ay - (hh - r)) <= r;
+}
+
+/**
+ * Everything a callout draws (PLAN 3E.6): its box (which holds an underline
+ * too) and its pointer out to the end's reach. `width` × `height`: its text
+ * as laid out. A multi-selection's frame goes around this.
+ */
+export function calloutExtent(a: CalloutAnnotation, width: number, height: number): Rect {
+  const box = calloutBox(a.x, a.y, width, height, a.fontSize);
+  const reach =
+    a.end === "dot"
+      ? dotRadius(a.lineWidth)
+      : a.end === "arrow"
+        ? arrowHeadSize(a.lineWidth).halfWidth
+        : a.lineWidth / 2;
+  const x0 = Math.min(box.x, a.tip.x - reach);
+  const y0 = Math.min(box.y, a.tip.y - reach);
+  const x1 = Math.max(box.x + box.width, a.tip.x + reach);
+  const y1 = Math.max(box.y + box.height, a.tip.y + reach);
+  return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+}
+
+/**
+ * Does a press at `p` grab the pointer's end (PLAN 3E.7)? Within `slop` (the
+ * handle's reach, in source px) or on the arrow head or dot, so pressing the
+ * end of an unselected callout moves the end, as its handle would.
+ */
+export function grabsTip(a: CalloutAnnotation, p: Point, slop: number): boolean {
+  const reach =
+    a.end === "dot"
+      ? dotRadius(a.lineWidth)
+      : a.end === "arrow"
+        ? arrowHeadSize(a.lineWidth).length
+        : a.lineWidth / 2;
+  return Math.hypot(p.x - a.tip.x, p.y - a.tip.y) <= Math.max(reach, slop);
+}
+
+/**
+ * Where a callout goes when a group rotation carries it (PLAN 3E.6): its
+ * text's centre and its tip moved by `move`, the text staying upright.
+ * `width` × `height`: its text as laid out.
+ */
+export function orbitCallout(
+  a: CalloutAnnotation,
+  width: number,
+  height: number,
+  move: (p: Point) => Point,
+): CalloutAnnotation {
+  const c = { x: a.x + width / 2, y: a.y + height / 2 };
+  const moved = move(c);
+  return { ...a, x: a.x + moved.x - c.x, y: a.y + moved.y - c.y, tip: move(a.tip) };
 }
 
 /**
