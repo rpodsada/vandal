@@ -8,9 +8,12 @@ committed before the next one. Warn the user before changes that restart the dev
 `Cargo.toml`, `tauri.conf.json`): they are often using it. Commit here once an increment is
 confirmed, but don't push unless asked.
 
-`internal/` holds our private notes (plan, test matrix, perf log, mockups). It's a separate
-private git repo and is gitignored here: commit its changes in `internal/`, never in this repo,
-and push them right away. If it's missing, ask the user for it rather than working without the plan.
+`internal/` holds our private notes. It's a separate private git repo and is gitignored here:
+commit its changes in `internal/`, never in this repo, and push them right away. If it's missing,
+ask the user for it rather than working without the plan. Only `PLAN.md` is read up front; the rest
+when needed: `done.md` (finished phases' detail, e.g. what "PLAN 3D.18" in a comment means),
+`ideas.md` (backlog, Phases 4–5), `decisions.md` (the decisions log: append, search rather than
+read whole), `test-matrix.md`, `perf.md`, `mockup/`.
 
 ## Non-negotiables (PLAN §1)
 
@@ -29,7 +32,7 @@ and push them right away. If it's missing, ask the user for it rather than worki
 - Tauri capabilities are minimal and per-window. Overlays get no filesystem access.
 - New dependencies need a short justification in the commit message.
 - If the plan turns out to be wrong, update `internal/PLAN.md` at the same time (committed in
-  `internal/`) and add to its Decisions log.
+  `internal/`) and add to `internal/decisions.md`.
 - Small, focused commits that explain _why_.
 
 ## Before calling a task done
