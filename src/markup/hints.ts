@@ -59,6 +59,7 @@ export const CONTROL_HINTS = {
   "corner.callout": "Round the box's corners · 0 is square",
   "callout.size": "[1…0] Pick a text size by number",
   "callout.width": "[Shift+1…0] Pick the pointer's thickness by number",
+  "callout.end": "The end of the pointer: plain, an arrow or a dot",
   dim: "[1…0] How dark outside · shared by every spotlight",
   "step.shape": "The marker's shape",
   "step.format": "Numbers or letters · shared by every marker",

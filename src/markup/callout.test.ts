@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pointerStart, segmentQuad } from "./callout";
+import { pointerGeometry, pointerStart, segmentQuad } from "./callout";
 
 const box = { x: 0, y: 0, width: 100, height: 40 };
 
@@ -42,5 +42,32 @@ describe("segmentQuad", () => {
     const q = segmentQuad({ x: 0, y: 0 }, { x: 10, y: 0 }, 4);
     expect(q.map((p) => p.y)).toEqual([2, 2, -2, -2]);
     expect(q.map((p) => p.x)).toEqual([0, 10, 10, 0]);
+  });
+});
+
+describe("pointerGeometry", () => {
+  const start = { x: 0, y: 0 };
+  const tip = { x: 100, y: 0 };
+
+  it("is a plain line to the tip", () => {
+    expect(pointerGeometry(start, tip, "line", 4)).toEqual({
+      shaft: [start, tip],
+      head: null,
+      dot: null,
+    });
+  });
+
+  it("stops an arrow's shaft at its head, whose point is the tip", () => {
+    const g = pointerGeometry(start, tip, "arrow", 4);
+    expect(g.head?.[1]).toEqual(tip);
+    expect(g.shaft[1].x).toBeLessThan(100);
+    expect(g.shaft[1].x).toBeCloseTo(g.head![0].x);
+  });
+
+  it("centres a dot, wider than the line, on the tip", () => {
+    const g = pointerGeometry(start, tip, "dot", 4);
+    expect(g.dot?.center).toEqual(tip);
+    expect(g.dot!.radius * 2).toBeGreaterThan(4);
+    expect(g.shaft).toEqual([start, tip]);
   });
 });

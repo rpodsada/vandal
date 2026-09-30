@@ -55,6 +55,7 @@ All notable changes to Vandal are listed here. The format follows
   pointer's end to point somewhere else; moving or resizing the callout leaves the pointer's end
   where it is, and the pointer always leaves the box on the side facing it. Pick the text size
   with 1–9 and 0, the pointer's thickness with Shift+1–9 and Shift+0, and the font with Alt.
+  The pointer can end plainly, in an arrow or in a dot.
 
 ### Changed
 

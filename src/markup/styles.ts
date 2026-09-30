@@ -362,7 +362,7 @@ export function toolCalloutStyle(): CalloutStyle {
     textColor: t.calloutTextColor ?? contrastingText(color),
     lineWidth: toolWidth("callout"),
     cornerRadius: toolCornerRadius("callout"),
-    end: "line",
+    end: t.calloutEnd,
     fontFamily: t.calloutFont ?? font.family,
     fontSize: t.calloutFontSize ?? font.size,
     bold: t.calloutBold,

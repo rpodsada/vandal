@@ -4,7 +4,14 @@ import { useRef, type ReactNode } from "react";
 import { Dropdown } from "./Dropdown";
 import { useDoc } from "./model/store";
 import { FontPickerControl } from "./FontPickerControl";
-import type { ArrowHead, RedactMode, ShapeFill, SpotlightShape, TextAlign } from "./model/types";
+import type {
+  ArrowHead,
+  CalloutEnd,
+  RedactMode,
+  ShapeFill,
+  SpotlightShape,
+  TextAlign,
+} from "./model/types";
 import { NumberPickerControl } from "./NumberPickerControl";
 import { StepOptions } from "./StepOptions";
 import {
@@ -98,6 +105,31 @@ const REDACT_MODES: { id: RedactMode; label: string; icon: ReactNode }[] = [
 const SPOTLIGHT_SHAPES: { id: SpotlightShape; label: string; icon: ReactNode }[] = [
   { id: "rect", label: "Rectangle", icon: <rect x="4" y="6" width="16" height="12" rx="1" /> },
   { id: "ellipse", label: "Ellipse", icon: <ellipse cx="12" cy="12" rx="8" ry="6" /> },
+];
+
+/** A callout pointer's ends (PLAN 3E.2), pointing up and to the right like the tool's own. */
+const POINTER_ENDS: { id: CalloutEnd; label: string; icon: ReactNode }[] = [
+  { id: "line", label: "Plain end", icon: <path d="M4 20L19 5" /> },
+  {
+    id: "arrow",
+    label: "Arrow",
+    icon: (
+      <>
+        <path d="M4 20l11-11" />
+        <path d="M20 4l-2.5 8.5-6-6z" className={styles.solid} />
+      </>
+    ),
+  },
+  {
+    id: "dot",
+    label: "Dot",
+    icon: (
+      <>
+        <path d="M4 20l12-12" />
+        <circle cx="17" cy="7" r="3.5" className={styles.solid} />
+      </>
+    ),
+  },
 ];
 
 /**
@@ -239,6 +271,28 @@ export function ToolOptions() {
             />
           </span>
           {corner}
+        </div>
+      )}
+
+      {callout && values.callout && (
+        <div className={styles.section}>
+          <div className={styles.group} {...hint("callout.end")}>
+            {POINTER_ENDS.map((e) => (
+              <button
+                key={e.id}
+                type="button"
+                className={styles.toggle}
+                aria-pressed={values.callout?.end === e.id}
+                aria-label={e.label}
+                title={e.label}
+                onClick={() => applyStyle({ pointerEnd: e.id })}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden>
+                  {e.icon}
+                </svg>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

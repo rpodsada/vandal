@@ -1,10 +1,10 @@
 // Callout geometry (PLAN 3E), in source px: the box around the text and where
 // the pointer leaves it.
 
-import type { Point, Rect } from "./model/types";
+import type { CalloutEnd, Point, Rect } from "./model/types";
 import { drawnCornerRadius } from "./styles";
 import { textBoxPadding } from "./textMeasure";
-import { textPx } from "./geometry";
+import { arrowGeometry, textPx } from "./geometry";
 
 /** The box around a callout's text (`width` × `height` as laid out), with the text box padding. */
 export function calloutBox(
@@ -55,6 +55,48 @@ function insideRoundedBox(dx: number, dy: number, hw: number, hh: number, r: num
   if (ax > hw || ay > hh) return false;
   if (ax <= hw - r || ay <= hh - r) return true;
   return Math.hypot(ax - (hw - r), ay - (hh - r)) <= r;
+}
+
+/** A dot end's radius for a pointer thickness: clearly wider than the line. */
+export function dotRadius(width: number): number {
+  return 2 + 1.25 * width;
+}
+
+export interface PointerGeometry {
+  /** The line to stroke. */
+  shaft: [Point, Point];
+  /** A filled arrow head [left, tip, right]. */
+  head: [Point, Point, Point] | null;
+  /** A filled dot centred on the tip. */
+  dot: { center: Point; radius: number } | null;
+}
+
+/**
+ * The pointer from `start` (on the box) to `tip` with its end (PLAN 3E.2): an
+ * arrow's shaft stops at the head's base, like the arrow tool's, and its head
+ * shrinks on a short pointer; a dot is centred on the tip.
+ */
+export function pointerGeometry(
+  start: Point,
+  tip: Point,
+  end: CalloutEnd,
+  width: number,
+): PointerGeometry {
+  if (end === "arrow") {
+    const g = arrowGeometry(start, tip, "filled", width);
+    const s = g.shaft;
+    const shaft: [Point, Point] =
+      s.kind === "line"
+        ? [
+            { x: s.points[0], y: s.points[1] },
+            { x: s.points[2], y: s.points[3] },
+          ]
+        : [start, tip];
+    return { shaft, head: g.heads[0] ?? null, dot: null };
+  }
+  if (end === "dot")
+    return { shaft: [start, tip], head: null, dot: { center: tip, radius: dotRadius(width) } };
+  return { shaft: [start, tip], head: null, dot: null };
 }
 
 /**

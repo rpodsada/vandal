@@ -5,6 +5,7 @@ import { create } from "zustand";
 import { docStore } from "./model/store";
 import type {
   AnnotationId,
+  CalloutEnd,
   ArrowEnds,
   ArrowHead,
   RedactMode,
@@ -125,6 +126,8 @@ export interface ToolState {
   calloutItalic: boolean;
   calloutAlign: TextAlign;
   calloutTextColor: string | null;
+  /** The pointer's end (PLAN 3E.2). */
+  calloutEnd: CalloutEnd;
   editing: TextEditing | null;
   /** The step marker whose label is being typed (PLAN 3D.12). */
   labelEditing: AnnotationId | null;
@@ -168,6 +171,7 @@ export const useToolStore = create<ToolState>((set) => ({
   calloutItalic: false,
   calloutAlign: "left",
   calloutTextColor: null,
+  calloutEnd: "line",
   editing: null,
   labelEditing: null,
   // Picking a drawing tool drops the selection, so the options show that tool.

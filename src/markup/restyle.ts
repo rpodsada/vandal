@@ -8,6 +8,7 @@ import type {
   Annotation,
   AnnotationId,
   AnnotationKind,
+  CalloutEnd,
   ArrowEnds,
   ArrowHead,
   Doc,
@@ -98,7 +99,7 @@ export interface TargetValues {
   /** Rectangles, rectangular spotlights and callouts: the corner radius (PLAN 3D.17). */
   corner: number | null;
   /** Callouts only (`color` is the box's, `width` the pointer's). */
-  callout: { textColor: string } | null;
+  callout: { textColor: string; end: CalloutEnd } | null;
 }
 
 /** What the controls show: the first object's style, or the tool's. */
@@ -126,7 +127,7 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
       spotlight: null,
       step: null,
       corner: c.cornerRadius,
-      callout: { textColor: c.textColor },
+      callout: { textColor: c.textColor, end: c.end },
     };
   }
   return { ...styleValues(target, a, doc), corner: cornerValue(target, doc), callout: null };
@@ -369,6 +370,8 @@ export interface StylePatch {
   stepStart?: number;
   /** Rectangles, spotlights and callouts (PLAN 3D.17), in source px. */
   cornerRadius?: number;
+  /** A callout pointer's end (PLAN 3E.2). */
+  pointerEnd?: CalloutEnd;
 }
 
 /** Tools whose corners round. */
@@ -401,6 +404,7 @@ function patchAnnotation(a: Annotation, p: StylePatch): Annotation {
       textColor: p.textColor ?? a.textColor,
       lineWidth: p.width ?? a.lineWidth,
       cornerRadius: p.cornerRadius ?? a.cornerRadius,
+      end: p.pointerEnd ?? a.end,
       fontFamily: p.fontFamily ?? a.fontFamily,
       fontSize: p.fontSize ?? a.fontSize,
       bold: p.bold ?? a.bold,
@@ -554,6 +558,7 @@ export function applyStyle(patch: StylePatch, target = styleTarget()): void {
         calloutItalic: patch.italic ?? t.calloutItalic,
         calloutAlign: patch.align ?? t.calloutAlign,
         calloutTextColor: patch.textColor ?? t.calloutTextColor,
+        calloutEnd: patch.pointerEnd ?? t.calloutEnd,
       });
     }
     if (patch.head !== undefined && tool === "arrow")

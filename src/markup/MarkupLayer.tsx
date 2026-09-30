@@ -15,7 +15,7 @@ import {
   Transformer,
 } from "react-konva";
 import { bendFromPoint, bendPoint } from "./bend";
-import { calloutBox, pointerStart, segmentQuad } from "./callout";
+import { calloutBox, pointerGeometry, pointerStart, segmentQuad } from "./callout";
 import { layerOf, registerAnnotationGroup } from "./export";
 import {
   annotationBounds,
@@ -1144,11 +1144,12 @@ function CalloutShape({
   hitSlop: number;
   typing: boolean;
 }) {
-  // The box and where the pointer leaves it, relative to the text's top-left.
+  // The box and the pointer from where it leaves it, relative to the text's top-left.
   const layout = (t: Konva.Text) => {
     const box = calloutBox(0, 0, t.width(), t.height(), a.fontSize);
     const tip = { x: a.tip.x - a.x, y: a.tip.y - a.y };
-    return { box, tip, start: pointerStart(box, a.cornerRadius, tip) };
+    const start = pointerStart(box, a.cornerRadius, tip);
+    return { box, tip, start, pointer: start && pointerGeometry(start, tip, a.end, a.lineWidth) };
   };
   return (
     <Text
@@ -1168,17 +1169,33 @@ function CalloutShape({
       perfectDrawEnabled={false}
       sceneFunc={(ctx, shape) => {
         const t = shape as Konva.Text;
-        const { box, tip, start } = layout(t);
+        const { box, pointer } = layout(t);
         const c = (ctx as unknown as { _context: CanvasRenderingContext2D })._context;
         c.save();
-        if (start) {
+        if (pointer) {
+          const [from, to] = pointer.shaft;
           c.beginPath();
-          c.moveTo(start.x, start.y);
-          c.lineTo(tip.x, tip.y);
+          c.moveTo(from.x, from.y);
+          c.lineTo(to.x, to.y);
           c.strokeStyle = a.color;
           c.lineWidth = a.lineWidth;
           c.lineCap = "round";
           c.stroke();
+          c.fillStyle = a.color;
+          if (pointer.head) {
+            const [l, tp, r] = pointer.head;
+            c.beginPath();
+            c.moveTo(l.x, l.y);
+            c.lineTo(tp.x, tp.y);
+            c.lineTo(r.x, r.y);
+            c.closePath();
+            c.fill();
+          }
+          if (pointer.dot) {
+            c.beginPath();
+            c.arc(pointer.dot.center.x, pointer.dot.center.y, pointer.dot.radius, 0, 2 * Math.PI);
+            c.fill();
+          }
         }
         c.beginPath();
         c.roundRect(
@@ -1195,18 +1212,29 @@ function CalloutShape({
       }}
       // The box and the pointer (a text node has no stroke to hit with).
       hitFunc={(ctx, shape) => {
-        const { box, tip, start } = layout(shape as Konva.Text);
-        ctx.beginPath();
-        ctx.rect(box.x, box.y, box.width, box.height);
-        ctx.closePath();
-        ctx.fillShape(shape);
-        if (!start) return;
-        const [first, ...rest] = segmentQuad(start, tip, a.lineWidth + hitSlop);
-        ctx.beginPath();
-        ctx.moveTo(first.x, first.y);
-        for (const q of rest) ctx.lineTo(q.x, q.y);
-        ctx.closePath();
-        ctx.fillShape(shape);
+        const { box, tip, start, pointer } = layout(shape as Konva.Text);
+        const fillPath = (points: Point[]) => {
+          ctx.beginPath();
+          ctx.moveTo(points[0].x, points[0].y);
+          for (const q of points.slice(1)) ctx.lineTo(q.x, q.y);
+          ctx.closePath();
+          ctx.fillShape(shape);
+        };
+        fillPath([
+          { x: box.x, y: box.y },
+          { x: box.x + box.width, y: box.y },
+          { x: box.x + box.width, y: box.y + box.height },
+          { x: box.x, y: box.y + box.height },
+        ]);
+        if (!start || !pointer) return;
+        fillPath(segmentQuad(start, tip, a.lineWidth + hitSlop));
+        if (pointer.head) fillPath(pointer.head);
+        if (pointer.dot) {
+          ctx.beginPath();
+          ctx.arc(tip.x, tip.y, pointer.dot.radius + hitSlop / 2, 0, 2 * Math.PI);
+          ctx.closePath();
+          ctx.fillShape(shape);
+        }
       }}
     />
   );

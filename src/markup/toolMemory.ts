@@ -5,6 +5,7 @@
 
 import type {
   ArrowEnds,
+  CalloutEnd,
   ArrowHead,
   RedactMode,
   ShapeFill,
@@ -53,6 +54,7 @@ export interface ToolMemory {
   calloutItalic: boolean;
   calloutAlign: TextAlign;
   calloutTextColor: string | null;
+  calloutEnd: CalloutEnd;
 }
 
 /** The tools' current memory. */
@@ -92,6 +94,7 @@ export function snapshotToolMemory(): ToolMemory {
     calloutItalic: t.calloutItalic,
     calloutAlign: t.calloutAlign,
     calloutTextColor: t.calloutTextColor,
+    calloutEnd: t.calloutEnd,
   };
 }
 
@@ -193,5 +196,6 @@ export function restoreToolMemory(stored: unknown): void {
     calloutItalic: pick("calloutItalic", isBool, t.calloutItalic),
     calloutAlign: pick("calloutAlign", isAlign, t.calloutAlign),
     calloutTextColor: pick("calloutTextColor", nullable(isColor), t.calloutTextColor),
+    calloutEnd: pick("calloutEnd", oneOf<CalloutEnd>("line", "arrow", "dot"), t.calloutEnd),
   });
 }
