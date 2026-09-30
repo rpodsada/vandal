@@ -5,6 +5,7 @@
 // registry in `controls/index.ts` (TypeScript will insist on both).
 import type { ComponentType } from "react";
 import type { ShortcutId } from "../markup/shortcuts";
+import type { KeyEntry } from "./fixedShortcuts";
 import type { ToolId } from "../markup/toolStore";
 import type { Settings } from "../shared/ipc";
 import type { PathOf } from "./path";
@@ -121,6 +122,12 @@ export interface ShortcutItem extends BaseItem {
   shortcut: ShortcutId;
 }
 
+/** A read-only table of shortcuts (PLAN 3F.4). */
+export interface KeyListItem extends BaseItem {
+  kind: "keyList";
+  entries: KeyEntry[];
+}
+
 /** Read-only value, for things not editable yet or informational. */
 export interface InfoItem extends BaseItem {
   kind: "info";
@@ -140,6 +147,7 @@ export type Item =
   | AccentItem
   | HotkeyItem
   | ShortcutItem
+  | KeyListItem
   | InfoItem;
 export type ItemKind = Item["kind"];
 

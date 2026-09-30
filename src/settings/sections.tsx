@@ -6,6 +6,7 @@
 import pkg from "../../package.json";
 import { SHORTCUT_NAMES, type ShortcutId } from "../markup/shortcuts";
 import { commands } from "../shared/ipc";
+import { EDITOR_KEYS, MARKUP_KEYS, QUICK_EDIT_KEYS } from "./fixedShortcuts";
 import { AboutIcon, CaptureIcon, GeneralIcon, KeyboardIcon, MarkupIcon, SaveIcon } from "./icons";
 import type { Section } from "./schema";
 
@@ -602,6 +603,25 @@ export const sections: Section[] = [
           label: SHORTCUT_NAMES[shortcut],
           description: shortcut === "crop" ? "In the editor" : undefined,
           keywords: ["shortcut", "keyboard", "key", "tool"],
+        })),
+      },
+      {
+        title: "Other shortcuts",
+        description: "These can't be changed.",
+        items: (
+          [
+            ["keys-markup", "Marking up", "In quick edit and the editor", MARKUP_KEYS],
+            ["keys-quick-edit", "Quick edit", undefined, QUICK_EDIT_KEYS],
+            ["keys-editor", "Editor", undefined, EDITOR_KEYS],
+          ] as const
+        ).map(([id, label, description, entries]) => ({
+          id,
+          kind: "keyList" as const,
+          label,
+          description,
+          entries,
+          // Found by what they do: "duplicate", "zoom"...
+          keywords: ["shortcut", "keyboard", "key", ...entries.flatMap((e) => [e.what, ...e.keys])],
         })),
       },
     ],

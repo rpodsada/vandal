@@ -766,3 +766,37 @@
 .primaryButton:hover {
   filter: brightness(1.08);
 }
+
+/* ---- shortcut lists (read only) ---- */
+
+.keyList {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 20px;
+  align-items: center;
+  margin: 0;
+}
+
+.keyListKeys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.keyListCombo {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.keyListOr,
+.keyListMouse {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.keyListWhat {
+  margin: 0;
+  font-size: 13px;
+}

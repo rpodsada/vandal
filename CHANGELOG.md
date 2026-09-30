@@ -63,7 +63,8 @@ All notable changes to Vandal are listed here. The format follows
   carries it around with the rest, its text staying upright.
 - Change the markup tools' keys, and the swap colors key, in Settings › Keyboard shortcuts: a
   letter, alone or with Ctrl, Alt or Shift. Picking a key another tool has asks first, then
-  leaves that tool without one. Tooltips and the hint line show the keys you chose.
+  leaves that tool without one. Tooltips and the hint line show the keys you chose. The page
+  also lists the shortcuts that can't be changed, for marking up, quick edit and the editor.
 - Open Settings from quick edit with the gear on its toolbar, or with Ctrl+, (in the editor too).
   Settings opens above quick edit and stays there while you work, so changes show straight away.
 
