@@ -568,24 +568,30 @@ export function MarkupLayer({
     }
 
     setDragHint(
-      drag.mode === "stroke"
-        ? "stroke"
-        : drag.mode === "endpoint" ||
-            drag.mode === "tip" ||
-            (drag.mode === "draw" && (tool === "line" || tool === "arrow"))
-          ? "segment"
-          : drag.mode === "draw"
-            ? tool === "ellipse" ||
-              (tool === "spotlight" && useToolStore.getState().spotlightShape === "ellipse")
-              ? "circle"
-              : "square"
-            : drag.mode === "text"
-              ? "text"
-              : drag.mode === "callout"
-                ? "callout"
-                : drag.mode === "bend"
-                  ? "bend"
-                  : null,
+      drag.mode === "move"
+        ? drag.originals.size === 1 &&
+          !drag.rigid &&
+          [...drag.originals.values()][0]?.kind === "callout"
+          ? "calloutMove"
+          : "move"
+        : drag.mode === "stroke"
+          ? "stroke"
+          : drag.mode === "endpoint" ||
+              drag.mode === "tip" ||
+              (drag.mode === "draw" && (tool === "line" || tool === "arrow"))
+            ? "segment"
+            : drag.mode === "draw"
+              ? tool === "ellipse" ||
+                (tool === "spotlight" && useToolStore.getState().spotlightShape === "ellipse")
+                ? "circle"
+                : "square"
+              : drag.mode === "text"
+                ? "text"
+                : drag.mode === "callout"
+                  ? "callout"
+                  : drag.mode === "bend"
+                    ? "bend"
+                    : null,
     );
 
     const onMove = (m: PointerEvent) => {
@@ -599,10 +605,19 @@ export function MarkupLayer({
             drag.began = true;
             s.beginGesture();
           }
-          const dx = q.x - drag.start.x;
-          const dy = q.y - drag.start.y;
           // A callout moved on its own keeps pointing where it did (PLAN 3E).
           const alone = drag.originals.size === 1 && !drag.rigid;
+          // Shift: moves only across or up and down (diagonals felt jumpy at
+          // the start of a move), except a callout's text on its own, where
+          // Shift keeps its pointer at 45° steps instead (below).
+          const step = { x: q.x - drag.start.x, y: q.y - drag.start.y };
+          const calloutText = alone && [...drag.originals.values()][0]?.kind === "callout";
+          const { x: dx, y: dy } =
+            m.shiftKey && !calloutText
+              ? Math.abs(step.x) >= Math.abs(step.y)
+                ? { x: step.x, y: 0 }
+                : { x: 0, y: step.y }
+              : step;
           for (const [id, original] of drag.originals) {
             let moved = translateAnnotation(original, dx, dy, alone);
             // Shift: the pointer in 45° steps from where it points, as when

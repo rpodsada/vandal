@@ -92,7 +92,17 @@ export type ControlHint = keyof typeof CONTROL_HINTS;
 
 /** What a drag in progress is doing, for its modifier hints. */
 export type DragHint =
-  "segment" | "bend" | "square" | "circle" | "stroke" | "text" | "callout" | "resize" | "rotate";
+  | "segment"
+  | "bend"
+  | "square"
+  | "circle"
+  | "stroke"
+  | "text"
+  | "callout"
+  | "move"
+  | "calloutMove"
+  | "resize"
+  | "rotate";
 
 const DRAG_HINTS: Record<DragHint, string> = {
   segment: "[Shift] 45° steps",
@@ -101,6 +111,8 @@ const DRAG_HINTS: Record<DragHint, string> = {
   circle: "[Shift] circle",
   stroke: "[Shift] straight line",
   text: "Release to type in a box this wide",
+  move: "[Shift] straight across or up and down",
+  calloutMove: "[Shift] keeps the pointer at 45° steps · Drag the pointer line to move it all",
   callout: "Release where the text goes · the pointer points where you pressed · [Shift] 45° steps",
   resize: "[Shift] keep proportions",
   rotate: "Snaps to 45° steps near them",
