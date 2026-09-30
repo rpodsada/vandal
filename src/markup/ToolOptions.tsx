@@ -116,15 +116,25 @@ const SPOTLIGHT_SHAPES: { id: SpotlightShape; label: string; icon: ReactNode }[]
   { id: "ellipse", label: "Ellipse", icon: <ellipse cx="12" cy="12" rx="8" ry="6" /> },
 ];
 
-/** A callout's shapes (PLAN 3E.3). */
-// Outlines only, each with its pointer down to the right (Richard's mockup).
+/** A callout's shapes (PLAN 3E.3, 3E.11). */
+// Each with its pointer down to the right (Richard's mockup); the text is left off.
 const CALLOUT_SHAPES: { id: CalloutShape; label: string; icon: ReactNode }[] = [
   {
-    id: "box",
-    label: "Box",
+    id: "outline",
+    label: "Outlined box",
     icon: (
       <>
         <rect x="2.5" y="3" width="12" height="8" rx="2" />
+        <path d="M9 11l9.5 9.5M14 20.5h4.5V16" />
+      </>
+    ),
+  },
+  {
+    id: "box",
+    label: "Filled box",
+    icon: (
+      <>
+        <rect x="2.5" y="3" width="12" height="8" rx="2" className={styles.solid} />
         <path d="M9 11l9.5 9.5M14 20.5h4.5V16" />
       </>
     ),
@@ -335,6 +345,10 @@ export function ToolOptions({ compact = false }: { compact?: boolean }) {
               </button>
             ))}
           </div>
+        </div>
+      )}
+      {callout && values.callout && (
+        <div className={styles.section}>
           <div className={styles.group} {...hint("callout.end")}>
             {POINTER_ENDS.map((e) => (
               <button

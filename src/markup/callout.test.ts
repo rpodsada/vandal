@@ -216,6 +216,11 @@ describe("calloutExtent and orbitCallout", () => {
     expect(e.y + e.height).toBe(250 + 7);
   });
 
+  it("takes in an outline's stroke outside the box", () => {
+    const e = calloutExtent({ ...a, shape: "outline" }, 80, 30);
+    expect(e.x).toBe(92 - 2); // half the 4px outline past the box
+  });
+
   it("moves the text's centre and the tip, keeping the text's size", () => {
     // A half turn about (200, 200).
     const turn = (p: { x: number; y: number }) => ({ x: 400 - p.x, y: 400 - p.y });

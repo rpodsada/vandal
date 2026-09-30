@@ -528,6 +528,28 @@ describe("callouts", () => {
     expect(callout(id)).toMatchObject({ color: "#e53935", textColor: "#ffffff" });
   });
 
+  it("has corners when outlined, and its outline shows as a ring", () => {
+    const id = addCallout();
+    applyStyle({ calloutShape: "outline" });
+    expect(callout(id).shape).toBe("outline");
+    const target = styleTarget()!;
+    const values = targetValues(target, docStore.getState().doc);
+    expect(values.corner).not.toBeNull();
+    expect(colorSlots(values, targetSections(target)).secondIsLine).toBe(true);
+  });
+
+  it("shows an underline's color as a ring, a filled box's as a dot", () => {
+    addCallout();
+    const lineColor = () => {
+      const target = styleTarget()!;
+      const values = targetValues(target, docStore.getState().doc);
+      return colorSlots(values, targetSections(target)).secondIsLine;
+    };
+    expect(lineColor()).toBe(false);
+    applyStyle({ calloutShape: "underline" });
+    expect(lineColor()).toBe(true);
+  });
+
   it("swaps its two colors", () => {
     const id = addCallout();
     swapColors();

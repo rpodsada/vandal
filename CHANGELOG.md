@@ -58,6 +58,7 @@ All notable changes to Vandal are listed here. The format follows
   with 1–9 and 0, the pointer's thickness with Shift+1–9 and Shift+0, and the font with Alt.
   The pointer can end plainly, in an arrow or in a dot. Instead of a box, a callout can have a
   line under its text (over it when the pointer points up), with the pointer at its nearer end.
+  The box can also be just an outline, as thick as the pointer and the same color.
   Selected with other objects, a callout's frame takes in its pointer, and rotating the group
   carries it around with the rest, its text staying upright.
 - Open Settings from quick edit with the gear on its toolbar, or with Ctrl+, (in the editor too).

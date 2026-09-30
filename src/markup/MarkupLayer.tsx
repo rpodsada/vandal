@@ -1431,8 +1431,14 @@ function CalloutShape({
             box.height,
             drawnCornerRadius(a.cornerRadius, box.width, box.height),
           );
-          c.fillStyle = a.color;
-          c.fill();
+          if (a.shape === "outline") {
+            c.strokeStyle = a.color;
+            c.lineWidth = a.lineWidth;
+            c.stroke();
+          } else {
+            c.fillStyle = a.color;
+            c.fill();
+          }
         }
         c.restore();
         if (!typing) t._sceneFunc(ctx as Parameters<Konva.Text["_sceneFunc"]>[0]);
@@ -1447,11 +1453,13 @@ function CalloutShape({
           ctx.closePath();
           ctx.fillShape(shape);
         };
+        // An outline's inside too, as a filled box's; and its stroke's outer half.
+        const out = a.shape === "outline" ? a.lineWidth / 2 : 0;
         fillPath([
-          { x: box.x, y: box.y },
-          { x: box.x + box.width, y: box.y },
-          { x: box.x + box.width, y: box.y + box.height },
-          { x: box.x, y: box.y + box.height },
+          { x: box.x - out, y: box.y - out },
+          { x: box.x + box.width + out, y: box.y - out },
+          { x: box.x + box.width + out, y: box.y + box.height + out },
+          { x: box.x - out, y: box.y + box.height + out },
         ]);
         if (under) fillPath(segmentQuad(under.line[0], under.line[1], a.lineWidth + hitSlop));
         if (!start || !pointer) return;

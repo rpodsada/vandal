@@ -129,7 +129,7 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
       spotlight: null,
       step: null,
       // An underline has no box to round.
-      corner: c.shape === "box" ? c.cornerRadius : null,
+      corner: c.shape === "underline" ? null : c.cornerRadius,
       callout: { textColor: c.textColor, end: c.end, shape: c.shape },
     };
   }
@@ -303,6 +303,8 @@ export interface ColorSlots {
   kind: "single" | "text" | "shape";
   first: ColorSlot;
   second: ColorSlot | null;
+  /** The second color draws lines, not an area (a callout's outline or underline): it shows as a ring. */
+  secondIsLine?: boolean;
 }
 
 export function colorSlots(
@@ -321,6 +323,7 @@ export function colorSlots(
       kind: "text",
       first: { key: "textColor", value: values.callout.textColor },
       second: { key: "color", value: values.color },
+      secondIsLine: values.callout.shape !== "box",
     };
   }
   if (sections.text && values.text?.background) {

@@ -46,7 +46,12 @@ export function ColorControls({ target, values, show, held }: Props) {
   const labels = show.step
     ? ["Label color", "Marker color"]
     : show.callout
-      ? ["Text color", "Callout color"]
+      ? [
+          "Text color",
+          { box: "Callout color", outline: "Outline color", underline: "Line color" }[
+            values.callout?.shape ?? "box"
+          ],
+        ]
       : show.text
         ? ["Text color", "Box color"]
         : ["Fill color", "Border color"];
@@ -151,8 +156,9 @@ export function ColorControls({ target, values, show, held }: Props) {
 
 /** The chip's circles and the dropdown buttons draw each color the same way. */
 function isHollow(slots: ColorSlots, position: ColorSlotPosition): boolean {
-  // A shape's border is a ring, like the outline it draws.
-  return slots.kind === "shape" && position === "second";
+  // A shape's border is a ring, like the outline it draws, and so are a
+  // callout's outline and underline.
+  return position === "second" && (slots.kind === "shape" || !!slots.secondIsLine);
 }
 
 function dotStyle(slots: ColorSlots, position: ColorSlotPosition): CSSProperties {

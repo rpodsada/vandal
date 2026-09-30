@@ -200,6 +200,10 @@ export function restoreToolMemory(stored: unknown): void {
     calloutAlign: pick("calloutAlign", isAlign, t.calloutAlign),
     calloutTextColor: pick("calloutTextColor", nullable(isColor), t.calloutTextColor),
     calloutEnd: pick("calloutEnd", oneOf<CalloutEnd>("line", "arrow", "dot"), t.calloutEnd),
-    calloutShape: pick("calloutShape", oneOf<CalloutShape>("box", "underline"), t.calloutShape),
+    calloutShape: pick(
+      "calloutShape",
+      oneOf<CalloutShape>("box", "outline", "underline"),
+      t.calloutShape,
+    ),
   });
 }

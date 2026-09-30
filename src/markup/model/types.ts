@@ -198,8 +198,11 @@ export interface StepAnnotation extends Base {
   label?: string;
 }
 
-/** A box behind the text, or a line under (or over) it (PLAN 3E.3). */
-export type CalloutShape = "box" | "underline";
+/**
+ * A filled box behind the text, a box outlined around it (PLAN 3E.11), or a
+ * line under (or over) it (PLAN 3E.3).
+ */
+export type CalloutShape = "box" | "outline" | "underline";
 
 /** The pointer's end at the tip: plain, an arrow head or a dot (PLAN 3E.2). */
 export type CalloutEnd = "line" | "arrow" | "dot";
@@ -215,7 +218,7 @@ export interface CalloutAnnotation extends Base, TextBody {
   /** The box and the pointer. */
   color: string;
   textColor: string;
-  /** The pointer's thickness in source px. */
+  /** The pointer's thickness in source px, and an outline's or underline's. */
   lineWidth: number;
   /** The box's rounded corners, in source px. */
   cornerRadius: number;

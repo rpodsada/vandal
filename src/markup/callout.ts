@@ -78,16 +78,18 @@ function insideRoundedBox(dx: number, dy: number, hw: number, hh: number, r: num
  */
 export function calloutExtent(a: CalloutAnnotation, width: number, height: number): Rect {
   const box = calloutBox(a.x, a.y, width, height, a.fontSize);
+  // An outline's stroke is centred on the box's edge.
+  const out = a.shape === "outline" ? a.lineWidth / 2 : 0;
   const reach =
     a.end === "dot"
       ? dotRadius(a.lineWidth)
       : a.end === "arrow"
         ? arrowHeadSize(a.lineWidth).halfWidth
         : a.lineWidth / 2;
-  const x0 = Math.min(box.x, a.tip.x - reach);
-  const y0 = Math.min(box.y, a.tip.y - reach);
-  const x1 = Math.max(box.x + box.width, a.tip.x + reach);
-  const y1 = Math.max(box.y + box.height, a.tip.y + reach);
+  const x0 = Math.min(box.x - out, a.tip.x - reach);
+  const y0 = Math.min(box.y - out, a.tip.y - reach);
+  const x1 = Math.max(box.x + box.width + out, a.tip.x + reach);
+  const y1 = Math.max(box.y + box.height + out, a.tip.y + reach);
   return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
 }
 
