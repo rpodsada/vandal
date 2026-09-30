@@ -119,7 +119,7 @@ function toolHint(tool: Exclude<ToolId, "select">, twoColors: boolean): string {
     case "spotlight":
       return "Drag the area to keep bright · [Shift] square or circle · [1…0] darkness";
     case "step":
-      return `Click to place the next marker · [1…0] size · ${colors}`;
+      return `Click to place the next marker · [1…0] size · [Alt+1…0] font · ${colors}`;
   }
 }
 

@@ -42,6 +42,7 @@ export interface ToolMemory {
   stepShape: StepShape;
   stepSize: number | null;
   stepTextColor: string | null;
+  stepFont: string | null;
   /** Not the start: a new document starts from 1 (or A). */
   stepFormat: StepFormat;
 }
@@ -73,6 +74,7 @@ export function snapshotToolMemory(): ToolMemory {
     stepShape: t.stepShape,
     stepSize: t.stepSize,
     stepTextColor: t.stepTextColor,
+    stepFont: t.stepFont,
     stepFormat: t.stepFormat,
   };
 }
@@ -155,6 +157,11 @@ export function restoreToolMemory(stored: unknown): void {
     stepShape: pick("stepShape", oneOf<StepShape>("circle", "square", "rounded"), t.stepShape),
     stepSize: pick("stepSize", nullable(isSize), t.stepSize),
     stepTextColor: pick("stepTextColor", nullable(isColor), t.stepTextColor),
+    stepFont: pick(
+      "stepFont",
+      nullable((x): x is string => typeof x === "string" && x.trim() !== ""),
+      t.stepFont,
+    ),
     stepFormat: pick("stepFormat", oneOf<StepFormat>("numbers", "letters"), t.stepFormat),
   });
 }

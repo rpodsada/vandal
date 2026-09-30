@@ -265,7 +265,14 @@ export function ToolOptions() {
         </div>
       )}
 
-      {step && <StepOptions step={step} hints={hints} showKeys={hints && held.digit} />}
+      {step && (
+        <StepOptions
+          step={step}
+          hints={hints}
+          showKeys={hints && held.digit}
+          showFontKeys={hints && held.alt}
+        />
+      )}
 
       {show.spotlight && values.spotlight && (
         <div className={styles.section}>

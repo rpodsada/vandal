@@ -287,7 +287,7 @@ export type FontControl = "dropdown" |
 "stepped";
 
 /**
- *  The text tool's font picker. The user's list is kept while `source` is
+ *  A font picker (the text tool's, and the step markers'). The user's list is kept while `source` is
  *  `System`, so switching back brings it back (Richard's call, 2C.3). Files
  *  from before 2C.3 (`{"source":"system",...}` without `fonts`) load as is.
  */
@@ -306,7 +306,12 @@ export type FontSource =
 /**  Every installed font. */
 "system" | 
 /**  The user's own list, in their order. */
-"custom";
+"custom" | 
+/**
+ *  The text tool's fonts and control ("Same as Text tool"). Only the step
+ *  font offers it (PLAN 3D.13); the text tool's own picker can't.
+ */
+"text";
 
 /**
  *  Quick edit's annotations, handed to the editor still editable (PLAN 2B.3).
@@ -515,6 +520,10 @@ export type Styles = {
 	blur?: NumberPicker,
 	/**  Spotlight's darkness outside, in % (PLAN 3D.7). */
 	spotlight?: NumberPicker,
+	/**  Step markers' size in source px (PLAN 3D.13). */
+	stepSize?: NumberPicker,
+	/**  Step markers' font; by default the text tool's choices. */
+	stepFont?: FontPicker,
 	/**  Per-tool overrides, keyed by tool id (`"highlighter"`, ...). */
 	tools?: { [key in string]: ToolStyles },
 };

@@ -26,6 +26,7 @@ describe("tool memory", () => {
       stepShape: "rounded",
       stepSize: 44,
       stepTextColor: "#000000",
+      stepFont: "Georgia",
       stepFormat: "letters",
     });
     const saved = JSON.stringify(snapshotToolMemory());

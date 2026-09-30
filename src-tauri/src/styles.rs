@@ -89,9 +89,12 @@ pub enum FontSource {
     System,
     /// The user's own list, in their order.
     Custom,
+    /// The text tool's fonts and control ("Same as Text tool"). Only the step
+    /// font offers it (PLAN 3D.13); the text tool's own picker can't.
+    Text,
 }
 
-/// The text tool's font picker. The user's list is kept while `source` is
+/// A font picker (the text tool's, and the step markers'). The user's list is kept while `source` is
 /// `System`, so switching back brings it back (Richard's call, 2C.3). Files
 /// from before 2C.3 (`{"source":"system",...}` without `fonts`) load as is.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -116,8 +119,9 @@ impl Default for FontPicker {
 
 impl FontPicker {
     /// Names trimmed, duplicates (ignoring case) and blanks dropped; an empty
-    /// custom list means every installed font.
-    fn normalized(self) -> Self {
+    /// custom list means every installed font. `Text` is kept only if
+    /// `can_follow_text` (else every installed font).
+    fn normalized(self, can_follow_text: bool) -> Self {
         let mut fonts: Vec<String> = Vec::new();
         for f in self
             .fonts
@@ -129,10 +133,10 @@ impl FontPicker {
                 fonts.push(f.to_string());
             }
         }
-        let source = if fonts.is_empty() {
-            FontSource::System
-        } else {
-            self.source
+        let source = match self.source {
+            FontSource::Custom if fonts.is_empty() => FontSource::System,
+            FontSource::Text if !can_follow_text => FontSource::System,
+            source => source,
         };
         Self {
             source,
@@ -167,6 +171,10 @@ pub struct Styles {
     pub blur: NumberPicker,
     /// Spotlight's darkness outside, in % (PLAN 3D.7).
     pub spotlight: NumberPicker,
+    /// Step markers' size in source px (PLAN 3D.13).
+    pub step_size: NumberPicker,
+    /// Step markers' font; by default the text tool's choices.
+    pub step_font: FontPicker,
     /// Per-tool overrides, keyed by tool id (`"highlighter"`, ...).
     pub tools: BTreeMap<String, ToolStyles>,
 }
@@ -194,6 +202,13 @@ impl Default for Styles {
             },
             spotlight: NumberPicker::Buttons {
                 values: vec![30.0, 50.0, 70.0, 85.0],
+            },
+            step_size: NumberPicker::Buttons {
+                values: vec![24.0, 32.0, 44.0, 60.0],
+            },
+            step_font: FontPicker {
+                source: FontSource::Text,
+                ..FontPicker::default()
             },
             tools: BTreeMap::from([(
                 "highlighter".to_string(),
@@ -250,7 +265,7 @@ impl Styles {
         Self {
             palette: normalize_palette(self.palette).unwrap_or(defaults.palette),
             width: self.width.normalized().unwrap_or(defaults.width),
-            font: self.font.normalized(),
+            font: self.font.normalized(false),
             font_size: self.font_size.normalized().unwrap_or(defaults.font_size),
             pixelate: self.pixelate.normalized().unwrap_or(defaults.pixelate),
             blur: self.blur.normalized().unwrap_or(defaults.blur),
@@ -258,6 +273,8 @@ impl Styles {
                 .spotlight
                 .normalized_up_to(100.0)
                 .unwrap_or(defaults.spotlight),
+            step_size: self.step_size.normalized().unwrap_or(defaults.step_size),
+            step_font: self.step_font.normalized(true),
             tools: self
                 .tools
                 .into_iter()
@@ -379,6 +396,26 @@ mod tests {
     }
 
     #[test]
+    fn only_the_step_font_can_follow_the_text_tool() {
+        let follow = FontPicker {
+            source: FontSource::Text,
+            ..FontPicker::default()
+        };
+        let s = Styles {
+            font: follow.clone(),
+            step_font: follow,
+            ..Styles::default()
+        }
+        .normalized();
+        assert_eq!(s.font.source, FontSource::System);
+        assert_eq!(s.step_font.source, FontSource::Text);
+        // Settings from before 3D.13 get the defaults.
+        let old: Styles = serde_json::from_value(json!({ "palette": ["#000000"] })).unwrap();
+        assert_eq!(old.step_font.source, FontSource::Text);
+        assert_eq!(old.step_size, Styles::default().step_size);
+    }
+
+    #[test]
     fn presets_go_to_the_palette_the_tool_uses() {
         let mut s = Styles::default();
         s.add_preset("pen", "#ABC").unwrap();
@@ -471,7 +508,7 @@ mod tests {
             control: FontControl::Stepped,
         };
         assert_eq!(
-            custom.normalized(),
+            custom.normalized(false),
             FontPicker {
                 source: FontSource::Custom,
                 fonts: vec!["Arial".into(), "Georgia".into()],
@@ -484,14 +521,14 @@ mod tests {
             fonts: vec![" ".into()],
             control: FontControl::Stepped,
         };
-        assert_eq!(empty.normalized().source, FontSource::System);
+        assert_eq!(empty.normalized(false).source, FontSource::System);
         // The list is kept while the system fonts are in use.
         let parked = FontPicker {
             source: FontSource::System,
             fonts: vec!["Georgia".into()],
             control: FontControl::Dropdown,
         };
-        assert_eq!(parked.clone().normalized(), parked);
+        assert_eq!(parked.clone().normalized(false), parked);
 
         let v = serde_json::to_value(Styles::default()).unwrap();
         assert_eq!(

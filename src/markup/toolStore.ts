@@ -101,6 +101,8 @@ export interface ToolState {
   stepSize: number | null;
   /** Null: black or white, whichever reads better on the marker. */
   stepTextColor: string | null;
+  /** Once picked. */
+  stepFont: string | null;
   /** The labels of a document's first marker (after that, its markers say). */
   stepFormat: StepFormat;
   stepStart: number;
@@ -136,6 +138,7 @@ export const useToolStore = create<ToolState>((set) => ({
   stepShape: "circle",
   stepSize: null,
   stepTextColor: null,
+  stepFont: null,
   stepFormat: "numbers",
   stepStart: 1,
   editing: null,

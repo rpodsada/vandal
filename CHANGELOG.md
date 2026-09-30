@@ -26,6 +26,11 @@ All notable changes to Vandal are listed here. The format follows
 - Step markers can have their own label: double-click one (or select it and press Enter) and type
   up to three characters. The other markers keep counting around it, and Renumber puts every
   marker back to counting.
+- Step markers have a font picker in the options bar; with a custom list, Alt+1–9 and Alt+0 pick
+  from it.
+- Settings › Markup › Step markers: choose the marker sizes, and the fonts: all installed fonts,
+  the same ones as the text tool (the default), or a custom list. Step markers can also have
+  their own colors under Per-tool styles.
 - Settings: the open page's groups are listed under it in the sidebar. Click one to scroll to it; the
   one you're looking at is highlighted.
 - Settings › Markup › Per-tool styles: each tool's custom colors and custom widths switches now

@@ -12,7 +12,7 @@ import { applyStyle, styleTarget, targetSections, targetValues } from "./restyle
 import {
   fontChoices,
   paletteFor,
-  STEP_SIZE_PICKER,
+  stepFontChoices,
   strengthPickerFor,
   useStyleConfig,
   widthPickerFor,
@@ -66,7 +66,7 @@ function pickWidth(slot: number): boolean {
     return true;
   }
   if (sections.step) {
-    const stepSize = pickByDigit(STEP_SIZE_PICKER, slot);
+    const stepSize = pickByDigit(useStyleConfig.getState().styles.stepSize, slot);
     if (stepSize !== null) applyStyle({ stepSize });
     return true;
   }
@@ -87,11 +87,13 @@ function pickWidth(slot: number): boolean {
   return true;
 }
 
-/** Alt+digit: font slot (tenths of the way along a long list). */
+/** Alt+digit: font slot (tenths of the way along a long list), for text or step markers. */
 function pickFont(slot: number): boolean {
   const target = styleTarget();
-  if (!target || !targetSections(target).text) return false;
-  const fonts = fontChoices();
+  if (!target) return false;
+  const sections = targetSections(target);
+  if (!sections.text && !sections.step) return false;
+  const fonts = sections.step ? stepFontChoices() : fontChoices();
   const i = slotIndex(fonts.length, slot);
   if (i !== null) applyStyle({ fontFamily: fonts[i] });
   return true;

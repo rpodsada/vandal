@@ -373,6 +373,7 @@ export const sections: Section[] = [
           {
             id: "styles-fonts",
             kind: "fontPicker",
+            path: "styles.font",
             label: "Fonts",
             description:
               "The fonts the text tool offers. With a custom list, Alt+1–9 and Alt+0 pick them while you type.",
@@ -426,6 +427,30 @@ export const sections: Section[] = [
               "How dark the spotlight tool makes everything outside it, in percent. Keys 1–9 and 0 pick them while you draw. Values above 100 are lowered to 100.",
             unit: "%",
             keywords: ["spotlight", "dim", "darken", "darkness", "opacity", "focus", "highlight"],
+          },
+        ],
+      },
+      {
+        title: "Step markers",
+        items: [
+          {
+            id: "styles-step-size",
+            kind: "numberPicker",
+            path: "styles.stepSize",
+            label: "Marker sizes",
+            description:
+              "The sizes the step tool offers, in pixels across. Keys 1–9 and 0 pick them while you place markers.",
+            unit: "px",
+            keywords: ["step", "marker", "number", "numbered", "size", "badge", "counter"],
+          },
+          {
+            id: "styles-step-fonts",
+            kind: "fontPicker",
+            path: "styles.stepFont",
+            label: "Marker fonts",
+            description:
+              "The fonts the step tool offers for its labels. Same as Text tool uses the fonts chosen above. With a custom list, Alt+1–9 and Alt+0 pick them.",
+            keywords: ["step", "marker", "font", "typeface", "label", "number", "text"],
           },
         ],
       },
@@ -489,6 +514,14 @@ export const sections: Section[] = [
             label: "Text",
             widths: false,
             keywords: ["own", "custom", "override", "per tool", "palette", "color"],
+          },
+          {
+            id: "tool-style-step",
+            kind: "toolStyle",
+            tool: "step",
+            label: "Step markers",
+            widths: false,
+            keywords: ["own", "custom", "override", "per tool", "palette", "color", "marker"],
           },
         ],
       },

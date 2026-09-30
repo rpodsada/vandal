@@ -62,7 +62,13 @@ export interface ChoiceItem extends BaseItem {
 export interface NumberPickerItem extends BaseItem {
   kind: "numberPicker";
   /** Picker specs are objects, so these aren't typed leaf paths. */
-  path: "styles.width" | "styles.fontSize" | "styles.pixelate" | "styles.blur" | "styles.spotlight";
+  path:
+    | "styles.width"
+    | "styles.fontSize"
+    | "styles.pixelate"
+    | "styles.blur"
+    | "styles.spotlight"
+    | "styles.stepSize";
   unit: "px" | "pt" | "%";
   /** Preview the values as lines of that thickness. */
   lines?: boolean;
@@ -82,9 +88,13 @@ export interface ToolStyleItem extends BaseItem {
   widths: boolean;
 }
 
-/** The text tool's fonts (`styles.font`, PLAN 2C.3). */
+/**
+ * A tool's fonts (PLAN 2C.3): the text tool's, or the step markers', which
+ * can also follow the text tool's (PLAN 3D.13).
+ */
 export interface FontPickerItem extends BaseItem {
   kind: "fontPicker";
+  path: "styles.font" | "styles.stepFont";
 }
 
 /** The accent color: the Windows accent, a preset or a custom color (PLAN 3A.2). */

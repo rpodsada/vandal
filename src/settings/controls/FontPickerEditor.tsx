@@ -18,38 +18,52 @@ const SOURCES = [
   { value: "custom", label: "Custom list" },
 ] as const;
 
+/** The step markers' fonts can also follow the text tool's. */
+const STEP_SOURCES = [
+  { value: "system", label: "All installed fonts" },
+  { value: "text", label: "Same as Text tool" },
+  { value: "custom", label: "Custom list" },
+] as const;
+
 const CONTROLS = [
   { value: "dropdown", label: "Dropdown" },
   { value: "stepped", label: "Stepped slider" },
 ] as const;
 
 /**
- * The text tool's fonts (PLAN 2C.3): every installed font, or the user's
- * own list (kept while unused), shown as a dropdown or a stepped slider.
+ * A tool's fonts (PLAN 2C.3): every installed font, or the user's own list
+ * (kept while unused), shown as a dropdown or a stepped slider. The step
+ * markers' can instead follow the text tool's (PLAN 3D.13).
  */
 export function FontPickerSetting({ item, id, disabled }: ControlProps<FontPickerItem>) {
-  const picker = useSettingsStore((s) => s.settings!.styles.font);
+  const styleSettings = useSettingsStore((s) => s.settings!.styles);
+  const picker = item.path === "styles.stepFont" ? styleSettings.stepFont : styleSettings.font;
   const set = useSettingsStore((s) => s.set);
   // The picker spec is an object, which typed leaf paths don't reach.
-  const update = (next: FontPicker) => void set("styles.font" as never, next as never);
+  const update = (next: FontPicker) => void set(item.path as never, next as never);
   const [installed, setInstalled] = useState<string[]>([]);
   useEffect(() => {
     void commands.listFonts().then(setInstalled);
   }, []);
 
-  const custom = picker.source === "custom";
-  const offered = custom ? picker.fonts : installed.length ? installed : [DEFAULT_FONT];
+  const followsText = picker.source === "text";
+  // What the picker does: with "Same as Text tool", the text tool's picker.
+  const shown = followsText ? styleSettings.font : picker;
+  const custom = shown.source === "custom";
+  const offered = custom ? shown.fonts : installed.length ? installed : [DEFAULT_FONT];
   const [preview, setPreview] = useState<string | null>(null);
   const previewFont = preview && offered.includes(preview) ? preview : offered[0];
   const steppedFallback =
-    picker.control === "stepped" && (!custom || picker.fonts.length > MAX_STEPPED_FONTS);
+    !followsText &&
+    picker.control === "stepped" &&
+    (!custom || picker.fonts.length > MAX_STEPPED_FONTS);
 
   return (
     <div className={styles.controlGroup}>
       <Segmented
         id={id}
         label={`${item.label}: which fonts`}
-        options={SOURCES}
+        options={item.path === "styles.stepFont" ? STEP_SOURCES : SOURCES}
         value={picker.source}
         disabled={disabled}
         onChange={(source) =>
@@ -61,7 +75,10 @@ export function FontPickerSetting({ item, id, disabled }: ControlProps<FontPicke
           })
         }
       />
-      {custom && (
+      {followsText && (
+        <p className={styles.help}>The fonts and control chosen for the Text tool.</p>
+      )}
+      {picker.source === "custom" && (
         <FontListEditor
           installed={installed}
           fonts={picker.fonts}
@@ -69,16 +86,18 @@ export function FontPickerSetting({ item, id, disabled }: ControlProps<FontPicke
           onChange={(fonts) => update({ ...picker, fonts })}
         />
       )}
-      <div className={styles.valueList}>
-        <span className={styles.help}>Show as</span>
-        <Segmented
-          label={`${item.label}: control`}
-          options={CONTROLS}
-          value={picker.control}
-          disabled={disabled}
-          onChange={(control) => update({ ...picker, control })}
-        />
-      </div>
+      {!followsText && (
+        <div className={styles.valueList}>
+          <span className={styles.help}>Show as</span>
+          <Segmented
+            label={`${item.label}: control`}
+            options={CONTROLS}
+            value={picker.control}
+            disabled={disabled}
+            onChange={(control) => update({ ...picker, control })}
+          />
+        </div>
+      )}
       {steppedFallback && (
         <p className={styles.help}>
           The stepped slider needs your own list of {MAX_STEPPED_FONTS} fonts or fewer; until then
@@ -89,7 +108,7 @@ export function FontPickerSetting({ item, id, disabled }: ControlProps<FontPicke
       <div className={`${styles.pickerPreview} ${markup.options}`}>
         <span className={styles.help}>Preview</span>
         <FontPickerControl
-          picker={picker}
+          picker={shown}
           fonts={offered}
           value={previewFont}
           showKeys={false}

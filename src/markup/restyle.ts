@@ -255,6 +255,7 @@ function patchAnnotation(a: Annotation, p: StylePatch): Annotation {
       size: p.stepSize ?? a.size,
       color: p.color ?? a.color,
       textColor: p.textColor ?? a.textColor,
+      fontFamily: p.fontFamily ?? a.fontFamily,
       format: p.stepFormat ?? a.format,
       start: p.stepStart ?? a.start,
     };
@@ -355,6 +356,7 @@ export function applyStyle(patch: StylePatch): void {
         stepShape: patch.stepShape ?? t.stepShape,
         stepSize: patch.stepSize ?? t.stepSize,
         stepTextColor: patch.textColor ?? t.stepTextColor,
+        stepFont: patch.fontFamily ?? t.stepFont,
         stepFormat: patch.stepFormat ?? t.stepFormat,
         stepStart: patch.stepStart ?? t.stepStart,
       });
@@ -423,6 +425,7 @@ export function resetStepStyles(style: StepStyle): void {
     stepShape: style.shape,
     stepSize: style.size,
     stepTextColor: style.textColor,
+    stepFont: style.fontFamily,
   });
   const store = docStore.getState();
   const steps = stepsOf(store.doc);

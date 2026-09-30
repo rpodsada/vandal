@@ -4,6 +4,8 @@
 
 import { create } from "zustand";
 import type { NumberPicker, StyleSettings } from "../shared/ipc";
+
+type FontPicker = StyleSettings["font"];
 import type {
   AnnotationKind,
   Doc,
@@ -48,6 +50,8 @@ export const DEFAULT_STYLE_CONFIG: StyleConfig = {
     pixelate: { control: "buttons", values: [6, 10, 16, 24] },
     blur: { control: "buttons", values: [3, 6, 10, 16] },
     spotlight: { control: "buttons", values: [30, 50, 70, 85] },
+    stepSize: { control: "buttons", values: [24, 32, 44, 60] },
+    stepFont: { source: "text", fonts: [], control: "dropdown" },
     tools: {
       highlighter: {
         palette: ["#ffeb3b", "#76ff03", "#ff4081", "#40c4ff", "#ffab40"],
@@ -112,11 +116,26 @@ export function toolWidth(tool: ToolId): number {
   return picked ?? nearestValue(widthPickerFor(tool), PREFERRED_WIDTH[tool] ?? DEFAULT_WIDTH);
 }
 
-/** The fonts the font picker offers: the custom list, or every installed font. */
-export function fontChoices(cfg = useStyleConfig.getState()): string[] {
-  const picker = cfg.styles.font;
+/** The fonts a font picker offers: its custom list, or every installed font. */
+function pickerFonts(picker: FontPicker, cfg: StyleConfig): string[] {
   if (picker.source === "custom") return picker.fonts;
   return cfg.fonts.length ? cfg.fonts : [DEFAULT_FONT];
+}
+
+/** The fonts the text tool's font picker offers. */
+export function fontChoices(cfg = useStyleConfig.getState()): string[] {
+  return pickerFonts(cfg.styles.font, cfg);
+}
+
+/** The step markers' font picker as it behaves: "Same as Text tool" is the text tool's. */
+export function stepFontPicker(cfg = useStyleConfig.getState()): FontPicker {
+  const picker = cfg.styles.stepFont;
+  return picker.source === "text" ? cfg.styles.font : picker;
+}
+
+/** The fonts the step markers' font picker offers. */
+export function stepFontChoices(cfg = useStyleConfig.getState()): string[] {
+  return pickerFonts(stepFontPicker(cfg), cfg);
 }
 
 /** The text tool's font when nothing else says. */
@@ -228,20 +247,20 @@ export function rememberWidth(tool: ToolId, width: number): void {
   useToolStore.setState((t) => ({ widths: { ...t.widths, [tool]: width } }));
 }
 
-/** Step markers' sizes (source px). Moves to Settings as `styles.stepSize` in 3D.13. */
-export const STEP_SIZE_PICKER: NumberPicker = { control: "buttons", values: [24, 32, 44, 60] };
 const PREFERRED_STEP_SIZE = 32;
 
 /** The next step marker's style. */
 export function toolStepStyle(): StepStyle {
   const t = useToolStore.getState();
+  const cfg = useStyleConfig.getState();
   const color = toolColor("step");
+  const fonts = stepFontPicker(cfg);
   return {
     shape: t.stepShape,
-    size: t.stepSize ?? nearestValue(STEP_SIZE_PICKER, PREFERRED_STEP_SIZE),
+    size: t.stepSize ?? nearestValue(cfg.styles.stepSize, PREFERRED_STEP_SIZE),
     color,
     textColor: t.stepTextColor ?? contrastingText(color),
-    fontFamily: DEFAULT_FONT,
+    fontFamily: t.stepFont ?? (fonts.source === "custom" ? fonts.fonts[0] : null) ?? DEFAULT_FONT,
   };
 }
 

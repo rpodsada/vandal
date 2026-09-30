@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { DEFAULT_STYLE_CONFIG, setCustomColor, useStyleConfig } from "./styles";
+import {
+  DEFAULT_STYLE_CONFIG,
+  setCustomColor,
+  stepFontChoices,
+  toolStepStyle,
+  useStyleConfig,
+} from "./styles";
 import { useToolStore } from "./toolStore";
 
 const initial = useToolStore.getState();
@@ -33,5 +39,44 @@ describe("setCustomColor", () => {
     const t = useToolStore.getState();
     expect(t.customColors.shared).toBeUndefined();
     expect(t.colors.rect).toBe("#123456");
+  });
+});
+
+describe("step marker fonts", () => {
+  beforeEach(() => {
+    useToolStore.setState(initial, true);
+    useStyleConfig.setState(DEFAULT_STYLE_CONFIG, true);
+  });
+
+  const withFonts = (font: object, stepFont: object) =>
+    useStyleConfig.setState({
+      ...DEFAULT_STYLE_CONFIG,
+      fonts: ["Arial", "Georgia", "Segoe UI"],
+      styles: {
+        ...DEFAULT_STYLE_CONFIG.styles,
+        font: { ...DEFAULT_STYLE_CONFIG.styles.font, ...font },
+        stepFont: { ...DEFAULT_STYLE_CONFIG.styles.stepFont, ...stepFont },
+      },
+    });
+
+  it("follow the text tool's list by default, starting from its first font", () => {
+    withFonts({ source: "custom", fonts: ["Georgia", "Arial"] }, {});
+    expect(stepFontChoices()).toEqual(["Georgia", "Arial"]);
+    expect(toolStepStyle().fontFamily).toBe("Georgia");
+  });
+
+  it("can have their own list, or every installed font", () => {
+    withFonts({ source: "custom", fonts: ["Georgia"] }, { source: "custom", fonts: ["Arial"] });
+    expect(stepFontChoices()).toEqual(["Arial"]);
+    expect(toolStepStyle().fontFamily).toBe("Arial");
+    withFonts({}, { source: "system" });
+    expect(stepFontChoices()).toEqual(["Arial", "Georgia", "Segoe UI"]);
+    expect(toolStepStyle().fontFamily).toBe("Segoe UI");
+  });
+
+  it("keep the font picked last", () => {
+    withFonts({}, {});
+    useToolStore.setState({ stepFont: "Georgia" });
+    expect(toolStepStyle().fontFamily).toBe("Georgia");
   });
 });

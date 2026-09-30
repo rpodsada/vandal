@@ -21,7 +21,8 @@ import {
   stepsOf,
   type StepStyle,
 } from "./steps";
-import { STEP_SIZE_PICKER } from "./styles";
+import { stepFontChoices, stepFontPicker, useStyleConfig } from "./styles";
+import { FontPickerControl } from "./FontPickerControl";
 import { usePopover } from "./usePopover";
 import styles from "./options.module.css";
 
@@ -43,13 +44,42 @@ const FORMATS: { id: StepFormat; label: string; text: string }[] = [
 interface Props {
   step: NonNullable<TargetValues["step"]>;
   hints: boolean;
+  /** Digit badges on the size picker (a digit is held). */
   showKeys: boolean;
+  /** Slot badges on the font picker (Alt is held). */
+  showFontKeys: boolean;
 }
 
-/** The step marker's options (PLAN 3D.11): shape, size, labels, and Sync style. */
-export function StepOptions({ step, hints, showKeys }: Props) {
+/** The step marker's options (PLAN 3D.11): font, shape, size, labels, and the resets. */
+export function StepOptions({ step, hints, showKeys, showFontKeys }: Props) {
+  const config = useStyleConfig();
   return (
     <>
+      <div className={styles.section}>
+        <span className={styles.hintArea} {...hint("font")}>
+          <FontPickerControl
+            picker={stepFontPicker(config)}
+            fonts={stepFontChoices(config)}
+            value={step.fontFamily}
+            showKeys={showFontKeys}
+            hints={hints}
+            onPick={(fontFamily) => applyStyle({ fontFamily })}
+          />
+        </span>
+        <span className={styles.hintArea} {...hint("size")}>
+          <NumberPickerControl
+            picker={config.styles.stepSize}
+            value={step.size}
+            unit="px"
+            label="Size"
+            showKeys={showKeys}
+            hints={hints}
+            onPick={(stepSize) => applyStyle({ stepSize })}
+            onDragStart={beginStyleDrag}
+            onDragEnd={endStyleDrag}
+          />
+        </span>
+      </div>
       <div className={styles.section}>
         <div className={styles.group} {...hint("step.shape")}>
           {SHAPES.map((sh) => (
@@ -68,19 +98,6 @@ export function StepOptions({ step, hints, showKeys }: Props) {
             </button>
           ))}
         </div>
-        <span className={styles.hintArea} {...hint("size")}>
-          <NumberPickerControl
-            picker={STEP_SIZE_PICKER}
-            value={step.size}
-            unit="px"
-            label="Size"
-            showKeys={showKeys}
-            hints={hints}
-            onPick={(stepSize) => applyStyle({ stepSize })}
-            onDragStart={beginStyleDrag}
-            onDragEnd={endStyleDrag}
-          />
-        </span>
       </div>
       <div className={styles.section}>
         <div className={styles.group} {...hint("step.format")}>
