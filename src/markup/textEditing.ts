@@ -6,8 +6,8 @@ import { docStore } from "./model/store";
 import type { AnnotationId, NewAnnotation } from "./model/types";
 import { useToolStore } from "./toolStore";
 
-/** Create a text object and start typing into it. */
-export function createText(text: Extract<NewAnnotation, { kind: "text" }>): void {
+/** Create a text object or a callout and start typing into it. */
+export function createText(text: Extract<NewAnnotation, { kind: "text" | "callout" }>): void {
   finishTextEdit();
   const store = docStore.getState();
   store.select([]);
@@ -16,13 +16,16 @@ export function createText(text: Extract<NewAnnotation, { kind: "text" }>): void
   useToolStore.getState().setEditing({ id, isNew: true });
 }
 
-/** Start typing into an existing text object. */
+/** Start typing into an existing text object or callout. */
 export function editText(id: AnnotationId): void {
   const editing = useToolStore.getState().editing;
   if (editing?.id === id) return;
   finishTextEdit();
   const store = docStore.getState();
-  if (!store.doc.annotations.some((a) => a.id === id && a.kind === "text")) return;
+  if (
+    !store.doc.annotations.some((a) => a.id === id && (a.kind === "text" || a.kind === "callout"))
+  )
+    return;
   store.select([]);
   store.beginGesture();
   useToolStore.getState().setEditing({ id, isNew: false });
@@ -39,7 +42,7 @@ export function finishTextEdit(): void {
   tools.setEditing(null);
   const store = docStore.getState();
   const a = store.doc.annotations.find((x) => x.id === editing.id);
-  const empty = !a || (a.kind === "text" && a.text.trim() === "");
+  const empty = !a || ((a.kind === "text" || a.kind === "callout") && a.text.trim() === "");
   if (empty && editing.isNew) {
     store.cancelGesture();
     return;

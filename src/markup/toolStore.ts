@@ -25,6 +25,7 @@ export const TOOLS = [
   "rect",
   "ellipse",
   "text",
+  "callout",
   "redact",
   "spotlight",
   "step",
@@ -47,6 +48,8 @@ export const TOOL_KEYS: Record<string, ToolId> = {
   KeyB: "redact",
   KeyS: "spotlight",
   KeyN: "step",
+  // C is the editor's crop: "call-O-ut".
+  KeyO: "callout",
 };
 
 export function isTool(value: string): value is ToolId {
@@ -110,6 +113,18 @@ export interface ToolState {
   /** The labels of a document's first marker (after that, its markers say). */
   stepFormat: StepFormat;
   stepStart: number;
+  /**
+   * Callouts (PLAN 3E): their own font, size and text style once picked (else
+   * the text tool's), and the text color (null: black or white, whichever
+   * reads better on the box). The box color, thickness and corner radius are
+   * in `colors`, `widths` and `cornerRadii`.
+   */
+  calloutFont: string | null;
+  calloutFontSize: number | null;
+  calloutBold: boolean;
+  calloutItalic: boolean;
+  calloutAlign: TextAlign;
+  calloutTextColor: string | null;
   editing: TextEditing | null;
   /** The step marker whose label is being typed (PLAN 3D.12). */
   labelEditing: AnnotationId | null;
@@ -147,6 +162,12 @@ export const useToolStore = create<ToolState>((set) => ({
   stepFont: null,
   stepFormat: "numbers",
   stepStart: 1,
+  calloutFont: null,
+  calloutFontSize: null,
+  calloutBold: false,
+  calloutItalic: false,
+  calloutAlign: "left",
+  calloutTextColor: null,
   editing: null,
   labelEditing: null,
   // Picking a drawing tool drops the selection, so the options show that tool.

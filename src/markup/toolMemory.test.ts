@@ -30,6 +30,11 @@ describe("tool memory", () => {
       stepTextColor: "#000000",
       stepFont: "Georgia",
       stepFormat: "letters",
+      calloutFont: "Verdana",
+      calloutFontSize: 14,
+      calloutBold: true,
+      calloutAlign: "center",
+      calloutTextColor: "#ffffff",
     });
     const saved = JSON.stringify(snapshotToolMemory());
     useToolStore.setState(initial, true);

@@ -50,6 +50,11 @@ All notable changes to Vandal are listed here. The format follows
   bar, or with Alt+1–9 and Alt+0.
 - Settings › Markup › Rounded corners: choose the corner radii on offer, as a dropdown, a slider
   or a stepped slider. Square corners (0) are always one of them.
+- Callout tool (O): drag from what you want to point at to where the text goes (or just click),
+  then type. The text sits in a colored box with a pointer to that spot. Drag the handle at the
+  pointer's end to point somewhere else; moving or resizing the callout leaves the pointer's end
+  where it is, and the pointer always leaves the box on the side facing it. Pick the text size
+  with 1–9 and 0, the pointer's thickness with Shift+1–9 and Shift+0, and the font with Alt.
 
 ### Changed
 

@@ -564,6 +564,14 @@ export const sections: Section[] = [
             keywords: ["own", "custom", "override", "per tool", "palette", "color"],
           },
           {
+            id: "tool-style-callout",
+            kind: "toolStyle",
+            tool: "callout",
+            label: "Callout",
+            widths: true,
+            keywords: ["own", "custom", "override", "per tool", "palette", "color", "pointer"],
+          },
+          {
             id: "tool-style-step",
             kind: "toolStyle",
             tool: "step",

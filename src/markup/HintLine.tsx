@@ -35,6 +35,10 @@ export function HintLine() {
       s.selection.length === 1 &&
       s.doc.annotations.find((a) => a.id === s.selection[0])?.kind === "step",
   );
+  const calloutSelected = useDoc((s) => {
+    const id = s.selection.length === 1 ? s.selection[0] : null;
+    return !!id && s.doc.annotations.find((a) => a.id === id)?.kind === "callout";
+  });
   const labelTyping = useToolStore((s) => s.labelEditing !== null);
   const config = useStyleConfig();
   // For naming the second color only when there is one.
@@ -78,6 +82,7 @@ export function HintLine() {
     textSelected,
     segmentSelected,
     stepSelected,
+    calloutSelected,
     labelTyping,
     typing,
     overObject,

@@ -45,9 +45,11 @@ export function ColorControls({ target, values, show, held }: Props) {
   const { second } = slots;
   const labels = show.step
     ? ["Label color", "Marker color"]
-    : show.text
-      ? ["Text color", "Box color"]
-      : ["Fill color", "Border color"];
+    : show.callout
+      ? ["Text color", "Callout color"]
+      : show.text
+        ? ["Text color", "Box color"]
+        : ["Fill color", "Border color"];
   const badges = hints && held.ctrl;
   const pick = (slot: ColorSlot) => (c: string) => applyStyle({ [slot.key]: c });
 
@@ -95,9 +97,11 @@ export function ColorControls({ target, values, show, held }: Props) {
   const active = second && editingSecond ? second : slots.first;
   const [chipHint, swatchHint] = show.step
     ? (["chip.label", "swatch.label"] as const)
-    : show.text
-      ? (["chip.box", "swatch.box"] as const)
-      : (["chip.fill", "swatch.fill"] as const);
+    : show.callout
+      ? (["chip.callout", "swatch.callout"] as const)
+      : show.text
+        ? (["chip.box", "swatch.box"] as const)
+        : (["chip.fill", "swatch.fill"] as const);
   const setSlot = (slot: ColorSlotPosition) => useToolStore.setState({ colorSlot: slot });
   return (
     // Last in the bar, so the chip appearing (border + fill, text box) moves

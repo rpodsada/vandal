@@ -15,6 +15,7 @@ import {
   Transformer,
 } from "react-konva";
 import { bendFromPoint, bendPoint } from "./bend";
+import { calloutBox, pointerStart, segmentQuad } from "./callout";
 import { layerOf, registerAnnotationGroup } from "./export";
 import {
   annotationBounds,
@@ -33,6 +34,7 @@ import type {
   Annotation,
   AnnotationId,
   ArrowAnnotation,
+  CalloutAnnotation,
   HighlighterAnnotation,
   LineAnnotation,
   PenAnnotation,
@@ -53,6 +55,7 @@ import {
   DEFAULT_TEXT_BACKGROUND,
   drawnCornerRadius,
   stepNumbering,
+  toolCalloutStyle,
   toolColor,
   toolCornerRadius,
   toolFill,
@@ -96,6 +99,8 @@ const ALL_ANCHORS = [
 ];
 /** Screen px from the straight line within which a bend handle snaps straight. */
 const BEND_SNAP = 6;
+/** Screen px up and right of a click where a callout's text goes (its tip is at the click). */
+const CALLOUT_OFFSET = 48;
 /** Degrees from a 45° step within which rotation snaps to it. */
 const ROTATION_SNAP = 6;
 
@@ -144,6 +149,8 @@ type Drag =
   | { mode: "bend"; id: AnnotationId; handle: Point; start: Point; client: Point; began: boolean }
   | { mode: "stroke"; id: AnnotationId; start: Point; last: Point }
   | { mode: "text"; start: Point; client: Point }
+  | { mode: "callout"; start: Point; client: Point }
+  | { mode: "tip"; id: AnnotationId }
   | { mode: "marquee"; start: Point; base: AnnotationId[] };
 
 /** Line-like annotations get endpoint handles instead of the transformer. */
@@ -166,14 +173,19 @@ function hasRect(a: Annotation): a is ShapeAnnotation | RedactAnnotation | Spotl
   return a.kind === "rect" || a.kind === "ellipse" || a.kind === "redact" || a.kind === "spotlight";
 }
 
+/** Typed text: width-only resizing, and a typing session. */
+function isTextual(a: Annotation): a is TextAnnotation | CalloutAnnotation {
+  return a.kind === "text" || a.kind === "callout";
+}
+
 /** Boxes and text get the resize/rotate transformer. */
 function isBoxed(a: Annotation): boolean {
-  return hasRect(a) || a.kind === "text";
+  return hasRect(a) || isTextual(a);
 }
 
 /** Kept axis-aligned: no rotate handle. */
 function isUnrotatable(a: Annotation): boolean {
-  return a.kind === "redact" || a.kind === "spotlight";
+  return a.kind === "redact" || a.kind === "spotlight" || a.kind === "callout";
 }
 
 /**
@@ -206,6 +218,8 @@ export function MarkupLayer({
   const redactionsRef = useRef<Konva.Group>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const [marquee, setMarquee] = useState<Rect | null>(null);
+  /** A callout being dragged out: from its tip to where the text goes. */
+  const [pointerPreview, setPointerPreview] = useState<{ from: Point; to: Point } | null>(null);
   // Latest view for window-level drag handlers.
   const view = useRef({ scale, offset });
   useLayoutEffect(() => {
@@ -341,23 +355,29 @@ export function MarkupLayer({
     } else if (picks && e.target.name() === "endpoint") {
       const attrs = (e.target as Konva.Node).attrs as {
         annotationId: AnnotationId;
-        end: "from" | "to" | "bend";
+        end: "from" | "to" | "bend" | "tip";
       };
       const { annotationId: id, end } = attrs;
       const a = store.doc.annotations.find((x) => x.id === id);
-      if (!a || !hasEndpoints(a)) return;
-      store.beginGesture();
-      drag =
-        end === "bend"
-          ? {
-              mode: "bend",
-              id,
-              handle: bendPoint(a.from, a.to, a.bend),
-              start: p,
-              client: { x: ev.clientX, y: ev.clientY },
-              began: false,
-            }
-          : { mode: "endpoint", id, end, anchor: end === "from" ? a.to : a.from };
+      if (a?.kind === "callout") {
+        // A callout's one handle: where its pointer points (PLAN 3E).
+        store.beginGesture();
+        drag = { mode: "tip", id };
+      } else {
+        if (!a || !hasEndpoints(a) || end === "tip") return;
+        store.beginGesture();
+        drag =
+          end === "bend"
+            ? {
+                mode: "bend",
+                id,
+                handle: bendPoint(a.from, a.to, a.bend),
+                start: p,
+                client: { x: ev.clientX, y: ev.clientY },
+                began: false,
+              }
+            : { mode: "endpoint", id, end, anchor: end === "from" ? a.to : a.from };
+      }
     } else if (hit) {
       let sel = store.selection;
       if (ev.shiftKey) {
@@ -385,6 +405,10 @@ export function MarkupLayer({
     } else if (tool === "text") {
       store.select([]);
       drag = { mode: "text", start: p, client: { x: ev.clientX, y: ev.clientY } };
+    } else if (tool === "callout") {
+      // Press on what it points at, release where the text goes (PLAN 3E).
+      store.select([]);
+      drag = { mode: "callout", start: p, client: { x: ev.clientX, y: ev.clientY } };
     } else if (tool === "redact") {
       store.select([]);
       store.beginGesture();
@@ -453,9 +477,11 @@ export function MarkupLayer({
               : "square"
             : drag.mode === "text"
               ? "text"
-              : drag.mode === "bend"
-                ? "bend"
-                : null,
+              : drag.mode === "callout"
+                ? "callout"
+                : drag.mode === "bend"
+                  ? "bend"
+                  : null,
     );
 
     const onMove = (m: PointerEvent) => {
@@ -471,8 +497,10 @@ export function MarkupLayer({
           }
           const dx = q.x - drag.start.x;
           const dy = q.y - drag.start.y;
+          // A callout moved on its own keeps pointing where it did (PLAN 3E).
+          const alone = drag.originals.size === 1;
           for (const [id, original] of drag.originals) {
-            s.update(id, () => translateAnnotation(original, dx, dy));
+            s.update(id, () => translateAnnotation(original, dx, dy, alone));
           }
           break;
         }
@@ -487,6 +515,12 @@ export function MarkupLayer({
         }
         case "place":
           s.update(drag.id, (a) => (a.kind === "step" ? { ...a, x: q.x, y: q.y } : a));
+          break;
+        case "tip":
+          s.update(drag.id, (a) => (a.kind === "callout" ? { ...a, tip: q } : a));
+          break;
+        case "callout":
+          setPointerPreview({ from: drag.start, to: q });
           break;
         case "endpoint": {
           const pt = m.shiftKey ? snapAngle(drag.anchor, q) : q;
@@ -562,8 +596,31 @@ export function MarkupLayer({
         }
         case "endpoint":
         case "bend":
+        case "tip":
           s.endGesture();
           break;
+        case "callout": {
+          // A drag puts the text where it ends; a click, up and to the right.
+          setPointerPreview(null);
+          const q = toSource(u.clientX, u.clientY);
+          const dragged =
+            Math.hypot(u.clientX - drag.client.x, u.clientY - drag.client.y) >= 2 * DRAG_THRESHOLD;
+          const off = CALLOUT_OFFSET / view.current.scale;
+          const at = dragged ? q : { x: drag.start.x + off, y: drag.start.y - off };
+          const style = toolCalloutStyle();
+          createText({
+            kind: "callout",
+            ...style,
+            x: at.x,
+            // The first line's middle at the pointer, as for text.
+            y: at.y - textLineHeight(style.fontSize) / 2,
+            width: 0,
+            autoWidth: true,
+            text: "",
+            tip: drag.start,
+          });
+          break;
+        }
         case "place":
           s.endGesture();
           s.select([drag.id]);
@@ -660,6 +717,22 @@ export function MarkupLayer({
     const store = docStore.getState();
     for (const node of trRef.current?.nodes() ?? []) {
       const a = store.doc.annotations.find((x) => x.id === node.id());
+      if (a?.kind === "callout") {
+        // Width only; the tip stays where it points.
+        const sx = Math.abs(node.scaleX());
+        const resized = Math.abs(sx - 1) > 1e-6;
+        const w = Math.max(textPx(a.fontSize), node.width() * sx);
+        const x = node.x();
+        const y = node.y();
+        node.scaleX(1);
+        node.scaleY(1);
+        store.update(a.id, (t) =>
+          t.kind === "callout"
+            ? { ...t, x, y, ...(resized ? { width: w, autoWidth: false } : {}) }
+            : t,
+        );
+        continue;
+      }
       if (a?.kind === "text") {
         // Only the width changes (the anchors allow nothing else); rotation is
         // about the top-left corner, which Konva keeps in x/y.
@@ -698,7 +771,7 @@ export function MarkupLayer({
   };
 
   const crop = clip ?? doc.crop;
-  const textSelected = doc.annotations.some((a) => a.kind === "text" && selection.includes(a.id));
+  const textSelected = doc.annotations.some((a) => isTextual(a) && selection.includes(a.id));
   // Redactions (Rust bakes whole-pixel rectangles) and spotlights stay axis-aligned.
   const unrotatableSelected = doc.annotations.some(
     (a) => isUnrotatable(a) && selection.includes(a.id),
@@ -711,7 +784,7 @@ export function MarkupLayer({
     (a): a is StepAnnotation => a.kind === "step" && a.id === labelEditing,
   );
   const editedText = doc.annotations.find(
-    (a): a is TextAnnotation => a.kind === "text" && a.id === editing?.id,
+    (a): a is TextAnnotation | CalloutAnnotation => isTextual(a) && a.id === editing?.id,
   );
   const groupProps = {
     x: offset.x,
@@ -845,6 +918,38 @@ export function MarkupLayer({
                 : [],
             )}
           {doc.annotations.map((a) =>
+            a.kind === "callout" && selection.includes(a.id) ? (
+              <Circle
+                key={`${a.id}-tip`}
+                name="endpoint"
+                listening={handlesLive}
+                annotationId={a.id}
+                end="tip"
+                x={offset.x + a.tip.x * scale}
+                y={offset.y + a.tip.y * scale}
+                radius={6}
+                fill="#ffffff"
+                stroke={CHROME}
+                strokeWidth={1.5}
+                hitStrokeWidth={8}
+              />
+            ) : null,
+          )}
+          {pointerPreview && (
+            <Line
+              points={[
+                offset.x + pointerPreview.from.x * scale,
+                offset.y + pointerPreview.from.y * scale,
+                offset.x + pointerPreview.to.x * scale,
+                offset.y + pointerPreview.to.y * scale,
+              ]}
+              stroke={CHROME}
+              strokeWidth={1.5}
+              dash={[4, 3]}
+              listening={false}
+            />
+          )}
+          {doc.annotations.map((a) =>
             (isStroke(a) || a.kind === "step") &&
             selection.includes(a.id) &&
             a.id !== labelEditing ? (
@@ -909,6 +1014,7 @@ function AnnotationShape({
   label?: string;
 }) {
   if (a.kind === "step") return <StepMarker a={a} label={label} hidden={hidden} />;
+  if (a.kind === "callout") return <CalloutShape a={a} hitSlop={hitSlop} typing={hidden} />;
   if (a.kind === "text") {
     return (
       <Text
@@ -1020,6 +1126,89 @@ function AnnotationShape({
     />
   ) : (
     <Ellipse {...common} radiusX={rect.width / 2} radiusY={rect.height / 2} />
+  );
+}
+
+/**
+ * A callout (PLAN 3E): the pointer, then the box over its start, then the
+ * text. One Konva text node, so the transformer resizes its width like text's
+ * and the pointer follows the laid-out box. While it's being typed into, the
+ * box and pointer stay and the text editor shows the text.
+ */
+function CalloutShape({
+  a,
+  hitSlop,
+  typing,
+}: {
+  a: CalloutAnnotation;
+  hitSlop: number;
+  typing: boolean;
+}) {
+  // The box and where the pointer leaves it, relative to the text's top-left.
+  const layout = (t: Konva.Text) => {
+    const box = calloutBox(0, 0, t.width(), t.height(), a.fontSize);
+    const tip = { x: a.tip.x - a.x, y: a.tip.y - a.y };
+    return { box, tip, start: pointerStart(box, a.cornerRadius, tip) };
+  };
+  return (
+    <Text
+      id={a.id}
+      name="annotation"
+      x={a.x}
+      y={a.y}
+      text={a.text}
+      fontFamily={a.fontFamily}
+      fontSize={textPx(a.fontSize)}
+      fontStyle={textFontStyle(a.bold, a.italic)}
+      lineHeight={TEXT_LINE_HEIGHT}
+      fill={a.textColor}
+      align={a.align}
+      width={a.autoWidth ? undefined : a.width}
+      wrap={a.autoWidth ? "none" : "word"}
+      perfectDrawEnabled={false}
+      sceneFunc={(ctx, shape) => {
+        const t = shape as Konva.Text;
+        const { box, tip, start } = layout(t);
+        const c = (ctx as unknown as { _context: CanvasRenderingContext2D })._context;
+        c.save();
+        if (start) {
+          c.beginPath();
+          c.moveTo(start.x, start.y);
+          c.lineTo(tip.x, tip.y);
+          c.strokeStyle = a.color;
+          c.lineWidth = a.lineWidth;
+          c.lineCap = "round";
+          c.stroke();
+        }
+        c.beginPath();
+        c.roundRect(
+          box.x,
+          box.y,
+          box.width,
+          box.height,
+          drawnCornerRadius(a.cornerRadius, box.width, box.height),
+        );
+        c.fillStyle = a.color;
+        c.fill();
+        c.restore();
+        if (!typing) t._sceneFunc(ctx as Parameters<Konva.Text["_sceneFunc"]>[0]);
+      }}
+      // The box and the pointer (a text node has no stroke to hit with).
+      hitFunc={(ctx, shape) => {
+        const { box, tip, start } = layout(shape as Konva.Text);
+        ctx.beginPath();
+        ctx.rect(box.x, box.y, box.width, box.height);
+        ctx.closePath();
+        ctx.fillShape(shape);
+        if (!start) return;
+        const [first, ...rest] = segmentQuad(start, tip, a.lineWidth + hitSlop);
+        ctx.beginPath();
+        ctx.moveTo(first.x, first.y);
+        for (const q of rest) ctx.lineTo(q.x, q.y);
+        ctx.closePath();
+        ctx.fillShape(shape);
+      }}
+    />
   );
 }
 

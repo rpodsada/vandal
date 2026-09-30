@@ -9,11 +9,13 @@ import { digitSlot } from "./pickers";
 
 export interface HeldKeys {
   digit: boolean;
+  /** The digit was pressed with Shift (a callout's thickness, PLAN 3E). */
+  shiftDigit: boolean;
   ctrl: boolean;
   alt: boolean;
 }
 
-const NONE: HeldKeys = { digit: false, ctrl: false, alt: false };
+const NONE: HeldKeys = { digit: false, shiftDigit: false, ctrl: false, alt: false };
 /** How long Ctrl or Alt must be held alone before its badges show. */
 const HOLD_MS = 350;
 
@@ -38,7 +40,7 @@ export function useHeldKeys(): HeldKeys {
         // Modifier+digit keeps that modifier's badges up while picking.
         if (!e.ctrlKey && !e.altKey && !isTyping(e.target)) {
           digits.add(e.code);
-          set({ digit: true });
+          set({ digit: true, shiftDigit: e.shiftKey });
         }
         return;
       }
@@ -50,7 +52,7 @@ export function useHeldKeys(): HeldKeys {
     };
 
     const up = (e: KeyboardEvent) => {
-      if (digits.delete(e.code) && !digits.size) set({ digit: false });
+      if (digits.delete(e.code) && !digits.size) set({ digit: false, shiftDigit: false });
       if (e.key === "Control" || e.key === "Alt") {
         window.clearTimeout(timer);
         set(e.key === "Control" ? { ctrl: false } : { alt: false });

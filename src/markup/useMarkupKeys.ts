@@ -62,6 +62,18 @@ export function useMarkupKeys(active?: () => boolean): void {
   }, []);
 }
 
+/**
+ * Shift+digit: a callout's pointer thickness (PLAN 3E), since its digits pick
+ * the text size.
+ */
+function pickCalloutWidth(slot: number): boolean {
+  const target = styleTarget();
+  if (!target || !targetSections(target).callout) return false;
+  const width = pickByDigit(widthPickerFor(target.tool), slot);
+  if (width !== null) applyStyle({ width });
+  return true;
+}
+
 /** Digit: line width of the tool or selection, or the size of text (by the pickers' slots). */
 function pickWidth(slot: number): boolean {
   const target = styleTarget();
@@ -95,14 +107,15 @@ function pickWidth(slot: number): boolean {
 }
 
 /**
- * Alt+digit: a font slot (tenths of the way along a long list) for text or
- * step markers, or a corner radius for rectangles and spotlights (PLAN 3D.17).
+ * Alt+digit: a font slot (tenths of the way along a long list) for text,
+ * callouts or step markers, or a corner radius for rectangles and spotlights
+ * (PLAN 3D.17). A callout's font wins over its corners.
  */
 function pickAlt(slot: number): boolean {
   const target = styleTarget();
   if (!target) return false;
   const sections = targetSections(target);
-  if (sections.corner) {
+  if (sections.corner && !sections.text) {
     if (targetValues(target, docStore.getState().doc).corner === null) return false;
     const cornerRadius = pickByDigit(useStyleConfig.getState().styles.cornerRadius, slot);
     if (cornerRadius !== null) applyStyle({ cornerRadius });
@@ -148,7 +161,7 @@ function handlePlain(e: KeyboardEvent): boolean {
   const store = docStore.getState();
   const tools = useToolStore.getState();
   const slot = digitSlot(e.code);
-  if (slot !== null) return !e.shiftKey && pickWidth(slot);
+  if (slot !== null) return e.shiftKey ? pickCalloutWidth(slot) : pickWidth(slot);
   // X swaps the two colors (PLAN 3D.15), as in design software.
   if (e.code === "KeyX" && !e.shiftKey) return swapColors();
   const tool = TOOL_KEYS[e.code];
@@ -159,12 +172,12 @@ function handlePlain(e: KeyboardEvent): boolean {
   switch (e.code) {
     case "Enter":
     case "NumpadEnter": {
-      // Enter on one selected text object starts typing into it, and on a
-      // step marker, its label.
+      // Enter on one selected text object or callout starts typing into it,
+      // and on a step marker, its label.
       const [id] = store.selection;
       const a = store.doc.annotations.find((x) => x.id === id);
       if (store.selection.length !== 1) return false;
-      if (a?.kind === "text") editText(id);
+      if (a?.kind === "text" || a?.kind === "callout") editText(id);
       else if (a?.kind === "step") editStepLabel(id);
       else return false;
       return true;
@@ -189,7 +202,10 @@ function handlePlain(e: KeyboardEvent): boolean {
       const dx = e.code === "ArrowLeft" ? -step : e.code === "ArrowRight" ? step : 0;
       const dy = e.code === "ArrowUp" ? -step : e.code === "ArrowDown" ? step : 0;
       store.beginGesture();
-      for (const id of store.selection) store.update(id, (a) => translateAnnotation(a, dx, dy));
+      // A callout nudged on its own keeps pointing where it did (PLAN 3E).
+      const alone = store.selection.length === 1;
+      for (const id of store.selection)
+        store.update(id, (a) => translateAnnotation(a, dx, dy, alone));
       store.endGesture();
       return true;
     }

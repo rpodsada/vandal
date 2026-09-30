@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { TEXT_LINE_HEIGHT, textPx } from "./geometry";
 import { docStore } from "./model/store";
-import type { Point, TextAnnotation } from "./model/types";
+import type { CalloutAnnotation, Point, TextAnnotation } from "./model/types";
 import { finishTextEdit } from "./textEditing";
 import { measureTextWidth, textBoxPadding } from "./textMeasure";
 import styles from "./markup.module.css";
@@ -17,7 +17,8 @@ export function refocusTextEditor(): void {
 }
 
 interface Props {
-  a: TextAnnotation;
+  /** A callout's box and pointer stay on the canvas; only its text is typed here. */
+  a: TextAnnotation | CalloutAnnotation;
   /** CSS px per source px. */
   scale: number;
   /** CSS position of source pixel (0, 0). */
@@ -55,7 +56,7 @@ export function TextEditor({ a, scale, offset }: Props) {
 
   const onChange = (text: string) => {
     docStore.getState().update(a.id, (t) =>
-      t.kind === "text"
+      t.kind === "text" || t.kind === "callout"
         ? {
             ...t,
             text,
@@ -87,6 +88,7 @@ export function TextEditor({ a, scale, offset }: Props) {
   // Room for the caret after the last character of a growing box.
   const width = a.autoWidth ? a.width + px * 0.6 : a.width;
   const pad = textBoxPadding(px) * scale;
+  const text = a.kind === "text" ? a : null;
   return (
     <textarea
       ref={ref}
@@ -100,24 +102,26 @@ export function TextEditor({ a, scale, offset }: Props) {
         left: offset.x + a.x * scale,
         top: offset.y + a.y * scale,
         width: width * scale,
-        transform: a.rotation ? `rotate(${a.rotation}deg)` : undefined,
+        transform: text?.rotation ? `rotate(${text.rotation}deg)` : undefined,
         fontFamily: `"${a.fontFamily}"`,
         fontSize: px * scale,
         fontWeight: a.bold ? "bold" : "normal",
         fontStyle: a.italic ? "italic" : "normal",
         lineHeight: TEXT_LINE_HEIGHT,
-        color: a.color,
+        color: a.kind === "text" ? a.color : a.textColor,
         textAlign: a.align,
         whiteSpace: a.autoWidth ? "pre" : "pre-wrap",
         // The box as the canvas draws it, without moving the text.
-        ...(a.background && {
-          background: a.backgroundColor,
-          boxShadow: `0 0 0 ${pad}px ${a.backgroundColor}`,
+        ...(text?.background && {
+          background: text.backgroundColor,
+          boxShadow: `0 0 0 ${pad}px ${text.backgroundColor}`,
           // A spread shadow's corners are this radius plus the spread: the
           // canvas box's radius is the padding.
           borderRadius: 1,
           outlineOffset: pad + 3,
         }),
+        // Outside the callout's box, which the canvas draws.
+        ...(!text && { outlineOffset: pad + 3 }),
       }}
     />
   );

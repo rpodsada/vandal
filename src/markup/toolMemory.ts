@@ -47,6 +47,12 @@ export interface ToolMemory {
   stepFont: string | null;
   /** Not the start: a new document starts from 1 (or A). */
   stepFormat: StepFormat;
+  calloutFont: string | null;
+  calloutFontSize: number | null;
+  calloutBold: boolean;
+  calloutItalic: boolean;
+  calloutAlign: TextAlign;
+  calloutTextColor: string | null;
 }
 
 /** The tools' current memory. */
@@ -80,6 +86,12 @@ export function snapshotToolMemory(): ToolMemory {
     stepTextColor: t.stepTextColor,
     stepFont: t.stepFont,
     stepFormat: t.stepFormat,
+    calloutFont: t.calloutFont,
+    calloutFontSize: t.calloutFontSize,
+    calloutBold: t.calloutBold,
+    calloutItalic: t.calloutItalic,
+    calloutAlign: t.calloutAlign,
+    calloutTextColor: t.calloutTextColor,
   };
 }
 
@@ -126,6 +138,9 @@ export function restoreToolMemory(stored: unknown): void {
     <T>(valid: (x: unknown) => x is T) =>
     (x: unknown): x is T | null =>
       x === null || valid(x);
+  const isFont = (x: unknown): x is string => typeof x === "string" && x.trim() !== "";
+  const isBool = (x: unknown): x is boolean => typeof x === "boolean";
+  const isAlign = oneOf<TextAlign>("left", "center", "right");
   useToolStore.setState({
     sharedColor: pick("sharedColor", nullable(isColor), t.sharedColor),
     colors: perTool(s.colors, isColor),
@@ -172,5 +187,11 @@ export function restoreToolMemory(stored: unknown): void {
       t.stepFont,
     ),
     stepFormat: pick("stepFormat", oneOf<StepFormat>("numbers", "letters"), t.stepFormat),
+    calloutFont: pick("calloutFont", nullable(isFont), t.calloutFont),
+    calloutFontSize: pick("calloutFontSize", nullable(isSize), t.calloutFontSize),
+    calloutBold: pick("calloutBold", isBool, t.calloutBold),
+    calloutItalic: pick("calloutItalic", isBool, t.calloutItalic),
+    calloutAlign: pick("calloutAlign", isAlign, t.calloutAlign),
+    calloutTextColor: pick("calloutTextColor", nullable(isColor), t.calloutTextColor),
   });
 }

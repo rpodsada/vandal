@@ -30,6 +30,7 @@ import {
   toolFont,
   toolRedact,
   stepNumbering,
+  toolCalloutStyle,
   toolCornerRadius,
   toolSpotlight,
   toolStepStyle,
@@ -78,7 +79,7 @@ export interface TargetValues {
   fillColor: string | null;
   head: ArrowHead | null;
   ends: ArrowEnds | null;
-  /** Text only. */
+  /** Text and callouts (a callout has no background box). */
   text: {
     fontFamily: string;
     fontSize: number;
@@ -94,13 +95,41 @@ export interface TargetValues {
   spotlight: { shape: SpotlightShape; dim: number } | null;
   /** Step markers only (`color` is the marker's). */
   step: (StepStyle & { format: StepFormat; start: number }) | null;
-  /** Rectangles and rectangular spotlights: the corner radius (PLAN 3D.17). */
+  /** Rectangles, rectangular spotlights and callouts: the corner radius (PLAN 3D.17). */
   corner: number | null;
+  /** Callouts only (`color` is the box's, `width` the pointer's). */
+  callout: { textColor: string } | null;
 }
 
 /** What the controls show: the first object's style, or the tool's. */
 export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
-  return { ...styleValues(target, doc), corner: cornerValue(target, doc) };
+  const a = doc.annotations.find((x) => x.id === target.ids[0]);
+  if (a?.kind === "callout" || (!a && target.tool === "callout")) {
+    const c = a?.kind === "callout" ? a : toolCalloutStyle();
+    return {
+      color: c.color,
+      width: c.lineWidth,
+      fill: null,
+      fillColor: null,
+      head: null,
+      ends: null,
+      text: {
+        fontFamily: c.fontFamily,
+        fontSize: c.fontSize,
+        bold: c.bold,
+        italic: c.italic,
+        align: c.align,
+        background: false,
+        backgroundColor: c.color,
+      },
+      redact: null,
+      spotlight: null,
+      step: null,
+      corner: c.cornerRadius,
+      callout: { textColor: c.textColor },
+    };
+  }
+  return { ...styleValues(target, a, doc), corner: cornerValue(target, doc), callout: null };
 }
 
 /** The corner radius on show, or null where corners don't apply (ellipses, round spotlights). */
@@ -117,8 +146,11 @@ function cornerValue(target: StyleTarget, doc: Doc): number | null {
   return null;
 }
 
-function styleValues(target: StyleTarget, doc: Doc): Omit<TargetValues, "corner"> {
-  const a = doc.annotations.find((x) => x.id === target.ids[0]);
+function styleValues(
+  target: StyleTarget,
+  a: Exclude<Annotation, { kind: "callout" }> | undefined,
+  doc: Doc,
+): Omit<TargetValues, "corner" | "callout"> {
   const tools = useToolStore.getState();
   if (!a) {
     const t = target.tool;
@@ -232,12 +264,16 @@ export function targetSections(target: StyleTarget) {
     ),
     fill: all((k) => k === "rect" || k === "ellipse"),
     head: all((k) => k === "arrow"),
-    text: all((k) => k === "text"),
+    // Font, size, bold, italic and alignment: text and callouts.
+    text: all((k) => k === "text" || k === "callout"),
+    /** Text's own background box. */
+    textBox: all((k) => k === "text"),
     redact: all((k) => k === "redact"),
     spotlight: all((k) => k === "spotlight"),
     step: all((k) => k === "step"),
+    callout: all((k) => k === "callout"),
     // Also needs a rectangle's shape (see TargetValues.corner).
-    corner: all((k) => k === "rect" || k === "spotlight"),
+    corner: all((k) => k === "rect" || k === "spotlight" || k === "callout"),
   };
 }
 
@@ -274,6 +310,13 @@ export function colorSlots(
       kind: "text",
       first: { key: "textColor", value: values.step.textColor },
       second: { key: "color", value: values.step.color },
+    };
+  }
+  if (sections.callout && values.callout) {
+    return {
+      kind: "text",
+      first: { key: "textColor", value: values.callout.textColor },
+      second: { key: "color", value: values.color },
     };
   }
   if (sections.text && values.text?.background) {
@@ -319,18 +362,53 @@ export interface StylePatch {
   dim?: number;
   stepShape?: StepShape;
   stepSize?: number;
-  /** A step marker's label color. */
+  /** A step marker's label color, and a callout's text color. */
   textColor?: string;
   /** Step markers' labels: apply to every marker in the document. */
   stepFormat?: StepFormat;
   stepStart?: number;
-  /** Rectangles and spotlights (PLAN 3D.17), in source px. */
+  /** Rectangles, spotlights and callouts (PLAN 3D.17), in source px. */
   cornerRadius?: number;
+}
+
+/** Tools whose corners round. */
+function cornerTool(tool: ToolId): boolean {
+  return tool === "rect" || tool === "spotlight" || tool === "callout";
+}
+
+/** Text or a callout with a new font: a growing box follows its new width. */
+function refit<T extends Extract<Annotation, { kind: "text" | "callout" }>>(t: T, a: T): T {
+  const fontChanged =
+    t.fontFamily !== a.fontFamily ||
+    t.fontSize !== a.fontSize ||
+    t.bold !== a.bold ||
+    t.italic !== a.italic;
+  if (t.autoWidth && fontChanged)
+    return {
+      ...t,
+      width: measureTextWidth(t.text, textPx(t.fontSize), t.fontFamily, t.bold, t.italic),
+    };
+  return t;
 }
 
 function patchAnnotation(a: Annotation, p: StylePatch): Annotation {
   if (p.cornerRadius !== undefined && (a.kind === "rect" || a.kind === "spotlight"))
     a = { ...a, cornerRadius: p.cornerRadius };
+  if (a.kind === "callout") {
+    const c = {
+      ...a,
+      color: p.color ?? a.color,
+      textColor: p.textColor ?? a.textColor,
+      lineWidth: p.width ?? a.lineWidth,
+      cornerRadius: p.cornerRadius ?? a.cornerRadius,
+      fontFamily: p.fontFamily ?? a.fontFamily,
+      fontSize: p.fontSize ?? a.fontSize,
+      bold: p.bold ?? a.bold,
+      italic: p.italic ?? a.italic,
+      align: p.align ?? a.align,
+    };
+    return refit(c, a);
+  }
   if (a.kind === "step") {
     return {
       ...a,
@@ -364,15 +442,7 @@ function patchAnnotation(a: Annotation, p: StylePatch): Annotation {
       background: p.background ?? a.background,
       backgroundColor: p.backgroundColor ?? a.backgroundColor,
     };
-    // A growing box follows its new font.
-    const fontChanged =
-      t.fontFamily !== a.fontFamily ||
-      t.fontSize !== a.fontSize ||
-      t.bold !== a.bold ||
-      t.italic !== a.italic;
-    if (t.autoWidth && fontChanged)
-      t.width = measureTextWidth(t.text, textPx(t.fontSize), t.fontFamily, t.bold, t.italic);
-    return t;
+    return refit(t, a);
   }
   let next: Annotation = a;
   if (p.color !== undefined || p.width !== undefined) {
@@ -432,7 +502,7 @@ export function applyStyle(patch: StylePatch, target = styleTarget()): void {
   for (const tool of tools) {
     if (patch.color !== undefined) rememberColor(tool, patch.color);
     if (patch.width !== undefined && widthTool(tool)) rememberWidth(tool, patch.width);
-    if (patch.cornerRadius !== undefined && (tool === "rect" || tool === "spotlight"))
+    if (patch.cornerRadius !== undefined && cornerTool(tool))
       useToolStore.setState((t) => ({
         cornerRadii: { ...t.cornerRadii, [tool]: patch.cornerRadius },
       }));
@@ -473,6 +543,17 @@ export function applyStyle(patch: StylePatch, target = styleTarget()): void {
         textAlign: patch.align ?? t.textAlign,
         textBackground: patch.background ?? t.textBackground,
         textBackgroundColor: patch.backgroundColor ?? t.textBackgroundColor,
+      });
+    }
+    if (tool === "callout") {
+      const t = useToolStore.getState();
+      useToolStore.setState({
+        calloutFont: patch.fontFamily ?? t.calloutFont,
+        calloutFontSize: patch.fontSize ?? t.calloutFontSize,
+        calloutBold: patch.bold ?? t.calloutBold,
+        calloutItalic: patch.italic ?? t.calloutItalic,
+        calloutAlign: patch.align ?? t.calloutAlign,
+        calloutTextColor: patch.textColor ?? t.calloutTextColor,
       });
     }
     if (patch.head !== undefined && tool === "arrow")

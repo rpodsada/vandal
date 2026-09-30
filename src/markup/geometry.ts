@@ -11,6 +11,7 @@ import {
   type Cubic,
 } from "./bend";
 import type { Annotation, ArrowEnds, ArrowHead, Bend, Point, Rect } from "./model/types";
+import { textBoxPadding } from "./textMeasure";
 
 /** Rect spanned by a drag from `a` to `b`. With `square`, the shorter side grows to match. */
 export function rectFromDrag(a: Point, b: Point, square = false): Rect {
@@ -96,6 +97,16 @@ export function annotationBounds(a: Annotation): Rect {
         corners.map((c) => c.y),
       );
     }
+    case "callout": {
+      // Approximate like text, with the box's padding and the tip.
+      const lines = Math.max(1, a.text.split("\n").length);
+      const pad = textBoxPadding(textPx(a.fontSize));
+      const x0 = a.x - pad;
+      const y0 = a.y - pad;
+      const x1 = a.x + a.width + pad;
+      const y1 = a.y + lines * textLineHeight(a.fontSize) + pad;
+      return pointsBounds([x0, x1, a.tip.x], [y0, y1, a.tip.y]);
+    }
   }
 }
 
@@ -112,8 +123,16 @@ export function textLineHeight(fontSize: number): number {
   return textPx(fontSize) * TEXT_LINE_HEIGHT;
 }
 
-/** `a` moved by (dx, dy). */
-export function translateAnnotation<A extends Annotation>(a: A, dx: number, dy: number): A {
+/**
+ * `a` moved by (dx, dy). A callout's tip moves too, unless `leaveTip` (a
+ * callout moved on its own keeps pointing at the same spot, PLAN 3E).
+ */
+export function translateAnnotation<A extends Annotation>(
+  a: A,
+  dx: number,
+  dy: number,
+  leaveTip = false,
+): A {
   const p = (q: Point) => ({ x: q.x + dx, y: q.y + dy });
   switch (a.kind) {
     case "rect":
@@ -130,6 +149,8 @@ export function translateAnnotation<A extends Annotation>(a: A, dx: number, dy: 
     case "text":
     case "step":
       return { ...a, x: a.x + dx, y: a.y + dy };
+    case "callout":
+      return { ...a, x: a.x + dx, y: a.y + dy, tip: leaveTip ? a.tip : p(a.tip) };
   }
   return a;
 }

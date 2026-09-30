@@ -59,6 +59,19 @@ const TOOL_BUTTONS: { id: ToolId; label: string; key: string; icon: ReactNode }[
     icon: <path d="M5 7V5h14v2M12 5v14M9 19h6" />,
   },
   {
+    id: "callout",
+    label: "Callout",
+    key: "O",
+    // A box of text with a pointer down to the left.
+    icon: (
+      <>
+        <rect x="9" y="3.5" width="12" height="9" rx="2" />
+        <path d="M12 8h6M12.5 12.5L4 20.5" />
+        <circle cx="4" cy="20.5" r="0.6" />
+      </>
+    ),
+  },
+  {
     id: "redact",
     label: "Redact",
     key: "B",

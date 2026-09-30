@@ -132,8 +132,15 @@ export function ToolOptions() {
   const text = values.text;
   const step = show.step ? values.step : null;
   // Rectangles, after the width, and rectangular spotlights, after the shape (PLAN 3D.17).
+  // A callout's digits are its text size, Shift+digits its thickness and
+  // Alt+digits its font (PLAN 3E), so its corners have no key.
+  const callout = show.callout;
   const corner = show.corner && values.corner !== null && (
-    <span className={styles.iconPicker} {...hint("corner")} title="Corner radius">
+    <span
+      className={styles.iconPicker}
+      {...hint(callout ? "corner.callout" : "corner")}
+      title="Corner radius"
+    >
       {/* A rounded corner with an arrow pushing it in from outside (Richard's
           idea), so it doesn't read as another shape button. */}
       <svg className={`${styles.pickerIcon} ${styles.cornerIcon}`} viewBox="0 0 16 16" aria-hidden>
@@ -145,7 +152,7 @@ export function ToolOptions() {
         value={values.corner}
         unit="px"
         label="Corner radius"
-        showKeys={hints && held.alt}
+        showKeys={hints && held.alt && !callout}
         hints={hints}
         onPick={(cornerRadius) => applyStyle({ cornerRadius })}
         onDragStart={beginStyleDrag}
@@ -176,13 +183,24 @@ export function ToolOptions() {
               onPick={(fontFamily) => applyStyle({ fontFamily })}
             />
           </span>
-          <span className={styles.hintArea} {...hint("size")}>
+          <span
+            className={callout ? styles.iconPicker : styles.hintArea}
+            {...hint(callout ? "callout.size" : "size")}
+            title={callout ? "Text size" : undefined}
+          >
+            {callout && (
+              // A small and a large A.
+              <svg className={styles.pickerIcon} viewBox="0 0 16 16" aria-hidden>
+                <path d="M1 13l2.5-6 2.5 6M1.9 11h3.2" />
+                <path d="M7.5 13l3.5-10 3.5 10M8.8 9.7h4.4" />
+              </svg>
+            )}
             <NumberPickerControl
               picker={config.styles.fontSize}
               value={text.fontSize}
               unit="pt"
-              label="Size"
-              showKeys={hints && held.digit}
+              label={callout ? "Text size" : "Size"}
+              showKeys={hints && held.digit && !held.shiftDigit}
               hints={hints}
               onPick={(fontSize) => applyStyle({ fontSize })}
               onDragStart={beginStyleDrag}
@@ -194,14 +212,26 @@ export function ToolOptions() {
 
       {show.width && values.width !== null && (
         <div className={styles.section}>
-          <span className={styles.hintArea} {...hint("width")}>
+          <span
+            className={callout ? styles.iconPicker : styles.hintArea}
+            {...hint(callout ? "callout.width" : "width")}
+            title={callout ? "Pointer thickness" : undefined}
+          >
+            {callout && (
+              // Lines getting thicker.
+              <svg className={styles.pickerIcon} viewBox="0 0 16 16" aria-hidden>
+                <path d="M2 3.5h12" strokeWidth="1" />
+                <path d="M2 7.5h12" strokeWidth="2" />
+                <path d="M2 12.5h12" strokeWidth="3" />
+              </svg>
+            )}
             <NumberPickerControl
               picker={widthPicker}
               value={values.width}
               unit="px"
-              label="Line width"
+              label={callout ? "Pointer thickness" : "Line width"}
               lines
-              showKeys={hints && held.digit}
+              showKeys={hints && held.digit && (callout ? held.shiftDigit : !held.shiftDigit)}
               hints={hints}
               onPick={(width) => applyStyle({ width })}
               onDragStart={beginStyleDrag}
@@ -349,20 +379,22 @@ export function ToolOptions() {
           </div>
           <div className={styles.section}>
             <div className={styles.group}>
-              <button
-                type="button"
-                className={styles.toggle}
-                aria-pressed={text.background}
-                {...hint("box")}
-                aria-label="Background box"
-                title="Background box"
-                onClick={() => applyStyle({ background: !text.background })}
-              >
-                <svg viewBox="0 0 24 24" aria-hidden>
-                  <rect x="3" y="5" width="18" height="14" rx="2" className={styles.tint} />
-                  <path d="M8 16l4-9 4 9M9.5 13h5" />
-                </svg>
-              </button>
+              {show.textBox && (
+                <button
+                  type="button"
+                  className={styles.toggle}
+                  aria-pressed={text.background}
+                  {...hint("box")}
+                  aria-label="Background box"
+                  title="Background box"
+                  onClick={() => applyStyle({ background: !text.background })}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden>
+                    <rect x="3" y="5" width="18" height="14" rx="2" className={styles.tint} />
+                    <path d="M8 16l4-9 4 9M9.5 13h5" />
+                  </svg>
+                </button>
+              )}
               {ALIGNS.map((al) => (
                 <button
                   key={al.id}

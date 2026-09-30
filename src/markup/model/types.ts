@@ -101,16 +101,15 @@ export interface ShapeAnnotation extends Base {
 
 export type TextAlign = "left" | "center" | "right";
 
-export interface TextAnnotation extends Base {
-  kind: "text";
-  /** Top-left of the box; rotation (degrees) is about this corner. */
+/** What text and callouts share: the typed text and its layout. */
+export interface TextBody {
+  /** Top-left of the text (a text object's rotation, in degrees, is about this corner). */
   x: number;
   y: number;
   /** Wrap width in source px (with `autoWidth`, the measured width of the longest line). */
   width: number;
   /** Grows to fit the text instead of wrapping (a click-created box, until resized). */
   autoWidth: boolean;
-  rotation: number;
   text: string;
   fontFamily: string;
   /** Font size in pt at 100% (source px at 96 dpi). */
@@ -118,8 +117,13 @@ export interface TextAnnotation extends Base {
   /** For the whole text (no rich text in Phase 2). */
   bold: boolean;
   italic: boolean;
-  color: string;
   align: TextAlign;
+}
+
+export interface TextAnnotation extends Base, TextBody {
+  kind: "text";
+  rotation: number;
+  color: string;
   /** Draw a filled box behind the text. */
   background: boolean;
   /** The box's color. */
@@ -194,6 +198,35 @@ export interface StepAnnotation extends Base {
   label?: string;
 }
 
+/** A box behind the text, or a line under (or over) it (PLAN 3E.3). */
+export type CalloutShape = "box" | "underline";
+
+/** The pointer's end at the tip: plain, an arrow head or a dot (PLAN 3E.2). */
+export type CalloutEnd = "line" | "arrow" | "dot";
+
+/**
+ * Text with a pointer to what it's about (PLAN 3E). Not rotatable. The pointer
+ * starts where the line from the box's centre to the tip leaves the box, so it
+ * never crosses it, and is hidden while the tip is inside the box.
+ */
+export interface CalloutAnnotation extends Base, TextBody {
+  kind: "callout";
+  shape: CalloutShape;
+  /** The box and the pointer. */
+  color: string;
+  textColor: string;
+  /** The pointer's thickness in source px. */
+  lineWidth: number;
+  /** The box's rounded corners, in source px. */
+  cornerRadius: number;
+  /**
+   * Where the pointer points. It stays put when the callout is moved, nudged
+   * or resized on its own, and moves with it in a multi-selection.
+   */
+  tip: Point;
+  end: CalloutEnd;
+}
+
 export type Annotation =
   | PenAnnotation
   | HighlighterAnnotation
@@ -203,7 +236,8 @@ export type Annotation =
   | TextAnnotation
   | RedactAnnotation
   | SpotlightAnnotation
-  | StepAnnotation;
+  | StepAnnotation
+  | CalloutAnnotation;
 
 export type AnnotationKind = Annotation["kind"];
 

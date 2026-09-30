@@ -10,6 +10,7 @@ const base: HintState = {
   textSelected: false,
   segmentSelected: false,
   stepSelected: false,
+  calloutSelected: false,
   labelTyping: false,
   typing: false,
   overObject: false,

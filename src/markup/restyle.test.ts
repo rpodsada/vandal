@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { docStore } from "./model/store";
+import { translateAnnotation } from "./geometry";
 import {
   emptyDoc,
+  type CalloutAnnotation,
   type RedactAnnotation,
   type ShapeAnnotation,
   type SpotlightAnnotation,
@@ -452,5 +454,78 @@ describe("corner radius", () => {
     expect(valuesNow().corner).toBe(16);
     useToolStore.setState({ spotlightShape: "ellipse" });
     expect(valuesNow().corner).toBeNull();
+  });
+});
+
+describe("callouts", () => {
+  beforeEach(() => {
+    docStore.getState().load(emptyDoc({ width: 400, height: 400 }));
+    useToolStore.setState({ tool: "select", widths: {}, cornerRadii: {}, calloutTextColor: null });
+  });
+
+  function addCallout(): string {
+    const store = docStore.getState();
+    const id = store.add({
+      kind: "callout",
+      x: 100,
+      y: 100,
+      width: 50,
+      autoWidth: false,
+      text: "Hi",
+      fontFamily: "Segoe UI",
+      fontSize: 20,
+      bold: false,
+      italic: false,
+      align: "left",
+      shape: "box",
+      color: "#e53935",
+      textColor: "#ffffff",
+      lineWidth: 4,
+      cornerRadius: 5,
+      tip: { x: 10, y: 10 },
+      end: "line",
+    });
+    store.select([id]);
+    return id;
+  }
+
+  const callout = (id: string) =>
+    docStore.getState().doc.annotations.find((a) => a.id === id) as CalloutAnnotation;
+
+  it("has the text color first and the callout color second", () => {
+    addCallout();
+    const target = styleTarget()!;
+    const slots = colorSlots(targetValues(target, docStore.getState().doc), targetSections(target));
+    expect(slots.first).toEqual({ key: "textColor", value: "#ffffff" });
+    expect(slots.second).toEqual({ key: "color", value: "#e53935" });
+  });
+
+  it("restyles its thickness, corners and text, and the tool remembers them", () => {
+    const id = addCallout();
+    applyStyle({ width: 6, cornerRadius: 10, fontSize: 14, textColor: "#000000" });
+    expect(callout(id)).toMatchObject({
+      lineWidth: 6,
+      cornerRadius: 10,
+      fontSize: 14,
+      textColor: "#000000",
+    });
+    const t = useToolStore.getState();
+    expect(t.widths.callout).toBe(6);
+    expect(t.cornerRadii.callout).toBe(10);
+    expect(t.calloutFontSize).toBe(14);
+    expect(t.calloutTextColor).toBe("#000000");
+  });
+
+  it("swaps its two colors", () => {
+    const id = addCallout();
+    swapColors();
+    expect(callout(id)).toMatchObject({ color: "#ffffff", textColor: "#e53935" });
+  });
+
+  it("leaves its tip when moved on its own, and takes it along otherwise", () => {
+    const a = callout(addCallout());
+    expect(translateAnnotation(a, 5, 5, true).tip).toEqual({ x: 10, y: 10 });
+    expect(translateAnnotation(a, 5, 5).tip).toEqual({ x: 15, y: 15 });
+    expect(translateAnnotation(a, 5, 5, true)).toMatchObject({ x: 105, y: 105 });
   });
 });

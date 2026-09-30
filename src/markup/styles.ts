@@ -8,12 +8,15 @@ import type { NumberPicker, StyleSettings } from "../shared/ipc";
 type FontPicker = StyleSettings["font"];
 import type {
   AnnotationKind,
+  CalloutEnd,
+  CalloutShape,
   Doc,
   RedactMode,
   ShapeFill,
   SpotlightShape,
   StepFormat,
   StrokeStyle,
+  TextAlign,
 } from "./model/types";
 import { nearestValue } from "./pickers";
 import type { ColorKey } from "./restyle";
@@ -92,6 +95,7 @@ export const TOOL_FOR_KIND: Record<AnnotationKind, ToolId> = {
   redact: "redact",
   spotlight: "spotlight",
   step: "step",
+  callout: "callout",
 };
 
 function override(tool: ToolId, cfg: StyleConfig) {
@@ -222,6 +226,7 @@ export function setCustomColor(
       sharedColor: t.sharedColor,
       textBackgroundColor: t.textBackgroundColor,
       stepTextColor: t.stepTextColor,
+      calloutTextColor: t.calloutTextColor,
     };
     if (!color) return next;
     for (const tool of TOOLS) {
@@ -235,10 +240,12 @@ export function setCustomColor(
           if (onCustom(next.fillColors[tool])) next.fillColors[tool] = color;
         } else if (tool === "step") {
           if (onCustom(next.stepTextColor)) next.stepTextColor = color;
+        } else if (tool === "callout") {
+          if (onCustom(next.calloutTextColor)) next.calloutTextColor = color;
         } else if (onCustom(next.colors[tool])) {
           next.colors[tool] = color;
         }
-      } else if (both || tool === "step") {
+      } else if (both || tool === "step" || tool === "callout") {
         if (onCustom(next.colors[tool])) next.colors[tool] = color;
       } else if (tool === "text") {
         if (onCustom(next.textBackgroundColor)) next.textBackgroundColor = color;
@@ -273,10 +280,15 @@ export function toolRedact(mode?: RedactMode): { mode: RedactMode; strength: num
   };
 }
 
-/** A rectangle's or spotlight's corner radius now: 0 (square) until one is picked. */
+/** The corner radius a tool starts with before one is picked: square, but callouts a little round. */
+const PREFERRED_CORNER: Partial<Record<ToolId, number>> = { callout: 5 };
+
+/** A rectangle's, spotlight's or callout's corner radius now. */
 export function toolCornerRadius(tool: ToolId): number {
   const picker = useStyleConfig.getState().styles.cornerRadius;
-  return useToolStore.getState().cornerRadii[tool] ?? nearestValue(picker, 0);
+  return (
+    useToolStore.getState().cornerRadii[tool] ?? nearestValue(picker, PREFERRED_CORNER[tool] ?? 0)
+  );
 }
 
 /** The radius a rectangle is drawn with: at most half its shorter side. */
@@ -322,4 +334,39 @@ export function stepNumbering(doc: Doc): { format: StepFormat; start: number } {
   return first
     ? { format: first.format, start: first.start }
     : { format: t.stepFormat, start: t.stepStart };
+}
+
+/** A callout's style, as the tool would draw the next one (PLAN 3E). */
+export interface CalloutStyle {
+  shape: CalloutShape;
+  color: string;
+  textColor: string;
+  lineWidth: number;
+  cornerRadius: number;
+  end: CalloutEnd;
+  fontFamily: string;
+  fontSize: number;
+  bold: boolean;
+  italic: boolean;
+  align: TextAlign;
+}
+
+/** The next callout's style: its own memory, else the text tool's font and size. */
+export function toolCalloutStyle(): CalloutStyle {
+  const t = useToolStore.getState();
+  const color = toolColor("callout");
+  const font = toolFont();
+  return {
+    shape: "box",
+    color,
+    textColor: t.calloutTextColor ?? contrastingText(color),
+    lineWidth: toolWidth("callout"),
+    cornerRadius: toolCornerRadius("callout"),
+    end: "line",
+    fontFamily: t.calloutFont ?? font.family,
+    fontSize: t.calloutFontSize ?? font.size,
+    bold: t.calloutBold,
+    italic: t.calloutItalic,
+    align: t.calloutAlign,
+  };
 }
