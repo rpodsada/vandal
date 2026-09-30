@@ -113,10 +113,12 @@ interface Props {
   toolsActive?: boolean;
   /** Before a tool is picked (the editor applies a crop in progress). */
   onPickTool?: (tool: ToolId) => void;
+  /** Nothing to mark up (an empty editor, PLAN 3G): every button is off. */
+  disabled?: boolean;
 }
 
 /** Tools, then undo/redo. Shared by quick edit and the editor (PLAN §4.6). */
-export function Toolbar({ extra, toolsActive = true, onPickTool }: Props) {
+export function Toolbar({ extra, toolsActive = true, onPickTool, disabled = false }: Props) {
   const tool = useToolStore((s) => s.tool);
   const undoable = useDoc(canUndo);
   const redoable = useDoc(canRedo);
@@ -131,8 +133,9 @@ export function Toolbar({ extra, toolsActive = true, onPickTool }: Props) {
           className={styles.tool}
           {...hint(`tool.${b.id}`)}
           aria-label={`${b.label}${keySuffix(keys[b.id])}`}
-          aria-pressed={toolsActive && tool === b.id}
+          aria-pressed={toolsActive && !disabled && tool === b.id}
           title={`${b.label}${keySuffix(keys[b.id])}`}
+          disabled={disabled}
           onClick={() => {
             onPickTool?.(b.id);
             useToolStore.getState().setTool(b.id);
@@ -151,7 +154,7 @@ export function Toolbar({ extra, toolsActive = true, onPickTool }: Props) {
         {...hint("undo")}
         aria-label="Undo (Ctrl+Z)"
         title="Undo (Ctrl+Z)"
-        disabled={!undoable}
+        disabled={disabled || !undoable}
         onClick={() => docStore.getState().undo()}
       >
         <svg viewBox="0 0 24 24" aria-hidden>
@@ -165,7 +168,7 @@ export function Toolbar({ extra, toolsActive = true, onPickTool }: Props) {
         {...hint("redo")}
         aria-label="Redo (Ctrl+Y)"
         title="Redo (Ctrl+Y)"
-        disabled={!redoable}
+        disabled={disabled || !redoable}
         onClick={() => docStore.getState().redo()}
       >
         <svg viewBox="0 0 24 24" aria-hidden>

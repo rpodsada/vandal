@@ -56,7 +56,8 @@ const MIN_SIZE: (f64, f64) = (800.0, 560.0);
 const MAX_SHARE: f64 = 0.9;
 
 pub struct Editor {
-    pub image: Arc<RgbaImage>,
+    /// None: an empty editor (PLAN 3G), waiting for an image to load into it.
+    pub image: Option<Arc<RgbaImage>>,
     /// In `image` pixels.
     pub crop: PhysicalRect,
     pub maximized: bool,
@@ -109,7 +110,7 @@ impl Editors {
     }
 
     pub fn image(&self, id: EditorId) -> Option<Arc<RgbaImage>> {
-        self.open.get(&id).map(|e| e.image.clone())
+        self.open.get(&id).and_then(|e| e.image.clone())
     }
 
     /// Keep an uploaded layer for the next export. `false` if the editor is
@@ -153,6 +154,8 @@ pub struct EditorInit {
     /// Reopened from a notification (PLAN 3D.1): the document as loaded was
     /// already delivered, so it counts as copied and saved.
     pub delivered: bool,
+    /// No image yet (PLAN 3G): the page shows how to get one.
+    pub empty: bool,
 }
 
 /// What to do with the finished image.
@@ -232,7 +235,7 @@ fn open_frames(
     let title = capture_title(app);
     open(
         app,
-        Arc::new(image),
+        Some(Arc::new(image)),
         crop.relative_to(bounds.origin()),
         markup,
         title,
@@ -244,20 +247,101 @@ fn open_frames(
 /// Open an editor on an image file (PLAN 2D). Decodes on a worker thread; a
 /// file that can't be opened gets an error notification.
 pub fn open_file(app: &AppHandle, path: &Path) {
+    open_file_in(app, path, None);
+}
+
+/// [`open_file`], into the editor `into` if it's empty (PLAN 3G).
+pub fn open_file_in(app: &AppHandle, path: &Path, into: Option<EditorId>) {
     let app = app.clone();
     let path = path.to_path_buf();
     std::thread::spawn(move || match decode::decode_file(&path) {
         Ok(image) => {
             let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
             let title = file_title(&app, &path);
-            open(&app, Arc::new(image), crop, None, title, Some(path), false);
+            open_or_load(&app, into, Arc::new(image), crop, title, Some(path));
         }
         Err(message) => output::notify_error(&app, "Couldn't open the image", &message),
     });
 }
 
+/// An editor with no image (PLAN 3G): the tray's "New editor window".
+pub fn open_empty(app: &AppHandle) {
+    let title = crate::product_name(app).to_string();
+    open(
+        app,
+        None,
+        PhysicalRect::new(0, 0, 0, 0),
+        None,
+        title,
+        None,
+        false,
+    );
+}
+
+/// The editor `window_label` if it has no image yet: documents opened from
+/// it load into it instead of a new window (PLAN 3G).
+pub fn empty_editor(app: &AppHandle, window_label: &str) -> Option<EditorId> {
+    let id = id_from_label(window_label)?;
+    let state = app.state::<AppState>();
+    let editors = state.editors.lock().unwrap();
+    editors
+        .open
+        .get(&id)
+        .filter(|e| e.image.is_none())
+        .map(|_| id)
+}
+
+/// Open an image with no markup: into `into` if it's still empty, else in a
+/// new window.
+fn open_or_load(
+    app: &AppHandle,
+    into: Option<EditorId>,
+    image: Arc<RgbaImage>,
+    crop: PhysicalRect,
+    title: String,
+    file: Option<PathBuf>,
+) {
+    if let Some(id) = into {
+        if load_into(app, id, image.clone(), crop, &title, file.clone()) {
+            return;
+        }
+    }
+    open(app, Some(image), crop, None, title, file, false);
+}
+
+/// Put a document into an empty editor (PLAN 3G): its page reloads and shows
+/// it. False if the editor is gone or already has an image.
+fn load_into(
+    app: &AppHandle,
+    id: EditorId,
+    image: Arc<RgbaImage>,
+    crop: PhysicalRect,
+    title: &str,
+    file: Option<PathBuf>,
+) -> bool {
+    let Some(window) = app.get_webview_window(&label(id)) else {
+        return false;
+    };
+    {
+        let state = app.state::<AppState>();
+        let mut editors = state.editors.lock().unwrap();
+        let Some(e) = editors.open.get_mut(&id).filter(|e| e.image.is_none()) else {
+            return false;
+        };
+        e.image = Some(image);
+        e.crop = crop;
+        e.file = file;
+    }
+    let _ = window.set_title(title);
+    if let Err(e) = window.eval("location.reload()") {
+        eprintln!("[editor] couldn't reload {}: {e}", label(id));
+    }
+    true
+}
+
 /// Ask for image files and open each in its own editor (Ctrl+O in an editor,
-/// the tray). Modal to `parent` if given. Blocks: call off the main thread.
+/// the tray). Modal to `parent` if given; an empty `parent` takes the first
+/// (PLAN 3G). Blocks: call off the main thread.
 pub fn ask_open(app: &AppHandle, parent: Option<&WebviewWindow>) {
     let mut dialog = app
         .dialog()
@@ -268,21 +352,23 @@ pub fn ask_open(app: &AppHandle, parent: Option<&WebviewWindow>) {
     if let Some(parent) = parent {
         dialog = dialog.set_parent(parent);
     }
+    let mut into = parent.and_then(|p| empty_editor(app, p.label()));
     for path in dialog.blocking_pick_files().unwrap_or_default() {
         match path.into_path() {
-            Ok(path) => open_file(app, &path),
+            Ok(path) => open_file_in(app, &path, into.take()),
             Err(e) => eprintln!("[editor] can't open a picked file: {e}"),
         }
     }
 }
 
-/// The clipboard's image in a new editor ("New from clipboard").
-pub fn open_clipboard(app: &AppHandle) {
+/// The clipboard's image in a new editor ("New from clipboard"), or in the
+/// empty editor `into` (Ctrl+V there, PLAN 3G).
+pub fn open_clipboard(app: &AppHandle, into: Option<EditorId>) {
     match output::paste_image() {
         Ok(image) => {
             let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
             let title = format!("Clipboard image — {}", crate::product_name(app));
-            open(app, Arc::new(image), crop, None, title, None, false);
+            open_or_load(app, into, Arc::new(image), crop, title, None);
         }
         Err(message) => output::notify_error(app, "Nothing to open", &message),
     }
@@ -340,7 +426,7 @@ pub fn open_recent(app: &AppHandle, image_id: u32) {
 
 fn open(
     app: &AppHandle,
-    image: Arc<RgbaImage>,
+    image: Option<Arc<RgbaImage>>,
     crop: PhysicalRect,
     markup: Option<HandoffMarkup>,
     title: String,
@@ -430,8 +516,8 @@ pub fn init(app: &AppHandle, window_label: &str) -> Option<EditorInit> {
     let e = editors.open.get(&id)?;
     Some(EditorInit {
         editor_id: id,
-        width: e.image.width,
-        height: e.image.height,
+        width: e.image.as_ref().map_or(0, |i| i.width),
+        height: e.image.as_ref().map_or(0, |i| i.height),
         crop: e.crop,
         url: protocol::editor_url(id),
         layer_url: protocol::editor_layer_url(id, LayerKind::Annotations),
@@ -439,6 +525,7 @@ pub fn init(app: &AppHandle, window_label: &str) -> Option<EditorInit> {
         markup: e.markup.clone(),
         file: e.file.as_deref().map(file_name),
         delivered: e.delivered,
+        empty: e.image.is_none(),
     })
 }
 
@@ -482,7 +569,8 @@ pub fn export(
         } else {
             None
         };
-        (e.image.clone(), layer, highlights, e.file.clone())
+        let image = e.image.clone().ok_or("there's no image to copy or save")?;
+        (image, layer, highlights, e.file.clone())
     };
     let mut image = compose::crop_rgba(&base, crop).ok_or("the crop is empty")?;
     redact::apply(&base, crop, &mut image, &redactions);

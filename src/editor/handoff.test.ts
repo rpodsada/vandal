@@ -14,6 +14,7 @@ const init: EditorInit = {
   markup: null,
   file: null,
   delivered: false,
+  empty: false,
 };
 
 const style = { color: "#e53935", width: 4, opacity: 1 };

@@ -10,6 +10,8 @@ interface Props {
   busy: boolean;
   /** Crop mode is on (the crop button shows pressed, the tools don't). */
   cropping: boolean;
+  /** No image yet (PLAN 3G): only New capture and Open work. */
+  empty: boolean;
   onCrop: () => void;
   /** Picking a tool while cropping applies the crop first. */
   onPickTool: () => void;
@@ -24,6 +26,7 @@ interface Props {
 export function CommandBar({
   busy,
   cropping,
+  empty,
   onCrop,
   onPickTool,
   onNewCapture,
@@ -38,6 +41,7 @@ export function CommandBar({
       <Toolbar
         toolsActive={!cropping}
         onPickTool={onPickTool}
+        disabled={empty}
         extra={
           <button
             type="button"
@@ -46,6 +50,7 @@ export function CommandBar({
             aria-label={`Crop${cropKey}`}
             aria-pressed={cropping}
             title={`Crop${cropKey}`}
+            disabled={empty}
             onClick={onCrop}
           >
             <svg viewBox="0 0 24 24" aria-hidden>

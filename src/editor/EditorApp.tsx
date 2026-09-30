@@ -9,6 +9,7 @@ import { commands, type EditorInit, type ExportAction, type Settings } from "../
 import { alreadyDone, exportImage, markDelivered } from "./actions";
 import { CommandBar } from "./CommandBar";
 import { CropOptions } from "./CropOptions";
+import { EmptyEditor } from "./EmptyEditor";
 import { applyCrop, beginCrop, useCropStore } from "./cropStore";
 import { Stage } from "./Stage";
 import { useCropKeys } from "./useCropKeys";
@@ -23,7 +24,11 @@ import { ToolOptions } from "../markup/ToolOptions";
 import styles from "./EditorApp.module.css";
 
 type Status =
-  { kind: "loading" } | { kind: "ready"; init: EditorInit } | { kind: "error"; message: string };
+  | { kind: "loading" }
+  | { kind: "ready"; init: EditorInit }
+  // No image yet (PLAN 3G): a document opened from here loads into this window.
+  | { kind: "empty" }
+  | { kind: "error"; message: string };
 
 const NOTICE_MS = 5000;
 
@@ -36,9 +41,11 @@ export function EditorApp() {
   const busyRef = useRef(false);
   const settingsRef = useRef<Settings | null>(null);
   const optionsBarRef = useRef<HTMLDivElement>(null);
+  // Nothing to mark up or crop until an image loads into it.
+  const emptyRef = useRef(false);
   useStickyHeight(optionsBarRef);
-  useMarkupKeys();
-  useCropKeys();
+  useMarkupKeys(() => !emptyRef.current);
+  useCropKeys(() => !emptyRef.current);
   const cropping = useCropStore((s) => s.draft !== null);
   useEffect(() => useHintSources.setState({ mode: cropping ? "crop" : null }), [cropping]);
 
@@ -49,6 +56,12 @@ export function EditorApp() {
       try {
         const init = await commands.editorInit();
         if (!init) throw new Error("This capture is no longer available.");
+        if (init.empty) {
+          initRef.current = init;
+          emptyRef.current = true;
+          setStatus({ kind: "empty" });
+          return;
+        }
         const res = await fetch(init.url);
         if (!res.ok) throw new Error(`Couldn't load the image (HTTP ${res.status}).`);
         const pixels = new Uint8ClampedArray(await res.arrayBuffer());
@@ -131,7 +144,7 @@ export function EditorApp() {
   useEffect(() => {
     const unlisten = getCurrentWindow().onCloseRequested(async (event) => {
       const init = initRef.current;
-      if (!init) return;
+      if (!init || init.empty) return;
       const onClose = settingsRef.current?.editor.onClose ?? { copy: true, save: false };
       applyCrop();
       await flushToolStyles();
@@ -164,6 +177,9 @@ export function EditorApp() {
     const onKey = (e: KeyboardEvent) => {
       if (!e.ctrlKey || e.altKey) return;
       const view = useViewStore.getState();
+      // An empty editor: only what gets an image, and closing (PLAN 3G).
+      const allowed = ["KeyW", "KeyN", "KeyO", "KeyV", "Comma"];
+      if (emptyRef.current && !allowed.includes(e.code)) return;
       switch (e.code) {
         case "KeyW":
           if (e.shiftKey) return;
@@ -187,6 +203,11 @@ export function EditorApp() {
         case "Comma":
           if (e.shiftKey) return;
           void commands.openSettings();
+          break;
+        case "KeyV":
+          // Paste an image into an empty editor.
+          if (e.shiftKey || !emptyRef.current) return;
+          void commands.editorPaste();
           break;
         case "Equal":
         case "NumpadAdd":
@@ -215,6 +236,7 @@ export function EditorApp() {
       <CommandBar
         busy={busy || status.kind !== "ready"}
         cropping={cropping}
+        empty={status.kind === "empty"}
         onCrop={() => (cropping ? applyCrop() : status.kind === "ready" && beginCrop())}
         onPickTool={applyCrop}
         onNewCapture={() => void commands.editorNewCapture()}
@@ -224,9 +246,19 @@ export function EditorApp() {
         onSaveAs={() => void run("saveAs")}
       />
       <div ref={optionsBarRef} className={styles.optionsBar}>
-        {cropping ? <CropOptions /> : <ToolOptions />}
+        {status.kind === "empty" ? null : cropping ? <CropOptions /> : <ToolOptions />}
       </div>
-      <Stage canvasRef={canvasRef} message={status.kind === "error" ? status.message : undefined} />
+      {status.kind === "empty" ? (
+        <EmptyEditor
+          onNewCapture={() => void commands.editorNewCapture()}
+          onOpen={() => void commands.editorOpenImage()}
+        />
+      ) : (
+        <Stage
+          canvasRef={canvasRef}
+          message={status.kind === "error" ? status.message : undefined}
+        />
+      )}
       <StatusBar notice={notice} onReveal={(path) => void commands.revealFile(path)} />
     </div>
   );

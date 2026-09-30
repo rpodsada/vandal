@@ -52,6 +52,7 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::quick_done,
             commands::quick_open_editor,
             commands::editor_open_image,
+            commands::editor_paste,
             commands::windows_accent,
             commands::hotkeys_pause,
             commands::hotkeys_resume,
@@ -227,12 +228,14 @@ pub fn run() {
                 editor::closing(window.app_handle(), window);
             }
             WindowEvent::Destroyed => editor::destroyed(window.app_handle(), window.label()),
-            // Files dropped on an editor open in editors of their own.
+            // Files dropped on an editor open in editors of their own; an
+            // empty editor takes the first (PLAN 3G).
             WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. })
                 if editor::id_from_label(window.label()).is_some() =>
             {
+                let mut into = editor::empty_editor(window.app_handle(), window.label());
                 for path in paths {
-                    editor::open_file(window.app_handle(), path);
+                    editor::open_file_in(window.app_handle(), path, into.take());
                 }
             }
             _ => {}

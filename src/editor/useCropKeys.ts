@@ -5,7 +5,7 @@
 // (nothing to select or restyle), but saving, copying, zooming and panning
 // still work.
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { shortcutOf } from "../markup/shortcuts";
 import { useStyleConfig } from "../markup/styles";
 import { isTool, useToolStore } from "../markup/toolStore";
@@ -41,10 +41,15 @@ const ARROWS: Record<string, [number, number]> = {
   ArrowDown: [0, 1],
 };
 
-export function useCropKeys(): void {
+/** `active` (read on each key) switches them off, e.g. in an empty editor. */
+export function useCropKeys(active?: () => boolean): void {
+  const activeRef = useRef(active);
+  useEffect(() => {
+    activeRef.current = active;
+  });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e.target)) return;
+      if (isTyping(e.target) || (activeRef.current && !activeRef.current())) return;
       const id = shortcutOf(e, useStyleConfig.getState().shortcuts);
       if (!isCropping()) {
         if (id === "crop" && !e.repeat) {

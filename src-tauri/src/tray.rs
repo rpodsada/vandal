@@ -32,6 +32,13 @@ fn build_menu(app: &AppHandle, s: &Settings) -> tauri::Result<Menu<Wry>> {
     )?)?;
     menu.append(&MenuItem::with_id(
         app,
+        "new-editor",
+        "New editor window",
+        true,
+        None::<&str>,
+    )?)?;
+    menu.append(&MenuItem::with_id(
+        app,
         "open",
         "Open image…",
         true,
@@ -105,7 +112,8 @@ pub fn create(app: &AppHandle, s: &Settings) -> tauri::Result<()> {
                             let app = app.clone();
                             std::thread::spawn(move || editor::ask_open(&app, None));
                         }
-                        "clipboard" => editor::open_clipboard(app),
+                        "clipboard" => editor::open_clipboard(app, None),
+                        "new-editor" => editor::open_empty(app),
                         "quit" => app.exit(0),
                         _ => {}
                     }

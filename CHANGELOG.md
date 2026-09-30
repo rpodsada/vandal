@@ -65,6 +65,8 @@ All notable changes to Vandal are listed here. The format follows
   letter, alone or with Ctrl, Alt or Shift. Picking a key another tool has asks first, then
   leaves that tool without one. Tooltips and the hint line show the keys you chose. The page
   also lists the shortcuts that can't be changed, for marking up, quick edit and the editor.
+- New editor window, in the tray menu: an editor with no image yet. Open an image, drop a file on
+  it or paste one with Ctrl+V, and it loads into that window.
 - Open Settings from quick edit with the gear on its toolbar, or with Ctrl+, (in the editor too).
   Settings opens above quick edit and stays there while you work, so changes show straight away.
 

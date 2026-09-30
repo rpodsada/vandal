@@ -47,6 +47,8 @@ export const commands = {
 	quickOpenEditor: (captureId: number, rect: PhysicalRect, annotations: string) => typedError<null, string>(__TAURI_INVOKE("quick_open_editor", { captureId, rect, annotations })),
 	/**  Ctrl+O / "Open": pick image files, each opening in a new editor. */
 	editorOpenImage: () => __TAURI_INVOKE<void>("editor_open_image"),
+	/**  Ctrl+V in an empty editor (PLAN 3G): the clipboard's image loads into it. */
+	editorPaste: () => __TAURI_INVOKE<void>("editor_paste"),
 	/**  The Windows accent color, for the accent setting's "Windows" choice. */
 	windowsAccent: () => __TAURI_INVOKE<{
 	light: string,
@@ -134,6 +136,8 @@ export const commands = {
 	 *  already delivered, so it counts as copied and saved.
 	 */
 	delivered: boolean,
+	/**  No image yet (PLAN 3G): the page shows how to get one. */
+	empty: boolean,
 } | null>("editor_init"),
 	/**  Editor page painted its image; show the window. */
 	editorReady: () => __TAURI_INVOKE<void>("editor_ready"),
@@ -231,6 +235,8 @@ export type EditorInit = {
 	 *  already delivered, so it counts as copied and saved.
 	 */
 	delivered: boolean,
+	/**  No image yet (PLAN 3G): the page shows how to get one. */
+	empty: boolean,
 };
 
 export type EditorOnClose = {

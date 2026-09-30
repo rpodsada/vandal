@@ -232,6 +232,13 @@ pub async fn editor_open_image(app: AppHandle, window: WebviewWindow) {
     editor::ask_open(&app, Some(&window));
 }
 
+/// Ctrl+V in an empty editor (PLAN 3G): the clipboard's image loads into it.
+#[tauri::command]
+#[specta::specta]
+pub fn editor_paste(app: AppHandle, window: WebviewWindow) {
+    editor::open_clipboard(&app, editor::empty_editor(&app, window.label()));
+}
+
 /// Show a file selected in Explorer.
 #[tauri::command]
 #[specta::specta]

@@ -524,3 +524,67 @@
   right: -10px;
   bottom: -10px;
 }
+
+/* ---- empty editor (PLAN 3G) ---- */
+
+.empty {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--canvas);
+}
+
+.emptyCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 420px;
+  text-align: center;
+}
+
+.emptyLogo {
+  width: 96px;
+  height: 96px;
+  margin-bottom: 4px;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.emptyButtons {
+  display: flex;
+  gap: 10px;
+}
+
+.emptyButton svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.emptyHint {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.emptyHint kbd {
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--button-bg);
+  box-shadow: inset 0 0 0 1px var(--control-border);
+  font-family: inherit;
+  font-size: 11px;
+}
