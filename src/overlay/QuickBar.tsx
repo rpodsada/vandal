@@ -112,7 +112,7 @@ export const QuickBar = forwardRef<HTMLDivElement, Props>(function QuickBar(
       </div>
       {showOptions && (
         <div className={styles.quickOptions}>
-          <ToolOptions />
+          <ToolOptions compact />
         </div>
       )}
       {notice && (

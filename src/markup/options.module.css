@@ -91,6 +91,21 @@
   gap: 21px;
 }
 
+/* A bar in lines of its own (quick edit's callout options): as wide as its
+   wider line, where a wrapping bar is sized as if all on one line. */
+.options.stacked {
+  flex-direction: column;
+  align-items: flex-start;
+  /* Wrapping, a column is a flex line: keep it at the left. */
+  align-content: flex-start;
+}
+
+.stackedLine {
+  display: flex;
+  align-items: center;
+  gap: 21px;
+}
+
 /* ---- slot-number badges ---- */
 
 .badge,

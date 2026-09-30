@@ -66,6 +66,8 @@ All notable changes to Vandal are listed here. The format follows
 ### Changed
 
 - Holding Shift while moving objects keeps the move horizontal or vertical.
+- In quick edit, a callout's options take two rows, with its text and colors on the second, so
+  the toolbar is less wide.
 - In the options bar, a size, width or strength shown as a dropdown or slider has an icon before
   it saying what it sets, and sliders are narrower.
 - The two-color chip in the options bar is clearer: two overlapping circles with thin borders, the

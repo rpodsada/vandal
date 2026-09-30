@@ -164,8 +164,10 @@ const POINTER_ENDS: { id: CalloutEnd; label: string; icon: ReactNode }[] = [
 /**
  * The options for what's being drawn or selected (mockup: ToolOptions):
  * colors, line width, fill and arrow head. Shared by quick edit and the editor.
+ * `compact`: quick edit's bar, where a callout's text styling always starts a
+ * new line.
  */
-export function ToolOptions() {
+export function ToolOptions({ compact = false }: { compact?: boolean }) {
   const doc = useDoc((s) => s.doc);
   const selection = useDoc((s) => s.selection);
   const tool = useToolStore((s) => s.tool);
@@ -311,17 +313,9 @@ export function ToolOptions() {
     </>
   );
 
-  return (
-    // Clicks here must not take focus: text being typed keeps it, and Space
-    // keeps panning instead of pressing a button.
-    <div
-      ref={rootRef}
-      className={styles.options}
-      onMouseDown={(e) => {
-        if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
-      }}
-    >
-      {/* A callout: shape and end, thickness and corners, then its text (Richard's order). */}
+  // A callout: shape and end, thickness and corners, then its text (Richard's order).
+  const shapeAndWidth = (
+    <>
       {callout && values.callout && (
         <div className={styles.section}>
           <div className={styles.group} {...hint("callout.shape")}>
@@ -381,11 +375,31 @@ export function ToolOptions() {
           {corner}
         </div>
       )}
+    </>
+  );
+  // In quick edit a callout's text styling always starts a second line, and
+  // the bar is only as wide as its wider line (one long row felt
+  // overwhelming there). A wrapping row is sized as if it were one line, so
+  // the lines are stacked instead.
+  const stacked = compact && callout && show.text;
+
+  return (
+    // Clicks here must not take focus: text being typed keeps it, and Space
+    // keeps panning instead of pressing a button.
+    <div
+      ref={rootRef}
+      className={`${styles.options} ${stacked ? styles.stacked : ""}`}
+      onMouseDown={(e) => {
+        if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
+      }}
+    >
+      {stacked ? <div className={styles.stackedLine}>{shapeAndWidth}</div> : shapeAndWidth}
 
       {show.text &&
         (callout ? (
           // A callout's styling (text, then colors) wraps to the next line as
           // one, under its shape controls (Richard: it looks more organized).
+          // In quick edit it always does (see `stacked`).
           <div className={`${styles.section} ${styles.run}`}>
             {textPickers}
             {textStyle}
