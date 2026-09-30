@@ -44,8 +44,8 @@ All notable changes to Vandal are listed here. The format follows
   marker) with the swap button on the color chip, or press X.
 - Colors can show as dropdowns instead of swatches, to save room in the options bar: a button per
   color that opens the palette (with the custom color and the swap button between two colors).
-  Choose it in Settings › Markup › Colors, or for one tool under Per-tool styles. The keys work
-  the same either way.
+  Right-click a color's button to edit the color in use straight away. Choose it in Settings ›
+  Markup › Colors, or for one tool under Per-tool styles. The keys work the same either way.
 
 ### Changed
 
