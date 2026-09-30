@@ -16,6 +16,7 @@ import {
   beginStyleDrag,
   endStyleDrag,
   styleTarget,
+  swapColors,
   targetSections,
   targetValues,
 } from "./restyle";
@@ -519,6 +520,19 @@ export function ToolOptions() {
                 title={`${labels[1]}${hints ? " (Shift+click a color, Ctrl+Shift+1…0)" : ""}`}
                 onClick={() => setSlot("second")}
               />
+              <button
+                type="button"
+                className={styles.chipSwap}
+                {...hint("chip.swap")}
+                aria-label="Swap colors"
+                title={`Swap colors${hints ? " (X)" : ""}`}
+                onClick={() => swapColors()}
+              >
+                <svg viewBox="0 0 12 12" aria-hidden>
+                  <path d="M3 3.5h3.5a3 3 0 0 1 3 3V9" />
+                  <path d="M5 1.5l-2 2 2 2M7.5 7l2 2 2-2" />
+                </svg>
+              </button>
             </div>
           )}
           {palette.map((preset, i) => {

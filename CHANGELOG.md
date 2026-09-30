@@ -40,6 +40,8 @@ All notable changes to Vandal are listed here. The format follows
   button that turns red on hover (click anywhere in a box to edit the number), add buttons that
   light up in the accent color, and "Custom list" instead of "My list" for fonts.
 - Sliders in the options bar no longer touch the control beside them at their first stop.
+- Swap the two colors (a shape's fill and border, text and its box, a step marker's label and
+  marker) with the swap button on the color chip, or press X.
 
 ### Changed
 

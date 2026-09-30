@@ -13,6 +13,7 @@ import {
   colorSlots,
   resetStepStyles,
   styleTarget,
+  swapColors,
   targetSections,
   targetValues,
 } from "./restyle";
@@ -325,5 +326,57 @@ describe("colorSlots", () => {
     applyStyle({ [slotsNow().first.key]: "#00ff00" });
     expect(rect(id).fillColor).toBe("#00ff00");
     expect(rect(id).style.color).toBe("#e53935");
+  });
+});
+
+describe("swapColors", () => {
+  beforeEach(() => {
+    docStore.getState().load(emptyDoc({ width: 100, height: 100 }));
+    useToolStore.setState({ tool: "select", colors: {}, fills: {}, fillColors: {} });
+  });
+
+  it("swaps a selected shape's fill and border as one undo step", () => {
+    const id = addRect("both");
+    expect(swapColors()).toBe(true);
+    expect(rect(id).fillColor).toBe("#e53935");
+    expect(rect(id).style.color).toBe("#123456");
+    docStore.getState().undo();
+    expect(rect(id).fillColor).toBe("#123456");
+  });
+
+  it("swaps each selected object's own colors", () => {
+    const a = addRect("both");
+    const b = docStore.getState().add({
+      kind: "rect",
+      rect: { x: 0, y: 0, width: 10, height: 10 },
+      rotation: 0,
+      fill: "both",
+      fillColor: "#00ff00",
+      style: { ...style, color: "#0000ff" },
+    });
+    docStore.getState().select([a, b]);
+    swapColors();
+    expect(rect(a)).toMatchObject({ fillColor: "#e53935", style: { color: "#123456" } });
+    expect(rect(b)).toMatchObject({ fillColor: "#0000ff", style: { color: "#00ff00" } });
+    expect(docStore.getState().past).toHaveLength(3); // two adds and the swap
+  });
+
+  it("swaps the tool's colors with nothing selected", () => {
+    useToolStore.setState({
+      tool: "rect",
+      colors: { rect: "#111111" },
+      fills: { rect: "both" },
+      fillColors: { rect: "#222222" },
+    });
+    expect(swapColors()).toBe(true);
+    const t = useToolStore.getState();
+    expect(t.colors.rect).toBe("#222222");
+    expect(t.fillColors.rect).toBe("#111111");
+  });
+
+  it("does nothing without two colors", () => {
+    addRect("none");
+    expect(swapColors()).toBe(false);
+    expect(docStore.getState().past).toHaveLength(1);
   });
 });

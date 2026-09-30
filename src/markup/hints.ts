@@ -31,11 +31,15 @@ export const CONTROL_HINTS = {
     "[Shift]+click sets the border · [Ctrl+1…0] fill color · [Ctrl+Shift+1…0] border color · Right-click to change or delete",
   "swatch.box":
     "[Shift]+click sets the background · [Ctrl+1…0] text color · [Ctrl+Shift+1…0] background color · Right-click to change or delete",
-  "chip.fill": "Choose which color the swatches set · [Shift]+click a swatch sets the border",
-  "chip.box": "Choose which color the swatches set · [Shift]+click a swatch sets the background",
+  "chip.fill":
+    "Choose which color the swatches set · [X] swaps them · [Shift]+click a swatch sets the border",
+  "chip.box":
+    "Choose which color the swatches set · [X] swaps them · [Shift]+click a swatch sets the background",
   "swatch.label":
     "[Shift]+click sets the marker · [Ctrl+1…0] label color · [Ctrl+Shift+1…0] marker color · Right-click to change or delete",
-  "chip.label": "Choose which color the swatches set · [Shift]+click a swatch sets the marker",
+  "chip.label":
+    "Choose which color the swatches set · [X] swaps them · [Shift]+click a swatch sets the marker",
+  "chip.swap": "[X] Swap the two colors",
   customColor:
     "Your custom color · Click it again, or right-click, to change it · [Esc] in the picker puts the old one back",
   width: "[1…0] Pick a width by number",

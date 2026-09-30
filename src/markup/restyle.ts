@@ -390,8 +390,7 @@ export function cancelStyleDrag(): void {
 }
 
 /** Apply a style change to the current target (objects and/or tool memory). */
-export function applyStyle(patch: StylePatch): void {
-  const target = styleTarget();
+export function applyStyle(patch: StylePatch, target = styleTarget()): void {
   if (!target) return;
 
   // The tools involved remember it for their next object.
@@ -457,6 +456,44 @@ export function applyStyle(patch: StylePatch): void {
   if (own) store.beginGesture();
   for (const id of ids) store.update(id, (a) => patchAnnotation(a, patch));
   if (own) store.endGesture();
+}
+
+/**
+ * Swap the chip's two colors (PLAN 3D.15): on each selected object that has
+ * two, as one undo step, or on the tool's next object. False if there's
+ * nothing with two colors to swap.
+ */
+export function swapColors(): boolean {
+  const target = styleTarget();
+  if (!target) return false;
+  const doc = docStore.getState().doc;
+  const swapped = (t: StyleTarget): StylePatch | null => {
+    const { first, second } = colorSlots(targetValues(t, doc), targetSections(t));
+    return second ? { [first.key]: second.value, [second.key]: first.value } : null;
+  };
+  if (!target.ids.length) {
+    const patch = swapped(target);
+    if (patch) applyStyle(patch, target);
+    return !!patch;
+  }
+  // Each object swaps its own colors. The first goes last, so the tools
+  // remember its result, as they would for any restyle.
+  const each = target.ids
+    .map((id) => {
+      const kind = doc.annotations.find((a) => a.id === id)?.kind;
+      if (!kind) return null;
+      const one: StyleTarget = { tool: TOOL_FOR_KIND[kind], ids: [id], kinds: [kind] };
+      const patch = swapped(one);
+      return patch && { one, patch };
+    })
+    .filter((x) => x !== null)
+    .reverse();
+  if (!each.length) return false;
+  const store = docStore.getState();
+  store.beginGesture();
+  for (const { one, patch } of each) applyStyle(patch, one);
+  store.endGesture();
+  return true;
 }
 
 /** Tools with a line width. */

@@ -8,7 +8,14 @@ import { isTyping } from "../shared/dom";
 import { translateAnnotation } from "./geometry";
 import { docStore } from "./model/store";
 import { digitSlot, pickByDigit, slotIndex } from "./pickers";
-import { applyStyle, colorSlots, styleTarget, targetSections, targetValues } from "./restyle";
+import {
+  applyStyle,
+  colorSlots,
+  styleTarget,
+  swapColors,
+  targetSections,
+  targetValues,
+} from "./restyle";
 import {
   fontChoices,
   paletteFor,
@@ -133,6 +140,8 @@ function handlePlain(e: KeyboardEvent): boolean {
   const tools = useToolStore.getState();
   const slot = digitSlot(e.code);
   if (slot !== null) return !e.shiftKey && pickWidth(slot);
+  // X swaps the two colors (PLAN 3D.15), as in design software.
+  if (e.code === "KeyX" && !e.shiftKey) return swapColors();
   const tool = TOOL_KEYS[e.code];
   if (tool && !e.shiftKey) {
     tools.setTool(tool);

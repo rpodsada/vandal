@@ -358,10 +358,11 @@
    swatches' selection ring it took over. */
 .chip {
   position: relative;
-  width: 33px;
+  /* Room at the top right for the swap button. */
+  width: 40px;
   height: 29px;
   flex-shrink: 0;
-  margin-right: 2px;
+  margin-right: 4px;
 }
 
 .chipDot {
@@ -384,7 +385,7 @@
 }
 
 .chipSecond {
-  right: 1px;
+  left: 12px;
   bottom: 1px;
 }
 
@@ -405,6 +406,33 @@
   box-shadow:
     0 0 0 1px var(--text),
     inset 0 0 0 1px var(--text);
+}
+
+/* Swap (PLAN 3D.15): top right, in the corner the circles leave free. */
+.chipSwap {
+  position: absolute;
+  right: -3px;
+  top: -3px;
+  width: 14px;
+  height: 14px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-2);
+}
+
+.chipSwap:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.options .chipSwap svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 1.4;
 }
 
 /* Text's color: the circle is filled with it, with an "A" that reads on it. */
