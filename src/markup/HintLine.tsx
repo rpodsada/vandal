@@ -1,6 +1,6 @@
 import { Fragment, useEffect } from "react";
 import { useDoc } from "./model/store";
-import { chooseHint, parseHint, useHintSources, type ControlHint } from "./hints";
+import { chooseHint, parseHint, useHintSources, withShortcuts, type ControlHint } from "./hints";
 import { colorSlots, styleTarget, targetSections, targetValues } from "./restyle";
 import { useStyleConfig } from "./styles";
 import { useToolStore } from "./toolStore";
@@ -73,22 +73,25 @@ export function HintLine() {
   }, []);
 
   if (!config.showShortcutHints) return null;
-  const text = chooseHint({
-    hover,
-    drag,
-    mode,
-    tool,
-    selected,
-    textSelected,
-    segmentSelected,
-    stepSelected,
-    calloutSelected,
-    labelTyping,
-    typing,
-    overObject,
-    twoColors,
-    drawingToolsSelect: config.drawingToolsSelect,
-  });
+  const text = withShortcuts(
+    chooseHint({
+      hover,
+      drag,
+      mode,
+      tool,
+      selected,
+      textSelected,
+      segmentSelected,
+      stepSelected,
+      calloutSelected,
+      labelTyping,
+      typing,
+      overObject,
+      twoColors,
+      drawingToolsSelect: config.drawingToolsSelect,
+    }),
+    config.shortcuts,
+  );
 
   return (
     <span className={styles.hintLine}>

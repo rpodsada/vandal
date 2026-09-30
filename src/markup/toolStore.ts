@@ -37,23 +37,6 @@ export type ToolId = (typeof TOOLS)[number];
 /** A palette: the shared one, or a tool's own. */
 export type PaletteKey = ToolId | "shared";
 
-/** Single-key shortcuts (KeyboardEvent.code). */
-export const TOOL_KEYS: Record<string, ToolId> = {
-  KeyV: "select",
-  KeyP: "pen",
-  KeyH: "highlighter",
-  KeyL: "line",
-  KeyA: "arrow",
-  KeyR: "rect",
-  KeyE: "ellipse",
-  KeyT: "text",
-  KeyB: "redact",
-  KeyS: "spotlight",
-  KeyN: "step",
-  // C is the editor's crop: "call-O-ut".
-  KeyO: "callout",
-};
-
 export function isTool(value: string): value is ToolId {
   return (TOOLS as readonly string[]).includes(value);
 }

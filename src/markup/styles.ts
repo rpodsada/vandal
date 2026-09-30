@@ -21,6 +21,7 @@ import type {
 import { nearestValue } from "./pickers";
 import type { ColorKey } from "./restyle";
 import { contrastingText, stepsOf, type StepStyle } from "./steps";
+import { DEFAULT_SHORTCUTS, type ShortcutKeys } from "./shortcuts";
 import { TOOLS, useToolStore, type PaletteKey, type ToolId } from "./toolStore";
 
 export interface StyleConfig {
@@ -35,6 +36,8 @@ export interface StyleConfig {
   drawingToolsSelect: boolean;
   /** Installed font families (from the host), for the system font picker. */
   fonts: string[];
+  /** The tools' and swap colors' keys (PLAN 3F). */
+  shortcuts: ShortcutKeys;
 }
 
 /** The Rust defaults (`styles.rs`), used until the host passes the real settings. */
@@ -80,6 +83,7 @@ export const DEFAULT_STYLE_CONFIG: StyleConfig = {
   showButtonUnits: false,
   drawingToolsSelect: true,
   fonts: [],
+  shortcuts: DEFAULT_SHORTCUTS,
 };
 
 /** Set by the host from settings (and kept in step with `SettingsChanged`). */

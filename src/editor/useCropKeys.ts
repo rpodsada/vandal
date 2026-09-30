@@ -1,12 +1,14 @@
-// Crop mode's keys (PLAN 2A step 7). C enters it. While cropping: Enter or C
-// applies, Esc cancels, arrows nudge the box (Shift = 10 px) and Ctrl+arrows
-// resize it from the bottom-right, as on the capture overlay; a tool key
+// Crop mode's keys (PLAN 2A step 7). The crop shortcut (C; PLAN 3F) enters
+// it. While cropping: Enter or the crop shortcut applies, Esc cancels, arrows nudge the box (Shift = 10 px) and Ctrl+arrows
+// resize it from the bottom-right, as on the capture overlay; a tool's shortcut
 // applies and switches to that tool. Other markup shortcuts are held back
 // (nothing to select or restyle), but saving, copying, zooming and panning
 // still work.
 
 import { useEffect } from "react";
-import { TOOL_KEYS, useToolStore } from "../markup/toolStore";
+import { shortcutOf } from "../markup/shortcuts";
+import { useStyleConfig } from "../markup/styles";
+import { isTool, useToolStore } from "../markup/toolStore";
 import { isTyping } from "../shared/dom";
 import { inFrame, nudgeCrop } from "./cropGeometry";
 import {
@@ -42,15 +44,17 @@ const ARROWS: Record<string, [number, number]> = {
 export function useCropKeys(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e.target) || e.altKey) return;
+      if (isTyping(e.target)) return;
+      const id = shortcutOf(e, useStyleConfig.getState().shortcuts);
       if (!isCropping()) {
-        if (e.code === "KeyC" && !e.ctrlKey && !e.shiftKey && !e.repeat) {
+        if (id === "crop" && !e.repeat) {
           e.preventDefault();
           beginCrop();
         }
         return;
       }
-      if (e.code === "Space" || (e.ctrlKey && PASS_WITH_CTRL.has(e.code))) return;
+      if (e.altKey && !id) return;
+      if (e.code === "Space" || (e.ctrlKey && !id && PASS_WITH_CTRL.has(e.code))) return;
       // Everything else is crop mode's, not the markup's.
       e.stopImmediatePropagation();
       e.preventDefault();
@@ -74,18 +78,18 @@ export function useCropKeys(): void {
           );
         return;
       }
-      if (e.ctrlKey) {
+      if (e.ctrlKey && !id) {
         // Undo while cropping: drop the session rather than undo under it.
         if (e.code === "KeyZ" || e.code === "KeyY") cancelCrop();
         return;
       }
-      if (e.code === "Enter" || e.code === "NumpadEnter" || e.code === "KeyC") {
+      if (e.code === "Enter" || e.code === "NumpadEnter" || id === "crop") {
         applyCrop();
       } else if (e.code === "Escape") {
         cancelCrop();
-      } else if (TOOL_KEYS[e.code] && !e.shiftKey) {
+      } else if (id && isTool(id)) {
         applyCrop();
-        useToolStore.getState().setTool(TOOL_KEYS[e.code]);
+        useToolStore.getState().setTool(id);
       }
     };
     // Capture phase: ahead of the markup's own shortcuts.

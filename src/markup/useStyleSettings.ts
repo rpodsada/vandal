@@ -12,6 +12,7 @@ export function applyStyleSettings(s: Settings): void {
     showShortcutHints: s.editor.showShortcutHints,
     showButtonUnits: s.editor.showButtonUnits,
     drawingToolsSelect: s.editor.drawingToolsSelect,
+    shortcuts: s.shortcuts,
   });
 }
 

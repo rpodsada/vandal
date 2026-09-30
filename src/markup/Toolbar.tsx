@@ -1,15 +1,16 @@
 import { hint } from "./HintLine";
 import type { ReactNode } from "react";
 import { canRedo, canUndo, docStore, useDoc } from "./model/store";
+import { keySuffix } from "./shortcuts";
+import { useStyleConfig } from "./styles";
 import { useToolStore, type ToolId } from "./toolStore";
 import styles from "./markup.module.css";
 
-const TOOL_BUTTONS: { id: ToolId; label: string; key: string; icon: ReactNode }[] = [
-  { id: "select", label: "Select", key: "V", icon: <path d="M6 3.5l12 7.2-5.4 1.4-2.6 5.4z" /> },
+const TOOL_BUTTONS: { id: ToolId; label: string; icon: ReactNode }[] = [
+  { id: "select", label: "Select", icon: <path d="M6 3.5l12 7.2-5.4 1.4-2.6 5.4z" /> },
   {
     id: "pen",
     label: "Pen",
-    key: "P",
     icon: (
       <>
         <path d="M4 20l1-4L16 5l3 3L8 19z" />
@@ -20,7 +21,6 @@ const TOOL_BUTTONS: { id: ToolId; label: string; key: string; icon: ReactNode }[
   {
     id: "highlighter",
     label: "Highlighter",
-    key: "H",
     icon: (
       <>
         <path d="M9 15l-2 5h5l1-2" />
@@ -28,11 +28,10 @@ const TOOL_BUTTONS: { id: ToolId; label: string; key: string; icon: ReactNode }[
       </>
     ),
   },
-  { id: "line", label: "Line", key: "L", icon: <path d="M5 19L19 5" /> },
+  { id: "line", label: "Line", icon: <path d="M5 19L19 5" /> },
   {
     id: "arrow",
     label: "Arrow",
-    key: "A",
     icon: (
       <>
         <path d="M5 19L19 5" />
@@ -43,25 +42,21 @@ const TOOL_BUTTONS: { id: ToolId; label: string; key: string; icon: ReactNode }[
   {
     id: "rect",
     label: "Rectangle",
-    key: "R",
     icon: <rect x="4" y="6" width="16" height="12" rx="1" />,
   },
   {
     id: "ellipse",
     label: "Ellipse",
-    key: "E",
     icon: <ellipse cx="12" cy="12" rx="8.5" ry="6.5" />,
   },
   {
     id: "text",
     label: "Text",
-    key: "T",
     icon: <path d="M5 7V5h14v2M12 5v14M9 19h6" />,
   },
   {
     id: "callout",
     label: "Callout",
-    key: "O",
     // A box of text with a pointer down to the left.
     icon: (
       <>
@@ -74,7 +69,6 @@ const TOOL_BUTTONS: { id: ToolId; label: string; key: string; icon: ReactNode }[
   {
     id: "redact",
     label: "Redact",
-    key: "B",
     icon: (
       <>
         <rect x="4" y="4" width="16" height="16" rx="2" />
@@ -86,7 +80,6 @@ const TOOL_BUTTONS: { id: ToolId; label: string; key: string; icon: ReactNode }[
   {
     id: "spotlight",
     label: "Spotlight",
-    key: "S",
     icon: (
       <>
         <path
@@ -104,7 +97,6 @@ const TOOL_BUTTONS: { id: ToolId; label: string; key: string; icon: ReactNode }[
   {
     id: "step",
     label: "Step",
-    key: "N",
     icon: (
       <>
         <circle cx="12" cy="12" r="8.5" />
@@ -128,6 +120,7 @@ export function Toolbar({ extra, toolsActive = true, onPickTool }: Props) {
   const tool = useToolStore((s) => s.tool);
   const undoable = useDoc(canUndo);
   const redoable = useDoc(canRedo);
+  const keys = useStyleConfig((s) => s.shortcuts);
 
   return (
     <div className={styles.toolbar} role="toolbar" aria-label="Tools">
@@ -137,9 +130,9 @@ export function Toolbar({ extra, toolsActive = true, onPickTool }: Props) {
           type="button"
           className={styles.tool}
           {...hint(`tool.${b.id}`)}
-          aria-label={`${b.label} (${b.key})`}
+          aria-label={`${b.label}${keySuffix(keys[b.id])}`}
           aria-pressed={toolsActive && tool === b.id}
-          title={`${b.label} (${b.key})`}
+          title={`${b.label}${keySuffix(keys[b.id])}`}
           onClick={() => {
             onPickTool?.(b.id);
             useToolStore.getState().setTool(b.id);

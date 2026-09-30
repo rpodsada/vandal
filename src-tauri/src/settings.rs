@@ -16,6 +16,7 @@ use tauri::{AppHandle, Manager, Wry};
 use tauri_plugin_store::StoreExt;
 use tauri_specta::Event;
 
+use crate::shortcuts::Shortcuts;
 use crate::state::AppState;
 use crate::styles::Styles;
 
@@ -28,6 +29,8 @@ const STORE_KEY: &str = "settings";
 pub struct Settings {
     pub version: u32,
     pub hotkeys: Hotkeys,
+    /// The markup's keys for tools and swapping colors (PLAN 3F).
+    pub shortcuts: Shortcuts,
     pub after_capture: AfterCapture,
     pub save: SaveSettings,
     pub overlay: OverlaySettings,
@@ -47,6 +50,7 @@ impl Default for Settings {
         Self {
             version: CURRENT_VERSION,
             hotkeys: Hotkeys::default(),
+            shortcuts: Shortcuts::default(),
             after_capture: AfterCapture::default(),
             save: SaveSettings::default(),
             overlay: OverlaySettings::default(),
@@ -329,6 +333,7 @@ pub fn validate(mut s: Settings) -> Result<Settings, String> {
     s.overlay.dim_opacity = s.overlay.dim_opacity.clamp(0.0, 0.9);
     s.history.keep_frames_in_memory = s.history.keep_frames_in_memory.clamp(1, 20);
     s.styles = s.styles.normalized();
+    s.shortcuts = s.shortcuts.checked()?;
     if let (Some(a), Some(b)) = (&s.hotkeys.region, &s.hotkeys.fullscreen) {
         if a.eq_ignore_ascii_case(b) {
             return Err(format!(
@@ -421,8 +426,20 @@ pub fn migrate(stored: Option<Value>) -> (Settings, bool) {
             }
             // Hand edits can leave picker specs the pages can't draw.
             let styles = settings.styles.clone().normalized();
-            let changed = version != u64::from(CURRENT_VERSION) || styles != settings.styles;
+            let mut changed = version != u64::from(CURRENT_VERSION) || styles != settings.styles;
             settings.styles = styles;
+            // Edited by hand into something that can't work: the defaults.
+            match settings.shortcuts.clone().checked() {
+                Ok(shortcuts) => {
+                    changed |= shortcuts != settings.shortcuts;
+                    settings.shortcuts = shortcuts;
+                }
+                Err(e) => {
+                    eprintln!("[settings] markup shortcuts ({e}); using defaults");
+                    settings.shortcuts = Shortcuts::default();
+                    changed = true;
+                }
+            }
             settings.version = CURRENT_VERSION;
             (settings, changed)
         }
@@ -710,6 +727,26 @@ mod tests {
         assert_eq!(v["editor"]["drawingToolsSelect"], true);
         assert_eq!(v["editor"]["rememberToolStyles"], true);
         assert_eq!(v["styles"]["width"]["control"], "slider");
+        assert_eq!(v["shortcuts"]["callout"], "O");
+        assert_eq!(v["shortcuts"]["swapColors"], "X");
+    }
+
+    #[test]
+    fn stored_shortcuts_are_checked_on_load() {
+        let v = u64::from(CURRENT_VERSION);
+        let (s, changed) = migrate(Some(
+            json!({ "version": v, "shortcuts": { "pen": "ctrl+p" } }),
+        ));
+        assert!(changed);
+        assert_eq!(s.shortcuts.pen.as_deref(), Some("Ctrl+P"));
+        assert_eq!(s.shortcuts.line.as_deref(), Some("L"));
+        // Unusable (Pen and Line both L): the defaults.
+        let (s, changed) = migrate(Some(json!({ "version": v, "shortcuts": { "pen": "L" } })));
+        assert!(changed);
+        assert_eq!(s.shortcuts, Shortcuts::default());
+        // Cleared stays cleared.
+        let (s, _) = migrate(Some(json!({ "version": v, "shortcuts": { "pen": null } })));
+        assert_eq!(s.shortcuts.pen, None);
     }
 
     #[test]

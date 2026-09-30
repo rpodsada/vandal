@@ -5,26 +5,30 @@
 //
 // Every hint is written here, in one table. Keys go in brackets: "[Ctrl+1…0]"
 // shows as key caps; " · " separates the parts. Put the most useful part
-// first, since a narrow window cuts the end off.
+// first, since a narrow window cuts the end off. The customizable shortcuts
+// (PLAN 3F) go in braces, filled in by `withShortcuts`: "{pen}" is Pen's key
+// (or nothing, if it has none), "{swapColors?}" drops its part when there's
+// no key, and "{tools}" lists every tool's.
 
 import { create } from "zustand";
-import type { ToolId } from "./toolStore";
+import type { ShortcutId, ShortcutKeys } from "./shortcuts";
+import { TOOLS, type ToolId } from "./toolStore";
 
 /** Hints for controls, by the id in their `data-hint` attribute. */
 export const CONTROL_HINTS = {
-  "tool.select": "[V] Select and move objects · [Esc] steps back to Select",
-  "tool.pen": "[P] Draw freehand · [Shift] straight line",
-  "tool.highlighter": "[H] Highlight freehand · [Shift] straight line",
-  "tool.line": "[L] Draw a line · [Shift] 45° steps",
-  "tool.arrow": "[A] Draw an arrow · [Shift] 45° steps",
-  "tool.rect": "[R] Draw a rectangle · [Shift] square",
-  "tool.ellipse": "[E] Draw an ellipse · [Shift] circle",
-  "tool.text": "[T] Click to type, or drag to set a width",
-  "tool.redact": "[B] Pixelate or blur an area · always under the other markup",
-  "tool.spotlight": "[S] Darken everything outside a box or ellipse",
-  "tool.step": "[N] Click to place numbered or lettered markers · they count up",
-  "tool.callout": "[O] Drag from what to point at to where the text goes, or click",
-  "tool.crop": "[C] Crop the image · [Ctrl+Z] undoes a crop",
+  "tool.select": "{select} Select and move objects · [Esc] steps back to Select",
+  "tool.pen": "{pen} Draw freehand · [Shift] straight line",
+  "tool.highlighter": "{highlighter} Highlight freehand · [Shift] straight line",
+  "tool.line": "{line} Draw a line · [Shift] 45° steps",
+  "tool.arrow": "{arrow} Draw an arrow · [Shift] 45° steps",
+  "tool.rect": "{rect} Draw a rectangle · [Shift] square",
+  "tool.ellipse": "{ellipse} Draw an ellipse · [Shift] circle",
+  "tool.text": "{text} Click to type, or drag to set a width",
+  "tool.redact": "{redact} Pixelate or blur an area · always under the other markup",
+  "tool.spotlight": "{spotlight} Darken everything outside a box or ellipse",
+  "tool.step": "{step} Click to place numbered or lettered markers · they count up",
+  "tool.callout": "{callout} Drag from what to point at to where the text goes, or click",
+  "tool.crop": "{crop} Crop the image · [Ctrl+Z] undoes a crop",
   undo: "[Ctrl+Z] Undo",
   redo: "[Ctrl+Y] or [Ctrl+Shift+Z] Redo",
   swatch: "[Ctrl+1…0] Pick a color by number · Right-click to change or delete it",
@@ -33,18 +37,18 @@ export const CONTROL_HINTS = {
   "swatch.box":
     "[Shift]+click sets the background · [Ctrl+1…0] text color · [Ctrl+Shift+1…0] background color · Right-click to change or delete",
   "chip.fill":
-    "Choose which color the swatches set · [X] swaps them · [Shift]+click a swatch sets the border",
+    "Choose which color the swatches set · {swapColors?} swaps them · [Shift]+click a swatch sets the border",
   "chip.box":
-    "Choose which color the swatches set · [X] swaps them · [Shift]+click a swatch sets the background",
+    "Choose which color the swatches set · {swapColors?} swaps them · [Shift]+click a swatch sets the background",
   "swatch.label":
     "[Shift]+click sets the marker · [Ctrl+1…0] label color · [Ctrl+Shift+1…0] marker color · Right-click to change or delete",
   "chip.label":
-    "Choose which color the swatches set · [X] swaps them · [Shift]+click a swatch sets the marker",
+    "Choose which color the swatches set · {swapColors?} swaps them · [Shift]+click a swatch sets the marker",
   "swatch.callout":
     "[Shift]+click sets the callout · [Ctrl+1…0] text color · [Ctrl+Shift+1…0] callout color · Right-click to change or delete",
   "chip.callout":
-    "Choose which color the swatches set · [X] swaps them · [Shift]+click a swatch sets the callout",
-  "chip.swap": "[X] Swap the two colors",
+    "Choose which color the swatches set · {swapColors?} swaps them · [Shift]+click a swatch sets the callout",
+  "chip.swap": "{swapColors} Swap the two colors",
   colorMenu:
     "[Ctrl+1…0] Pick a color by number · Click for the palette · Right-click to edit the color in use",
   "colorMenu.second":
@@ -170,7 +174,7 @@ const TYPING = "[Esc] done · [Ctrl+B] bold · [Ctrl+I] italic · [Alt+1…0] fo
 const CROP =
   "Drag edges or corners, [Shift] keeps proportions · Drag outside for a new box · [Enter] apply · [Esc] cancel · [←↑↓→] nudge, [Ctrl] resize";
 
-const IDLE = `[V] [P] [H] [L] [A] [R] [E] [T] [O] [B] [S] [N] tools · [Ctrl+Z] undo · [Ctrl+C] copy · [Ctrl+S] save · ${PAN_ZOOM}`;
+const IDLE = `{tools} tools · [Ctrl+Z] undo · [Ctrl+C] copy · [Ctrl+S] save · ${PAN_ZOOM}`;
 
 export interface HintState {
   hover: ControlHint | null;
@@ -227,6 +231,27 @@ export function chooseHint(s: HintState): string {
       : `[Ctrl] select or move it · ${tool}`;
   }
   return tool;
+}
+
+/** Fill in the customizable shortcuts' keys (see the top of this file). */
+export function withShortcuts(hint: string, keys: ShortcutKeys): string {
+  return hint
+    .split(" · ")
+    .flatMap((part) => {
+      let dropped = false;
+      const filled = part.replace(/\{(\w+)(\?)?\} ?/g, (_, id: string, optional?: string) => {
+        if (id === "tools") {
+          const all = TOOLS.map((t) => keys[t]).filter(Boolean);
+          return all.map((k) => `[${k}] `).join("");
+        }
+        const key = keys[id as ShortcutId];
+        if (key) return `[${key}] `;
+        if (optional) dropped = true;
+        return "";
+      });
+      return dropped || !filled.trim() ? [] : [filled.trimEnd()];
+    })
+    .join(" · ");
 }
 
 /** A hint split into text and key caps (each cap one key, e.g. ["Ctrl", "1…0"]). */

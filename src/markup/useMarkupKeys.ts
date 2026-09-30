@@ -28,7 +28,8 @@ import { editStepLabel } from "./stepEditing";
 import { nextStepSeq } from "./steps";
 import { editText } from "./textEditing";
 import type { Annotation, NewAnnotation, StepAnnotation } from "./model/types";
-import { TOOL_KEYS, useToolStore } from "./toolStore";
+import { shortcutOf } from "./shortcuts";
+import { isTool, useToolStore } from "./toolStore";
 
 /** Duplicates land this far (source px) down-right of the original. */
 const DUPLICATE_OFFSET = 10;
@@ -51,6 +52,20 @@ export function useMarkupKeys(active?: () => boolean): void {
       const boldItalic = e.ctrlKey && !e.altKey && (e.code === "KeyB" || e.code === "KeyI");
       // Ctrl/Alt+digit and Ctrl+B/I still restyle text while typing into it (PLAN Phase 2).
       if (isTyping(e.target) && !styleDigit && !boldItalic) return;
+      // The customizable ones (PLAN 3F), which may have modifiers. Settings
+      // keep them off the fixed ones below. Crop is the editor's.
+      if (!isTyping(e.target)) {
+        const id = shortcutOf(e, useStyleConfig.getState().shortcuts);
+        if (id === "swapColors") {
+          if (swapColors()) e.preventDefault();
+          return;
+        }
+        if (id && isTool(id)) {
+          useToolStore.getState().setTool(id);
+          e.preventDefault();
+          return;
+        }
+      }
       if (e.altKey) {
         if (styleDigit && !e.shiftKey && pickAlt(slot)) e.preventDefault();
         return;
@@ -162,13 +177,6 @@ function handlePlain(e: KeyboardEvent): boolean {
   const tools = useToolStore.getState();
   const slot = digitSlot(e.code);
   if (slot !== null) return e.shiftKey ? pickCalloutWidth(slot) : pickWidth(slot);
-  // X swaps the two colors (PLAN 3D.15), as in design software.
-  if (e.code === "KeyX" && !e.shiftKey) return swapColors();
-  const tool = TOOL_KEYS[e.code];
-  if (tool && !e.shiftKey) {
-    tools.setTool(tool);
-    return true;
-  }
   switch (e.code) {
     case "Enter":
     case "NumpadEnter": {

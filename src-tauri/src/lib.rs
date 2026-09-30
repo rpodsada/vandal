@@ -23,6 +23,7 @@ mod redact;
 mod session;
 mod settings;
 mod settings_window;
+mod shortcuts;
 mod state;
 mod styles;
 mod tool_styles;

@@ -61,6 +61,11 @@ export const commands = {
 	hotkeysResume: () => __TAURI_INVOKE<void>("hotkeys_resume"),
 	/**  Whether a just-recorded shortcut can be ours; the reason if not. */
 	hotkeyCheck: (hotkey: string) => __TAURI_INVOKE<string | null>("hotkey_check", { hotkey }),
+	/**
+	 *  A just-recorded markup shortcut (PLAN 3F): spelled as settings store it,
+	 *  or why it can't be one (fixed in Vandal, or held by Windows or another app,
+	 *  which would take the keys first). Another tool using it is for the caller.
+	 */
 	/**  Whether Windows keeps PrintScreen for its own screen capture. */
 	printScreenOpensSnipping: () => __TAURI_INVOKE<boolean>("print_screen_opens_snipping"),
 	/**  Windows Settings › Accessibility › Keyboard (the Print Screen switch). */
@@ -496,6 +501,8 @@ export type SaveSettings = {
 export type Settings = {
 	version?: number,
 	hotkeys?: Hotkeys,
+	/**  The markup's keys for tools and swapping colors (PLAN 3F). */
+	shortcuts?: Shortcuts,
 	afterCapture?: AfterCapture,
 	save?: SaveSettings,
 	overlay?: OverlaySettings,
@@ -512,6 +519,26 @@ export type Settings = {
 
 /**  Rust → all windows: settings changed (from any source), here's the new state. */
 export type SettingsChanged = Settings;
+
+/**  Human-readable, e.g. `"V"` or `"Ctrl+L"`. `None` = no shortcut. */
+export type Shortcuts = {
+	select?: string | null,
+	pen?: string | null,
+	highlighter?: string | null,
+	line?: string | null,
+	arrow?: string | null,
+	rect?: string | null,
+	ellipse?: string | null,
+	text?: string | null,
+	callout?: string | null,
+	redact?: string | null,
+	spotlight?: string | null,
+	step?: string | null,
+	/**  The editor's crop. */
+	crop?: string | null,
+	/**  Swap the two colors (PLAN 3D.15). */
+	swapColors?: string | null,
+};
 
 export type Startup = {
 	launchOnLogin?: boolean,

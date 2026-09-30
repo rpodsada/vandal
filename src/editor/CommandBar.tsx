@@ -1,5 +1,7 @@
 import { hint } from "../markup/HintLine";
 import { useEffect, useRef, useState } from "react";
+import { keySuffix } from "../markup/shortcuts";
+import { useStyleConfig } from "../markup/styles";
 import { Toolbar } from "../markup/Toolbar";
 import markupStyles from "../markup/markup.module.css";
 import styles from "./EditorApp.module.css";
@@ -30,6 +32,7 @@ export function CommandBar({
   onSave,
   onSaveAs,
 }: Props) {
+  const cropKey = keySuffix(useStyleConfig((s) => s.shortcuts.crop));
   return (
     <div className={styles.commandBar}>
       <Toolbar
@@ -40,9 +43,9 @@ export function CommandBar({
             type="button"
             className={markupStyles.tool}
             {...hint("tool.crop")}
-            aria-label="Crop (C)"
+            aria-label={`Crop${cropKey}`}
             aria-pressed={cropping}
-            title="Crop (C)"
+            title={`Crop${cropKey}`}
             onClick={onCrop}
           >
             <svg viewBox="0 0 24 24" aria-hidden>
