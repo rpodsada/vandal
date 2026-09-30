@@ -39,7 +39,7 @@ export function HintLine() {
   useToolStore((s) => s.textBackground);
   const target = styleTarget(doc, selection, tool, editing);
   const values = target && targetValues(target, doc);
-  const twoColors = values?.fill === "both" || !!values?.text?.background;
+  const twoColors = values?.fill === "both" || !!values?.text?.background || !!values?.step;
 
   // Whatever control is under the pointer, found by its data-hint.
   useEffect(() => {

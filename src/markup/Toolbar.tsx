@@ -88,6 +88,17 @@ const TOOL_BUTTONS: { id: ToolId; label: string; key: string; icon: ReactNode }[
       </>
     ),
   },
+  {
+    id: "step",
+    label: "Step",
+    key: "N",
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M10.3 9.4L12.6 7.8v8.4" />
+      </>
+    ),
+  },
 ];
 
 interface Props {

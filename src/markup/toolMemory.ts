@@ -9,6 +9,8 @@ import type {
   RedactMode,
   ShapeFill,
   SpotlightShape,
+  StepFormat,
+  StepShape,
   TextAlign,
 } from "./model/types";
 import { isTool, useToolStore, type PaletteKey, type ToolId } from "./toolStore";
@@ -37,6 +39,11 @@ export interface ToolMemory {
   redactStrengths: Partial<Record<RedactMode, number>>;
   spotlightShape: SpotlightShape;
   spotlightDim: number | null;
+  stepShape: StepShape;
+  stepSize: number | null;
+  stepTextColor: string | null;
+  /** Not the start: a new document starts from 1 (or A). */
+  stepFormat: StepFormat;
 }
 
 /** The tools' current memory. */
@@ -63,6 +70,10 @@ export function snapshotToolMemory(): ToolMemory {
     redactStrengths: t.redactStrengths,
     spotlightShape: t.spotlightShape,
     spotlightDim: t.spotlightDim,
+    stepShape: t.stepShape,
+    stepSize: t.stepSize,
+    stepTextColor: t.stepTextColor,
+    stepFormat: t.stepFormat,
   };
 }
 
@@ -141,5 +152,9 @@ export function restoreToolMemory(stored: unknown): void {
       t.spotlightShape,
     ),
     spotlightDim: pick("spotlightDim", nullable(isSize), t.spotlightDim),
+    stepShape: pick("stepShape", oneOf<StepShape>("circle", "square", "rounded"), t.stepShape),
+    stepSize: pick("stepSize", nullable(isSize), t.stepSize),
+    stepTextColor: pick("stepTextColor", nullable(isColor), t.stepTextColor),
+    stepFormat: pick("stepFormat", oneOf<StepFormat>("numbers", "letters"), t.stepFormat),
   });
 }

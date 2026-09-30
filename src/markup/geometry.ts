@@ -61,6 +61,8 @@ export function annotationBounds(a: Annotation): Rect {
     case "redact":
     case "spotlight":
       return a.rect;
+    case "step":
+      return { x: a.x - a.size / 2, y: a.y - a.size / 2, width: a.size, height: a.size };
     case "line":
     case "arrow": {
       const curve = bentCurve(a.from, a.to, a.bend);
@@ -126,6 +128,7 @@ export function translateAnnotation<A extends Annotation>(a: A, dx: number, dy: 
     case "highlighter":
       return { ...a, points: a.points.map((v, i) => v + (i % 2 === 0 ? dx : dy)) };
     case "text":
+    case "step":
       return { ...a, x: a.x + dx, y: a.y + dy };
   }
   return a;

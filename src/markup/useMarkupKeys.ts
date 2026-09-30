@@ -12,12 +12,14 @@ import { applyStyle, styleTarget, targetSections, targetValues } from "./restyle
 import {
   fontChoices,
   paletteFor,
+  STEP_SIZE_PICKER,
   strengthPickerFor,
   useStyleConfig,
   widthPickerFor,
 } from "./styles";
+import { nextStepSeq } from "./steps";
 import { editText } from "./textEditing";
-import type { Annotation, NewAnnotation } from "./model/types";
+import type { Annotation, NewAnnotation, StepAnnotation } from "./model/types";
 import { TOOL_KEYS, useToolStore } from "./toolStore";
 
 /** Duplicates land this far (source px) down-right of the original. */
@@ -62,6 +64,11 @@ function pickWidth(slot: number): boolean {
     if (fontSize !== null) applyStyle({ fontSize });
     return true;
   }
+  if (sections.step) {
+    const stepSize = pickByDigit(STEP_SIZE_PICKER, slot);
+    if (stepSize !== null) applyStyle({ stepSize });
+    return true;
+  }
   if (sections.spotlight) {
     const dim = pickByDigit(useStyleConfig.getState().styles.spotlight, slot);
     if (dim !== null) applyStyle({ dim });
@@ -101,19 +108,30 @@ function toggleTextStyle(code: string): boolean {
 
 /**
  * Ctrl+digit: color preset slot. With Shift, the second color: the fill of a
- * shape with border and fill, or the box behind text.
+ * shape with border and fill, the box behind text, or a step marker (whose
+ * first color is its label's, like text).
  */
 function pickColor(slot: number, second: boolean): boolean {
   const target = styleTarget();
   if (!target || !targetSections(target).color) return false;
   const values = targetValues(target, docStore.getState().doc);
-  const hasSecond = values.fill === "both" || !!values.text?.background;
+  const hasSecond = values.fill === "both" || !!values.text?.background || !!values.step;
   if (second && !hasSecond) return false;
   const palette = paletteFor(target.tool);
   const i = slotIndex(palette.length, slot);
   if (i === null) return true;
   const c = palette[i];
-  applyStyle(!second ? { color: c } : values.text ? { backgroundColor: c } : { fillColor: c });
+  applyStyle(
+    values.step
+      ? second
+        ? { color: c }
+        : { textColor: c }
+      : !second
+        ? { color: c }
+        : values.text
+          ? { backgroundColor: c }
+          : { fillColor: c },
+  );
   return true;
 }
 
@@ -188,9 +206,18 @@ function handleCtrl(e: KeyboardEvent): boolean {
       if (e.shiftKey || !store.selection.length) return false;
       const picked = store.doc.annotations.filter((a) => store.selection.includes(a.id));
       store.beginGesture();
-      const ids = picked.map((a) =>
-        store.add(withoutId(translateAnnotation(a, DUPLICATE_OFFSET, DUPLICATE_OFFSET))),
-      );
+      // Duplicated step markers are the newest, so they take the next labels,
+      // in the order of the originals.
+      const firstSeq = nextStepSeq(store.doc);
+      const stepOrder = picked
+        .filter((a): a is StepAnnotation => a.kind === "step")
+        .sort((a, b) => a.seq - b.seq)
+        .map((a) => a.id);
+      const ids = picked.map((a) => {
+        const copy = withoutId(translateAnnotation(a, DUPLICATE_OFFSET, DUPLICATE_OFFSET));
+        if (copy.kind === "step") copy.seq = firstSeq + stepOrder.indexOf(a.id);
+        return store.add(copy);
+      });
       store.endGesture();
       store.select(ids);
       return true;

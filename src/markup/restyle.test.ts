@@ -5,9 +5,10 @@ import {
   type RedactAnnotation,
   type ShapeAnnotation,
   type SpotlightAnnotation,
+  type StepAnnotation,
   type TextAnnotation,
 } from "./model/types";
-import { applyStyle } from "./restyle";
+import { applyStyle, resetStepStyles } from "./restyle";
 import { useToolStore } from "./toolStore";
 
 const style = { color: "#e53935", width: 4, opacity: 1 };
@@ -207,5 +208,82 @@ describe("applyStyle on spotlights", () => {
     expect(spotlight(a).shape).toBe("ellipse");
     expect(spotlight(b).shape).toBe("rect");
     expect(useToolStore.getState().spotlightShape).toBe("ellipse");
+  });
+});
+
+describe("applyStyle on step markers", () => {
+  beforeEach(() => {
+    docStore.getState().load(emptyDoc({ width: 100, height: 100 }));
+    useToolStore.setState({
+      tool: "select",
+      stepShape: "circle",
+      stepSize: null,
+      stepTextColor: null,
+      stepFormat: "numbers",
+      stepStart: 1,
+    });
+  });
+
+  function addStep(seq: number): string {
+    return docStore.getState().add({
+      kind: "step",
+      x: 0,
+      y: 0,
+      seq,
+      size: 32,
+      shape: "circle",
+      color: "#e53935",
+      textColor: "#ffffff",
+      fontFamily: "Segoe UI",
+      format: "numbers",
+      start: 1,
+    });
+  }
+
+  const step = (id: string) =>
+    docStore.getState().doc.annotations.find((a) => a.id === id) as StepAnnotation;
+
+  it("restyles only the selected marker, and remembers it for the next", () => {
+    const a = addStep(1);
+    const b = addStep(2);
+    docStore.getState().select([a]);
+    applyStyle({ stepSize: 60, stepShape: "rounded", textColor: "#000000" });
+    expect(step(a)).toMatchObject({ size: 60, shape: "rounded", textColor: "#000000" });
+    expect(step(b)).toMatchObject({ size: 32, shape: "circle", textColor: "#ffffff" });
+    expect(useToolStore.getState()).toMatchObject({
+      stepSize: 60,
+      stepShape: "rounded",
+      stepTextColor: "#000000",
+    });
+  });
+
+  it("changes every marker's format and start, selected or not", () => {
+    const a = addStep(1);
+    const b = addStep(2);
+    docStore.getState().select([a]);
+    applyStyle({ stepFormat: "letters" });
+    useToolStore.setState({ tool: "step" });
+    docStore.getState().select([]);
+    applyStyle({ stepStart: 5 });
+    expect(step(a)).toMatchObject({ format: "letters", start: 5 });
+    expect(step(b)).toMatchObject({ format: "letters", start: 5 });
+  });
+
+  it("Reset styles gives every marker the style, as one undo step", () => {
+    const a = addStep(1);
+    const b = addStep(2);
+    const style = {
+      shape: "square",
+      size: 44,
+      color: "#1e88e5",
+      textColor: "#ffffff",
+      fontFamily: "Segoe UI",
+    } as const;
+    resetStepStyles(style);
+    expect(step(a)).toMatchObject(style);
+    expect(step(b)).toMatchObject(style);
+    docStore.getState().undo();
+    expect(step(a).size).toBe(32);
+    expect(step(b).color).toBe("#e53935");
   });
 });

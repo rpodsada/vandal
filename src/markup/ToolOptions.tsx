@@ -7,6 +7,7 @@ import { FontPickerControl } from "./FontPickerControl";
 import type { ArrowHead, RedactMode, ShapeFill, SpotlightShape, TextAlign } from "./model/types";
 import { NumberPickerControl } from "./NumberPickerControl";
 import { PresetEditor } from "./PresetEditor";
+import { StepOptions } from "./StepOptions";
 import { slotKey } from "./pickers";
 import {
   applyStyle,
@@ -148,6 +149,11 @@ export function ToolOptions() {
   useToolStore((s) => s.redactStrengths);
   useToolStore((s) => s.spotlightShape);
   useToolStore((s) => s.spotlightDim);
+  useToolStore((s) => s.stepShape);
+  useToolStore((s) => s.stepSize);
+  useToolStore((s) => s.stepTextColor);
+  useToolStore((s) => s.stepFormat);
+  useToolStore((s) => s.stepStart);
   const config = useStyleConfig();
   const held = useHeldKeys();
   // The preset being edited (right-click on a swatch).
@@ -165,24 +171,41 @@ export function ToolOptions() {
   const palette = paletteFor(target.tool, config);
   const widthPicker = widthPickerFor(target.tool, config);
   const text = values.text;
-  // With border + fill, or text on a box, the chip picks which color the
-  // swatches set.
-  const twoColors = (show.fill && values.fill === "both") || (show.text && !!text?.background);
-  const secondColor = (show.text ? text?.backgroundColor : values.fillColor) ?? values.color;
+  const step = show.step ? values.step : null;
+  // With border + fill, text on a box, or a step marker, the chip picks which
+  // color the swatches set. A step marker's label comes first, like text's.
+  const twoColors =
+    (show.fill && values.fill === "both") || (show.text && !!text?.background) || !!step;
+  const firstColor = step ? step.textColor : values.color;
+  const secondColor =
+    (step ? step.color : show.text ? text?.backgroundColor : values.fillColor) ?? values.color;
   const editingFill = twoColors && colorSlot === "fill";
-  const current = (editingFill ? secondColor : values.color).toLowerCase();
+  const current = (editingFill ? secondColor : firstColor).toLowerCase();
   // Only while that tool's palette is on show and the preset still exists.
   const edit =
     presetEdit?.tool === target.tool && presetEdit.index < palette.length ? presetEdit : null;
   const pickColor = (c: string, toSecond: boolean) =>
     applyStyle(
-      !(toSecond && twoColors)
-        ? { color: c }
-        : show.text
-          ? { backgroundColor: c }
-          : { fillColor: c },
+      step
+        ? toSecond
+          ? { color: c }
+          : { textColor: c }
+        : !(toSecond && twoColors)
+          ? { color: c }
+          : show.text
+            ? { backgroundColor: c }
+            : { fillColor: c },
     );
-  const labels = show.text ? ["Text color", "Box color"] : ["Border color", "Fill color"];
+  const labels = step
+    ? ["Label color", "Marker color"]
+    : show.text
+      ? ["Text color", "Box color"]
+      : ["Border color", "Fill color"];
+  const colorHints = step
+    ? (["chip.label", "swatch.label"] as const)
+    : show.text
+      ? (["chip.box", "swatch.box"] as const)
+      : (["chip.fill", "swatch.fill"] as const);
   const setSlot = (slot: "border" | "fill") => useToolStore.setState({ colorSlot: slot });
 
   return (
@@ -241,6 +264,8 @@ export function ToolOptions() {
           </span>
         </div>
       )}
+
+      {step && <StepOptions step={step} hints={hints} showKeys={hints && held.digit} />}
 
       {show.spotlight && values.spotlight && (
         <div className={styles.section}>
@@ -447,11 +472,11 @@ export function ToolOptions() {
       {show.color && (
         <div className={`${styles.section} ${styles.swatches}`}>
           {twoColors && (
-            <div className={styles.chip} {...hint(show.text ? "chip.box" : "chip.fill")}>
+            <div className={styles.chip} {...hint(colorHints[0])}>
               <button
                 type="button"
                 className={styles.chipBorder}
-                style={{ borderColor: values.color }}
+                style={{ borderColor: firstColor }}
                 aria-pressed={!editingFill}
                 aria-label={labels[0]}
                 title={`${labels[0]}${hints ? " (Ctrl+1…0)" : ""}`}
@@ -477,7 +502,7 @@ export function ToolOptions() {
                 key={i}
                 type="button"
                 className={styles.swatch}
-                {...hint(twoColors ? (show.text ? "swatch.box" : "swatch.fill") : "swatch")}
+                {...hint(twoColors ? colorHints[1] : "swatch")}
                 style={{ background: c }}
                 aria-pressed={edit ? editingThis : c.toLowerCase() === current}
                 aria-label={`Color ${i + 1}`}

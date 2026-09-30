@@ -6,12 +6,15 @@ import { create } from "zustand";
 import type { NumberPicker, StyleSettings } from "../shared/ipc";
 import type {
   AnnotationKind,
+  Doc,
   RedactMode,
   ShapeFill,
   SpotlightShape,
+  StepFormat,
   StrokeStyle,
 } from "./model/types";
 import { nearestValue } from "./pickers";
+import { contrastingText, stepsOf, type StepStyle } from "./steps";
 import { TOOLS, useToolStore, type PaletteKey, type ToolId } from "./toolStore";
 
 export interface StyleConfig {
@@ -76,6 +79,7 @@ export const TOOL_FOR_KIND: Record<AnnotationKind, ToolId> = {
   text: "text",
   redact: "redact",
   spotlight: "spotlight",
+  step: "step",
 };
 
 function override(tool: ToolId, cfg: StyleConfig) {
@@ -169,6 +173,7 @@ export function setCustomColor(key: PaletteKey, color: string | undefined): void
       fillColors: { ...t.fillColors },
       sharedColor: t.sharedColor,
       textBackgroundColor: t.textBackgroundColor,
+      stepTextColor: t.stepTextColor,
     };
     if (!color) return next;
     for (const tool of TOOLS) {
@@ -178,6 +183,7 @@ export function setCustomColor(key: PaletteKey, color: string | undefined): void
       if (isCustom(next.fillColors[tool], palette)) next.fillColors[tool] = color;
       if (tool === "text" && isCustom(next.textBackgroundColor, palette))
         next.textBackgroundColor = color;
+      if (tool === "step" && isCustom(next.stepTextColor, palette)) next.stepTextColor = color;
     }
     if (key === "shared" && isCustom(next.sharedColor, cfg.styles.palette))
       next.sharedColor = color;
@@ -220,4 +226,30 @@ export function toolSpotlight(): { shape: SpotlightShape; dim: number } {
 
 export function rememberWidth(tool: ToolId, width: number): void {
   useToolStore.setState((t) => ({ widths: { ...t.widths, [tool]: width } }));
+}
+
+/** Step markers' sizes (source px). Moves to Settings as `styles.stepSize` in 3D.13. */
+export const STEP_SIZE_PICKER: NumberPicker = { control: "buttons", values: [24, 32, 44, 60] };
+const PREFERRED_STEP_SIZE = 32;
+
+/** The next step marker's style. */
+export function toolStepStyle(): StepStyle {
+  const t = useToolStore.getState();
+  const color = toolColor("step");
+  return {
+    shape: t.stepShape,
+    size: t.stepSize ?? nearestValue(STEP_SIZE_PICKER, PREFERRED_STEP_SIZE),
+    color,
+    textColor: t.stepTextColor ?? contrastingText(color),
+    fontFamily: DEFAULT_FONT,
+  };
+}
+
+/** The labels' format and start: the document's markers', or the tool's for a first one. */
+export function stepNumbering(doc: Doc): { format: StepFormat; start: number } {
+  const [first] = stepsOf(doc);
+  const t = useToolStore.getState();
+  return first
+    ? { format: first.format, start: first.start }
+    : { format: t.stepFormat, start: t.stepStart };
 }

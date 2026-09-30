@@ -87,6 +87,20 @@ describe("annotationBounds and translateAnnotation", () => {
       background: false,
       backgroundColor: "#ffffff",
     },
+    {
+      id: "s",
+      kind: "step",
+      x: 50,
+      y: 40,
+      seq: 1,
+      size: 32,
+      shape: "circle",
+      color: "#e53935",
+      textColor: "#ffffff",
+      fontFamily: "Segoe UI",
+      format: "numbers",
+      start: 1,
+    },
   ];
 
   it("bounds each kind", () => {
@@ -95,6 +109,8 @@ describe("annotationBounds and translateAnnotation", () => {
     expect(annotationBounds(cases[2])).toEqual({ x: 1, y: 3, width: 5, height: 6 });
     // 15 pt = 20 px, two lines at 1.2.
     expect(annotationBounds(cases[3])).toEqual({ x: 10, y: 20, width: 100, height: 48 });
+    // A step marker is centred on its point.
+    expect(annotationBounds(cases[4])).toEqual({ x: 34, y: 24, width: 32, height: 32 });
   });
 
   it("rotates text about its top-left corner", () => {

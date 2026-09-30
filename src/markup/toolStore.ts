@@ -10,6 +10,8 @@ import type {
   RedactMode,
   ShapeFill,
   SpotlightShape,
+  StepFormat,
+  StepShape,
   TextAlign,
 } from "./model/types";
 
@@ -25,6 +27,7 @@ export const TOOLS = [
   "text",
   "redact",
   "spotlight",
+  "step",
 ] as const;
 export type ToolId = (typeof TOOLS)[number];
 
@@ -43,6 +46,7 @@ export const TOOL_KEYS: Record<string, ToolId> = {
   KeyT: "text",
   KeyB: "redact",
   KeyS: "spotlight",
+  KeyN: "step",
 };
 
 export function isTool(value: string): value is ToolId {
@@ -92,6 +96,14 @@ export interface ToolState {
   /** Spotlight: its shape, and the darkness once picked (%). */
   spotlightShape: SpotlightShape;
   spotlightDim: number | null;
+  /** Step markers: the style of the next one (size and label color once picked). */
+  stepShape: StepShape;
+  stepSize: number | null;
+  /** Null: black or white, whichever reads better on the marker. */
+  stepTextColor: string | null;
+  /** The labels of a document's first marker (after that, its markers say). */
+  stepFormat: StepFormat;
+  stepStart: number;
   editing: TextEditing | null;
   setTool: (tool: ToolId) => void;
   setEditing: (editing: TextEditing | null) => void;
@@ -119,6 +131,11 @@ export const useToolStore = create<ToolState>((set) => ({
   redactStrengths: {},
   spotlightShape: "rect",
   spotlightDim: null,
+  stepShape: "circle",
+  stepSize: null,
+  stepTextColor: null,
+  stepFormat: "numbers",
+  stepStart: 1,
   editing: null,
   // Picking a drawing tool drops the selection, so the options show that tool.
   setTool: (tool) => {

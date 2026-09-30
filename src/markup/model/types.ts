@@ -154,6 +154,37 @@ export interface SpotlightAnnotation extends Base {
   dim: number;
 }
 
+export type StepShape = "circle" | "square" | "rounded";
+
+/** 1, 2, 3… or A, B, C… */
+export type StepFormat = "numbers" | "letters";
+
+/**
+ * A numbered or lettered marker (PLAN 3D.11). Its label isn't stored: the
+ * markers count up in creation order (`seq`), whatever the z-order, so
+ * deleting one renumbers the rest.
+ */
+export interface StepAnnotation extends Base {
+  kind: "step";
+  /** The centre. */
+  x: number;
+  y: number;
+  /** Creation order; auto labels count the markers in this order. */
+  seq: number;
+  /** Width and height in source px. */
+  size: number;
+  shape: StepShape;
+  /** The marker's fill. */
+  color: string;
+  /** The label's color. */
+  textColor: string;
+  fontFamily: string;
+  /** Shared: every marker in a document has the same. */
+  format: StepFormat;
+  /** The first auto label (1 is "1" or "A"). Shared, like `format`. */
+  start: number;
+}
+
 export type Annotation =
   | PenAnnotation
   | HighlighterAnnotation
@@ -162,7 +193,8 @@ export type Annotation =
   | ShapeAnnotation
   | TextAnnotation
   | RedactAnnotation
-  | SpotlightAnnotation;
+  | SpotlightAnnotation
+  | StepAnnotation;
 
 export type AnnotationKind = Annotation["kind"];
 

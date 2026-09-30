@@ -22,6 +22,7 @@ export const CONTROL_HINTS = {
   "tool.text": "[T] Click to type, or drag to set a width",
   "tool.redact": "[B] Pixelate or blur an area · always under the other markup",
   "tool.spotlight": "[S] Darken everything outside a box or ellipse",
+  "tool.step": "[N] Click to place numbered or lettered markers · they count up",
   "tool.crop": "[C] Crop the image · [Ctrl+Z] undoes a crop",
   undo: "[Ctrl+Z] Undo",
   redo: "[Ctrl+Y] or [Ctrl+Shift+Z] Redo",
@@ -32,6 +33,9 @@ export const CONTROL_HINTS = {
     "[Shift]+click sets the background · [Ctrl+1…0] text color · [Ctrl+Shift+1…0] background color · Right-click to change or delete",
   "chip.fill": "Choose which color the swatches set · [Shift]+click a swatch sets the fill",
   "chip.box": "Choose which color the swatches set · [Shift]+click a swatch sets the background",
+  "swatch.label":
+    "[Shift]+click sets the marker · [Ctrl+1…0] label color · [Ctrl+Shift+1…0] marker color · Right-click to change or delete",
+  "chip.label": "Choose which color the swatches set · [Shift]+click a swatch sets the marker",
   customColor:
     "Your custom color · Click it again, or right-click, to change it · [Esc] in the picker puts the old one back",
   width: "[1…0] Pick a width by number",
@@ -39,6 +43,10 @@ export const CONTROL_HINTS = {
   strength: "[1…0] Pick a strength by number",
   "spotlight.shape": "The bright area's shape",
   dim: "[1…0] How dark outside · shared by every spotlight",
+  "step.shape": "The marker's shape",
+  "step.format": "Numbers or letters · shared by every marker",
+  "step.start": "The first marker's label · the others count up from it",
+  "step.resetStyles": "Give every marker the style shown here · [Ctrl+Z] undoes it",
   size: "[1…0] Pick a size by number",
   font: "[Alt+1…0] Pick a font by number · Type to filter the list",
   fill: "Border only, filled, or border and fill",
@@ -80,6 +88,7 @@ const PAN_ZOOM = "[Space]+drag pan · [Ctrl]+wheel zoom";
 
 /** The color keys, naming both colors only when there are two. */
 function colorKeys(tool: ToolId, twoColors: boolean): string {
+  if (tool === "step") return "[Ctrl+1…0] label color · [Ctrl+Shift+1…0] marker color";
   if (tool === "text") {
     return twoColors
       ? "[Ctrl+1…0] text color · [Ctrl+Shift+1…0] background color"
@@ -107,6 +116,8 @@ function toolHint(tool: Exclude<ToolId, "select">, twoColors: boolean): string {
       return "Drag over what to hide · [1…0] strength";
     case "spotlight":
       return "Drag the area to keep bright · [Shift] square or circle · [1…0] darkness";
+    case "step":
+      return `Click to place the next marker · [1…0] size · ${colors}`;
   }
 }
 
@@ -118,7 +129,7 @@ const TYPING = "[Esc] done · [Ctrl+B] bold · [Ctrl+I] italic · [Alt+1…0] fo
 const CROP =
   "Drag edges or corners, [Shift] keeps proportions · Drag outside for a new box · [Enter] apply · [Esc] cancel · [←↑↓→] nudge, [Ctrl] resize";
 
-const IDLE = `[V] [P] [H] [L] [A] [R] [E] [T] [B] [S] tools · [Ctrl+Z] undo · [Ctrl+C] copy · [Ctrl+S] save · ${PAN_ZOOM}`;
+const IDLE = `[V] [P] [H] [L] [A] [R] [E] [T] [B] [S] [N] tools · [Ctrl+Z] undo · [Ctrl+C] copy · [Ctrl+S] save · ${PAN_ZOOM}`;
 
 export interface HintState {
   hover: ControlHint | null;

@@ -751,3 +751,30 @@
   color: var(--text-3);
   background: transparent;
 }
+
+/* ---- step markers (PLAN 3D.11) ---- */
+
+.stepFormat {
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.stepStart {
+  width: 44px;
+}
+
+/* A question asked from a button (Reset styles). */
+.confirm {
+  width: 260px;
+  gap: 12px;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.confirm p {
+  margin: 0;
+  line-height: 1.4;
+  white-space: normal;
+}

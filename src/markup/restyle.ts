@@ -14,6 +14,8 @@ import type {
   RedactMode,
   ShapeFill,
   SpotlightShape,
+  StepFormat,
+  StepShape,
   TextAlign,
 } from "./model/types";
 import { textPx } from "./geometry";
@@ -27,9 +29,12 @@ import {
   toolFill,
   toolFont,
   toolRedact,
+  stepNumbering,
   toolSpotlight,
+  toolStepStyle,
   toolWidth,
 } from "./styles";
+import { stepsOf, type StepStyle } from "./steps";
 import { useToolStore, type ToolId } from "./toolStore";
 
 export interface StyleTarget {
@@ -86,6 +91,8 @@ export interface TargetValues {
   redact: { mode: RedactMode; strength: number } | null;
   /** Spotlight only. */
   spotlight: { shape: SpotlightShape; dim: number } | null;
+  /** Step markers only (`color` is the marker's). */
+  step: (StepStyle & { format: StepFormat; start: number }) | null;
 }
 
 /** What the controls show: the first object's style, or the tool's. */
@@ -96,7 +103,8 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
     const t = target.tool;
     return {
       color: toolColor(t),
-      width: t === "text" || t === "redact" || t === "spotlight" ? null : toolWidth(t),
+      width:
+        t === "text" || t === "redact" || t === "spotlight" || t === "step" ? null : toolWidth(t),
       fill: t === "rect" || t === "ellipse" ? toolFill(t).fill : null,
       fillColor: t === "rect" || t === "ellipse" ? (toolFill(t).color ?? toolColor(t)) : null,
       head: t === "arrow" ? tools.arrowHead : null,
@@ -115,6 +123,29 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
           : null,
       redact: t === "redact" ? toolRedact() : null,
       spotlight: t === "spotlight" ? toolSpotlight() : null,
+      step: t === "step" ? { ...toolStepStyle(), ...stepNumbering(doc) } : null,
+    };
+  }
+  if (a.kind === "step") {
+    return {
+      color: a.color,
+      width: null,
+      fill: null,
+      fillColor: null,
+      head: null,
+      ends: null,
+      text: null,
+      redact: null,
+      spotlight: null,
+      step: {
+        shape: a.shape,
+        size: a.size,
+        color: a.color,
+        textColor: a.textColor,
+        fontFamily: a.fontFamily,
+        format: a.format,
+        start: a.start,
+      },
     };
   }
   if (a.kind === "spotlight") {
@@ -128,6 +159,7 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
       text: null,
       redact: null,
       spotlight: { shape: a.shape, dim: a.dim },
+      step: null,
     };
   }
   if (a.kind === "redact") {
@@ -141,6 +173,7 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
       text: null,
       redact: { mode: a.mode, strength: a.strength },
       spotlight: null,
+      step: null,
     };
   }
   return {
@@ -164,6 +197,7 @@ export function targetValues(target: StyleTarget, doc: Doc): TargetValues {
         : null,
     redact: null,
     spotlight: null,
+    step: null,
   };
 }
 
@@ -172,12 +206,15 @@ export function targetSections(target: StyleTarget) {
   const all = (pred: (k: AnnotationKind) => boolean) => target.kinds.every(pred);
   return {
     color: target.kinds.some((k) => k !== "redact" && k !== "spotlight"),
-    width: target.kinds.some((k) => k !== "text" && k !== "redact" && k !== "spotlight"),
+    width: target.kinds.some(
+      (k) => k !== "text" && k !== "redact" && k !== "spotlight" && k !== "step",
+    ),
     fill: all((k) => k === "rect" || k === "ellipse"),
     head: all((k) => k === "arrow"),
     text: all((k) => k === "text"),
     redact: all((k) => k === "redact"),
     spotlight: all((k) => k === "spotlight"),
+    step: all((k) => k === "step"),
   };
 }
 
@@ -201,9 +238,27 @@ export interface StylePatch {
   spotlightShape?: SpotlightShape;
   /** Spotlight darkness (%): applies to every spotlight in the document. */
   dim?: number;
+  stepShape?: StepShape;
+  stepSize?: number;
+  /** A step marker's label color. */
+  textColor?: string;
+  /** Step markers' labels: apply to every marker in the document. */
+  stepFormat?: StepFormat;
+  stepStart?: number;
 }
 
 function patchAnnotation(a: Annotation, p: StylePatch): Annotation {
+  if (a.kind === "step") {
+    return {
+      ...a,
+      shape: p.stepShape ?? a.shape,
+      size: p.stepSize ?? a.size,
+      color: p.color ?? a.color,
+      textColor: p.textColor ?? a.textColor,
+      format: p.stepFormat ?? a.format,
+      start: p.stepStart ?? a.start,
+    };
+  }
   if (a.kind === "spotlight") {
     return { ...a, shape: p.spotlightShape ?? a.shape, dim: p.dim ?? a.dim };
   }
@@ -293,8 +348,17 @@ export function applyStyle(patch: StylePatch): void {
   const tools = new Set(target.kinds.map((k) => TOOL_FOR_KIND[k]));
   for (const tool of tools) {
     if (patch.color !== undefined) rememberColor(tool, patch.color);
-    if (patch.width !== undefined && tool !== "text" && tool !== "redact" && tool !== "spotlight")
-      rememberWidth(tool, patch.width);
+    if (patch.width !== undefined && widthTool(tool)) rememberWidth(tool, patch.width);
+    if (tool === "step") {
+      const t = useToolStore.getState();
+      useToolStore.setState({
+        stepShape: patch.stepShape ?? t.stepShape,
+        stepSize: patch.stepSize ?? t.stepSize,
+        stepTextColor: patch.textColor ?? t.stepTextColor,
+        stepFormat: patch.stepFormat ?? t.stepFormat,
+        stepStart: patch.stepStart ?? t.stepStart,
+      });
+    }
     if (tool === "spotlight") {
       const t = useToolStore.getState();
       useToolStore.setState({
@@ -330,21 +394,55 @@ export function applyStyle(patch: StylePatch): void {
   }
 
   const store = docStore.getState();
-  // The darkness is shared by every spotlight, selected or not.
-  const ids =
-    patch.dim === undefined
-      ? target.ids
-      : [
-          ...new Set([
-            ...target.ids,
-            ...store.doc.annotations.filter((a) => a.kind === "spotlight").map((a) => a.id),
-          ]),
-        ];
+  // The darkness is shared by every spotlight, and the labels' format and
+  // start by every step marker, selected or not.
+  const shared = [
+    ...(patch.dim === undefined ? [] : store.doc.annotations.filter((a) => a.kind === "spotlight")),
+    ...(patch.stepFormat === undefined && patch.stepStart === undefined ? [] : stepsOf(store.doc)),
+  ];
+  const ids = [...new Set([...target.ids, ...shared.map((a) => a.id)])];
   if (!ids.length) return;
   const own = !store.gestureStart;
   if (own) store.beginGesture();
   for (const id of ids) store.update(id, (a) => patchAnnotation(a, patch));
   if (own) store.endGesture();
+}
+
+/** Tools with a line width. */
+function widthTool(tool: ToolId): boolean {
+  return tool !== "text" && tool !== "redact" && tool !== "spotlight" && tool !== "step";
+}
+
+/**
+ * Reset styles (PLAN 3D.11): give every step marker `style`, in one undo
+ * step. It becomes the tool's style too.
+ */
+export function resetStepStyles(style: StepStyle): void {
+  rememberColor("step", style.color);
+  useToolStore.setState({
+    stepShape: style.shape,
+    stepSize: style.size,
+    stepTextColor: style.textColor,
+  });
+  const store = docStore.getState();
+  const steps = stepsOf(store.doc);
+  if (!steps.length) return;
+  store.beginGesture();
+  for (const s of steps) {
+    store.update(s.id, (a) =>
+      a.kind === "step"
+        ? {
+            ...a,
+            shape: style.shape,
+            size: style.size,
+            color: style.color,
+            textColor: style.textColor,
+            fontFamily: style.fontFamily,
+          }
+        : a,
+    );
+  }
+  store.endGesture();
 }
 
 /** Redact remembers its mode, and the strength for the mode it applies to. */

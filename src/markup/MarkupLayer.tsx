@@ -41,16 +41,21 @@ import type {
   RedactAnnotation,
   ShapeAnnotation,
   SpotlightAnnotation,
+  StepAnnotation,
+  StepShape,
   TextAnnotation,
 } from "./model/types";
 import { redactPixels, redactReads, redactRect, useRedactSource } from "./redact";
+import { nextStepSeq, stepLabels } from "./steps";
 import {
   DEFAULT_TEXT_BACKGROUND,
+  stepNumbering,
   toolColor,
   toolFill,
   toolFont,
   toolRedact,
   toolSpotlight,
+  toolStepStyle,
   toolStroke,
   useStyleConfig,
 } from "./styles";
@@ -130,6 +135,7 @@ type Drag =
       began: boolean;
     }
   | { mode: "draw"; start: Point; id: AnnotationId }
+  | { mode: "place"; id: AnnotationId }
   | { mode: "endpoint"; id: AnnotationId; end: "from" | "to"; anchor: Point }
   | { mode: "bend"; id: AnnotationId; handle: Point; start: Point; client: Point; began: boolean }
   | { mode: "stroke"; id: AnnotationId; start: Point; last: Point }
@@ -392,6 +398,19 @@ export function MarkupLayer({
         ...toolSpotlight(),
       });
       drag = { mode: "draw", start: p, id };
+    } else if (tool === "step") {
+      // A click places the next marker; dragging before letting go moves it.
+      store.select([]);
+      store.beginGesture();
+      const id = store.add({
+        kind: "step",
+        x: p.x,
+        y: p.y,
+        seq: nextStepSeq(store.doc),
+        ...toolStepStyle(),
+        ...stepNumbering(store.doc),
+      });
+      drag = { mode: "place", id };
     } else {
       const style = toolStroke(tool);
       const { arrowHead, arrowEnds } = useToolStore.getState();
@@ -459,6 +478,9 @@ export function MarkupLayer({
           });
           break;
         }
+        case "place":
+          s.update(drag.id, (a) => (a.kind === "step" ? { ...a, x: q.x, y: q.y } : a));
+          break;
         case "endpoint": {
           const pt = m.shiftKey ? snapAngle(drag.anchor, q) : q;
           const end = drag.end;
@@ -534,6 +556,10 @@ export function MarkupLayer({
         case "endpoint":
         case "bend":
           s.endGesture();
+          break;
+        case "place":
+          s.endGesture();
+          s.select([drag.id]);
           break;
         case "stroke": {
           // A click leaves a dot; strokes lose the points that add nothing.
@@ -672,6 +698,7 @@ export function MarkupLayer({
   const spotlights = doc.annotations.filter(
     (a): a is SpotlightAnnotation => a.kind === "spotlight",
   );
+  const labels = stepLabels(doc);
   const editedText = doc.annotations.find(
     (a): a is TextAnnotation => a.kind === "text" && a.id === editing?.id,
   );
@@ -728,6 +755,7 @@ export function MarkupLayer({
                   a={a}
                   hitSlop={HIT_SLOP / scale}
                   hidden={a.id === editing?.id}
+                  label={labels.get(a.id)}
                 />
               ))}
           </Group>
@@ -806,8 +834,14 @@ export function MarkupLayer({
                 : [],
             )}
           {doc.annotations.map((a) =>
-            isStroke(a) && selection.includes(a.id) ? (
-              <SelectionBounds key={`${a.id}-bounds`} a={a} scale={scale} offset={offset} />
+            (isStroke(a) || a.kind === "step") && selection.includes(a.id) ? (
+              <SelectionBounds
+                key={`${a.id}-bounds`}
+                bounds={annotationBounds(a)}
+                pad={isStroke(a) ? a.style.width / 2 : 0}
+                scale={scale}
+                offset={offset}
+              />
             ) : null,
           )}
           {marquee && (
@@ -843,12 +877,16 @@ function AnnotationShape({
   a,
   hitSlop,
   hidden = false,
+  label = "",
 }: {
   a: Annotation;
   hitSlop: number;
   /** Being typed into: the text editor shows it instead. */
   hidden?: boolean;
+  /** A step marker's label. */
+  label?: string;
 }) {
+  if (a.kind === "step") return <StepMarker a={a} label={label} />;
   if (a.kind === "text") {
     return (
       <Text
@@ -1039,6 +1077,66 @@ function SpotlightEdge({ a, hitSlop }: { a: SpotlightAnnotation; hitSlop: number
   );
 }
 
+/** Largest label width, as a share of the marker, so it stays inside a circle. */
+const STEP_LABEL_FIT = 0.72;
+/** A short label's font size, as a share of the marker. */
+const STEP_FONT = 0.56;
+
+/** A step marker's outline about its centre. */
+function stepPath(c: CanvasRenderingContext2D, shape: StepShape, r: number): void {
+  c.beginPath();
+  if (shape === "circle") c.arc(0, 0, r, 0, 2 * Math.PI);
+  else if (shape === "rounded") c.roundRect(-r, -r, 2 * r, 2 * r, r * 0.45);
+  else c.rect(-r, -r, 2 * r, 2 * r);
+}
+
+/**
+ * A step marker (PLAN 3D.11): its shape filled, and the label in bold,
+ * centred, shrunk to fit when it's long. Positioned about its centre.
+ */
+function StepMarker({ a, label }: { a: StepAnnotation; label: string }) {
+  const r = a.size / 2;
+  return (
+    <Shape
+      id={a.id}
+      name="annotation"
+      x={a.x}
+      y={a.y}
+      // For the hit area only; the scene draws itself.
+      fill={a.color}
+      perfectDrawEnabled={false}
+      sceneFunc={(ctx) => {
+        const c = (ctx as unknown as { _context: CanvasRenderingContext2D })._context;
+        c.save();
+        stepPath(c, a.shape, r);
+        c.fillStyle = a.color;
+        c.fill();
+        const font = (px: number) => `bold ${px}px "${a.fontFamily}"`;
+        let px = a.size * STEP_FONT;
+        c.font = font(px);
+        const w = c.measureText(label).width;
+        if (w > a.size * STEP_LABEL_FIT) {
+          px *= (a.size * STEP_LABEL_FIT) / w;
+          c.font = font(px);
+        }
+        const m = c.measureText(label);
+        c.fillStyle = a.textColor;
+        c.textAlign = "center";
+        c.textBaseline = "alphabetic";
+        // Centred on the ink, not the font's line box.
+        c.fillText(label, 0, (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2);
+        c.restore();
+      }}
+      hitFunc={(ctx, shape) => {
+        ctx.beginPath();
+        ctx.rect(-r, -r, 2 * r, 2 * r);
+        ctx.closePath();
+        ctx.fillShape(shape);
+      }}
+    />
+  );
+}
+
 /** Shown when there's no image to preview from (it shouldn't happen): a gray box. */
 const REDACT_PLACEHOLDER = "#808080";
 
@@ -1188,18 +1286,21 @@ function BendHandle({
   );
 }
 
-/** A dashed box around a selected stroke, which can move but not be reshaped. */
+/**
+ * A dashed box around a selected object that can move but not be reshaped
+ * (strokes, step markers). `pad` (source px) takes in a stroke's width.
+ */
 function SelectionBounds({
-  a,
+  bounds: b,
+  pad,
   scale,
   offset,
 }: {
-  a: PenAnnotation | HighlighterAnnotation;
+  bounds: Rect;
+  pad: number;
   scale: number;
   offset: Point;
 }) {
-  const b = annotationBounds(a);
-  const pad = a.style.width / 2;
   return (
     <KRect
       x={offset.x + (b.x - pad) * scale}
