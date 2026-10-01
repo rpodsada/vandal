@@ -13,7 +13,8 @@ commit its changes in `internal/`, never in this repo, and push them right away.
 ask the user for it rather than working without the plan. Only `PLAN.md` is read up front; the rest
 when needed: `done.md` (finished phases' detail, e.g. what "PLAN 3D.18" in a comment means),
 `ideas.md` (backlog, Phases 4–5), `decisions.md` (the decisions log: append, search rather than
-read whole), `test-matrix.md`, `perf.md`, `mockup/`.
+read whole), `test-matrix.md`, `perf.md`, `mockup/`, `screenshot-kit/` (remote-controls the
+installed app to take marketing screenshots or run end-to-end checks; its `CLAUDE.md` says how).
 
 ## Non-negotiables (PLAN §1)
 
