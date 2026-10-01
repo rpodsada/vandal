@@ -187,6 +187,8 @@ pub enum LeaveReason {
     Close,
     /// Another image opens in its place (PLAN 3H.6).
     Open,
+    /// A capture started from it will take its place (PLAN 3H.7).
+    Capture,
 }
 
 /// The answer to "save before closing?".
@@ -218,9 +220,9 @@ pub fn open_capture(
     open_frames(app, &capture.frames, rect, annotations, false, None);
 }
 
-/// [`open_capture`] for a capture started from the editor `into` (PLAN 3G):
-/// it loads there if that editor is empty, else in a new window, with `into`
-/// back on screen behind it.
+/// [`open_capture`] for a capture started from the editor `into` (PLAN 3G): it
+/// loads there, in place of any image it had (PLAN 3H.7: the page dealt with
+/// that before the capture started). A new window only if `into` is gone.
 pub fn open_capture_into(app: &AppHandle, capture: &Capture, rect: PhysicalRect, into: EditorId) {
     open_frames(app, &capture.frames, rect, None, false, Some(into));
 }
@@ -259,7 +261,7 @@ fn open_frames(
             crop.relative_to(bounds.origin()),
             &title,
             None,
-            false,
+            true,
         );
         bring_back(app, id);
         if loaded {
@@ -905,6 +907,7 @@ pub fn confirm_close(app: &AppHandle, window: &WebviewWindow, reason: LeaveReaso
         .title(match reason {
             LeaveReason::Close => "Save before closing?",
             LeaveReason::Open => "Save before opening another image?",
+            LeaveReason::Capture => "Save before capturing?",
         })
         .kind(MessageDialogKind::Warning)
         .parent(window)
@@ -924,9 +927,9 @@ pub fn confirm_close(app: &AppHandle, window: &WebviewWindow, reason: LeaveReaso
 }
 
 /// Start a region capture from an editor: get the editor out of the way first
-/// so it isn't in the shot. The capture skips quick edit and comes back to
-/// the editor: into this window if it's empty, else a new one (PLAN 3G,
-/// Richard: from the editor you mean to stay in the editor).
+/// so it isn't in the shot. The capture skips quick edit and comes back into
+/// this window, in place of its image (PLAN 3G, 3H.7; Richard: from the
+/// editor you mean to stay in the editor).
 pub fn new_capture(app: &AppHandle, window: &WebviewWindow) {
     let into = id_from_label(window.label());
     let _ = window.minimize();

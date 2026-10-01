@@ -18,9 +18,9 @@ All notable changes to Vandal are listed here. The format follows
 
 ### Changed
 
-- The editor's Open (Ctrl+O) loads the image into the same window instead of a new one. The
-  current image is handled as when closing: your "when you close the editor" actions run, or
-  Vandal asks first if there are changes that haven't been saved.
+- The editor's Open (Ctrl+O) and Capture (Ctrl+N) load the new image into the same window instead
+  of a new one. If the image there has changes that haven't been copied or saved, Vandal asks
+  first. Captures from the shortcuts or the tray still open a new window.
 - An empty editor no longer shows "1 × 1 px" and zoom controls, and its hint line lists only
   what works there: capture, open, paste, drop a file, settings.
 - Copied images keep their transparency for apps that support it, and apps that don't (such as

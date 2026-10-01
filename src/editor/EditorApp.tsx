@@ -148,17 +148,19 @@ export function EditorApp() {
     }
   }, []);
 
-  // Before the document goes (closing, or another image opening in its
-  // place, PLAN 3H.6): run the on-close actions not already done since the
-  // last change, or ask before losing changes (PLAN Phase 2). An image file
-  // always asks instead (PLAN 2D). False: keep it. Throws if an export fails.
+  // Before the document goes (closing, or another image or capture taking
+  // its place, PLAN 3H.6–3H.7). Closing a capture runs the on-close actions
+  // not already done since the last change, or asks before losing changes
+  // (PLAN Phase 2). An image file always asks instead (PLAN 2D), and so does
+  // a capture being replaced: quietly copying it as it's replaced looked
+  // like losing it (Richard, 3H.7). False: keep it. Throws if an export fails.
   const leaveDocument = useCallback(async (reason: LeaveReason): Promise<boolean> => {
     const init = initRef.current;
     if (!init || init.empty) return true;
     const onClose = settingsRef.current?.editor.onClose ?? { copy: true, save: false };
     applyCrop();
     await flushToolStyles();
-    if (init.file) {
+    if (init.file || reason !== "close") {
       if (!hasUnsavedChanges(docStore.getState())) return true;
       const choice = await commands.editorConfirmClose(reason);
       if (choice === "cancel") return false;
@@ -186,6 +188,18 @@ export function EditorApp() {
       }
     });
     return () => void unlisten.then((f) => f());
+  }, [leaveDocument]);
+
+  /** Ctrl+N / Capture: the capture comes back in this one's place (PLAN 3H.7). */
+  const captureHere = useCallback(async () => {
+    if (busyRef.current) return;
+    try {
+      if (!(await leaveDocument("capture"))) return;
+    } catch (e) {
+      setNotice({ text: `Not captured: ${errorText(e)}`, error: true });
+      return;
+    }
+    await commands.editorNewCapture();
   }, [leaveDocument]);
 
   /** Ctrl+O / Open: the picked image takes this one's place (PLAN 3H.6). */
@@ -223,7 +237,7 @@ export function EditorApp() {
           break;
         case "KeyN":
           if (e.shiftKey) return;
-          void commands.editorNewCapture();
+          void captureHere();
           break;
         case "KeyO":
           if (e.shiftKey) return;
@@ -258,7 +272,7 @@ export function EditorApp() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [run, openImage]);
+  }, [run, openImage, captureHere]);
 
   return (
     <div className={styles.app}>
@@ -268,7 +282,7 @@ export function EditorApp() {
         empty={status.kind === "empty"}
         onCrop={() => (cropping ? applyCrop() : status.kind === "ready" && beginCrop())}
         onPickTool={applyCrop}
-        onNewCapture={() => void commands.editorNewCapture()}
+        onNewCapture={() => void captureHere()}
         onOpen={() => void openImage()}
         onCopy={() => void run("copy")}
         onSave={() => void run("save")}
@@ -278,10 +292,7 @@ export function EditorApp() {
         {status.kind === "empty" ? null : cropping ? <CropOptions /> : <ToolOptions />}
       </div>
       {status.kind === "empty" ? (
-        <EmptyEditor
-          onNewCapture={() => void commands.editorNewCapture()}
-          onOpen={() => void openImage()}
-        />
+        <EmptyEditor onNewCapture={() => void captureHere()} onOpen={() => void openImage()} />
       ) : (
         <Stage
           canvasRef={canvasRef}

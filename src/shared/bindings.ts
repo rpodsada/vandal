@@ -405,7 +405,9 @@ export type IconAction =
 /**  Why an editor's document is about to go, for the "save first?" question. */
 export type LeaveReason = "close" | 
 /**  Another image opens in its place (PLAN 3H.6). */
-"open";
+"open" | 
+/**  A capture started from it will take its place (PLAN 3H.7). */
+"capture";
 
 export type MonitorInfo = {
 	index: number,
