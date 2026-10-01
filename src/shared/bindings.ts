@@ -100,6 +100,11 @@ export const commands = {
 	 *  address: the page can't open others.
 	 */
 	openProjectPage: () => __TAURI_INVOKE<void>("open_project_page"),
+	/**
+	 *  Vandal's website, in the default browser (Settings › About). A fixed
+	 *  address, like `open_project_page`.
+	 */
+	openWebsite: () => __TAURI_INVOKE<void>("open_website"),
 	/**  The default settings, for "Reset" buttons. */
 	defaultSettings: () => __TAURI_INVOKE<Settings>("default_settings"),
 	/**  Quick edit: this overlay's selection now has markup (or no longer has). */

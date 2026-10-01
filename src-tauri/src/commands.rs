@@ -153,6 +153,16 @@ pub fn open_project_page() {
         .spawn();
 }
 
+/// Vandal's website, in the default browser (Settings › About). A fixed
+/// address, like `open_project_page`.
+#[tauri::command]
+#[specta::specta]
+pub fn open_website() {
+    let _ = std::process::Command::new("explorer.exe")
+        .arg("https://vandalscreenshot.com")
+        .spawn();
+}
+
 /// The default settings, for "Reset" buttons.
 #[tauri::command]
 #[specta::specta]

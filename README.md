@@ -14,6 +14,10 @@
   <strong>Beta</strong> · Windows 10 (1903+) and Windows 11 · x64
 </p>
 
+<p align="center">
+  <a href="https://vandalscreenshot.com"><strong>vandalscreenshot.com</strong></a>
+</p>
+
 ---
 
 Press a shortcut, drag over any part of the screen, mark it up right there, and it's on your

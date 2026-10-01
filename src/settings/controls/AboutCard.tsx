@@ -23,13 +23,22 @@ export function AboutCard({ id }: ControlProps<AboutItem>) {
           <br />
           Free software under the GNU GPL v3.0 or later.
         </p>
-        <button
-          type="button"
-          className={styles.aboutLink}
-          onClick={() => void commands.openProjectPage()}
-        >
-          github.com/rpodsada/vandal
-        </button>
+        <div className={styles.aboutLinks}>
+          <button
+            type="button"
+            className={styles.aboutLink}
+            onClick={() => void commands.openWebsite()}
+          >
+            vandalscreenshot.com
+          </button>
+          <button
+            type="button"
+            className={styles.aboutLink}
+            onClick={() => void commands.openProjectPage()}
+          >
+            github.com/rpodsada/vandal
+          </button>
+        </div>
       </div>
     </div>
   );

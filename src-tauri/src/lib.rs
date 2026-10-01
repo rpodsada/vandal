@@ -69,6 +69,7 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::print_screen_opens_snipping,
             commands::open_keyboard_settings,
             commands::open_project_page,
+            commands::open_website,
             commands::default_settings,
             commands::quick_markup_changed,
             commands::quick_focus_overlay,

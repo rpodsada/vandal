@@ -6,6 +6,11 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Settings › About links to Vandal's new website, [vandalscreenshot.com](https://vandalscreenshot.com),
+  as well as the GitHub page.
+
 ## [0.3.0-beta.3] - 2026-10-01
 
 ### Added
