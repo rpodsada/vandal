@@ -11,7 +11,7 @@ use windows::Win32::Graphics::Dwm::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GetClassNameW, GetWindowLongW, GetWindowRect, IsIconic, IsWindowVisible,
-    GWL_EXSTYLE, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT,
+    SetForegroundWindow, GWL_EXSTYLE, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT,
 };
 
 use crate::geometry::PhysicalRect;
@@ -78,6 +78,13 @@ pub fn enumerate(desktop: PhysicalRect) -> Vec<SnapWindow> {
             })
         })
         .collect()
+}
+
+/// Make `hwnd` the active window, so a window capture shows it active rather
+/// than greyed out behind our overlay, which stays on top (topmost) and keeps
+/// taking the clicks (PLAN 3H spike). False if Windows refused.
+pub fn activate(hwnd: isize) -> bool {
+    unsafe { SetForegroundWindow(HWND(hwnd as *mut _)).as_bool() }
 }
 
 unsafe extern "system" fn collect(hwnd: HWND, out: LPARAM) -> BOOL {

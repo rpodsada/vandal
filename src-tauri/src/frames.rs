@@ -92,6 +92,7 @@ mod tests {
             width: 2,
             height: 1,
             bgra: vec![index as u8; 8],
+            has_alpha: false,
         }
     }
 

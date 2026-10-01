@@ -68,6 +68,7 @@ impl Capturer for GdiCapturer {
                 width: m.physical_bounds.width as u32,
                 height: m.physical_bounds.height as u32,
                 bgra: dib.bytes().to_vec(),
+                has_alpha: false,
             })
             .collect();
         timing.copy = t.elapsed();

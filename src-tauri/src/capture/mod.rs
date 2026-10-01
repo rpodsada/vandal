@@ -2,6 +2,7 @@
 //! without touching the rest of the app (PLAN §1.6).
 
 pub mod gdi;
+pub mod wgc;
 
 use std::fmt;
 use std::time::Duration;
@@ -13,9 +14,12 @@ pub struct MonitorFrame {
     pub monitor: MonitorInfo,
     pub width: u32,
     pub height: u32,
-    /// Top-down BGRA, stride = `width * 4`. The alpha byte is undefined (GDI
-    /// leaves it 0); consumers must treat the image as opaque.
+    /// Top-down BGRA, stride = `width * 4`. Unless `has_alpha`, the alpha
+    /// byte is undefined (GDI leaves it 0) and the image is opaque.
     pub bgra: Vec<u8>,
+    /// Straight alpha that means something: a window capture (PLAN 3H.2),
+    /// stored as a one-frame capture laid over the window's own rect.
+    pub has_alpha: bool,
 }
 
 impl fmt::Debug for MonitorFrame {
@@ -52,6 +56,28 @@ impl From<windows::core::Error> for CaptureError {
     fn from(e: windows::core::Error) -> Self {
         Self(e.to_string())
     }
+}
+
+/// One window's pixels: top-down straight-alpha BGRA, stride = `width * 4`.
+pub struct WindowImage {
+    pub width: u32,
+    pub height: u32,
+    pub bgra: Vec<u8>,
+    /// Frames received while the picture settled, and how long that took.
+    pub frames: u32,
+    pub settle: Duration,
+}
+
+/// Captures a single window's own pixels, wherever it's covered.
+pub trait WindowCapturer: Send + Sync {
+    fn name(&self) -> &'static str;
+
+    /// Get ready ahead of the first capture (slow setup off the hot path).
+    fn prepare(&self) {}
+
+    /// Capture `hwnd` once its picture has settled (it may be repainting,
+    /// e.g. as it becomes the active window).
+    fn capture_window(&self, hwnd: isize) -> Result<WindowImage, CaptureError>;
 }
 
 pub trait Capturer: Send + Sync {

@@ -1,6 +1,6 @@
 use std::sync::{Mutex, RwLock};
 
-use crate::capture::Capturer;
+use crate::capture::{Capturer, WindowCapturer};
 use crate::editor::Editors;
 use crate::frames::FrameStore;
 use crate::geometry::MonitorInfo;
@@ -11,6 +11,8 @@ use crate::settings::Settings;
 
 pub struct AppState {
     pub capturer: Box<dyn Capturer>,
+    /// Picked windows (PLAN 3H.2).
+    pub window_capturer: Box<dyn WindowCapturer>,
     pub frames: Mutex<FrameStore>,
     /// Monitors the overlay pool was built for.
     pub monitors: RwLock<Vec<MonitorInfo>>,

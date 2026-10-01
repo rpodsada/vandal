@@ -33,8 +33,9 @@ pub fn compose(frames: &[&MonitorFrame], rect: PhysicalRect) -> Option<RgbaImage
             let s = (src.y as usize + row) * src_stride + src.x as usize * 4;
             let d = (dst.y as usize + row) * w * 4 + dst.x as usize * 4;
             let (src_row, dst_row) = (&frame.bgra[s..s + row_bytes], &mut rgba[d..d + row_bytes]);
+            let alpha = |a: u8| if frame.has_alpha { a } else { 0xFF };
             for (o, i) in dst_row.chunks_exact_mut(4).zip(src_row.chunks_exact(4)) {
-                o.copy_from_slice(&[i[2], i[1], i[0], 0xFF]);
+                o.copy_from_slice(&[i[2], i[1], i[0], alpha(i[3])]);
             }
         }
     }
@@ -239,7 +240,20 @@ mod tests {
             width: bounds.width as u32,
             height: bounds.height as u32,
             bgra,
+            has_alpha: false,
         }
+    }
+
+    #[test]
+    fn keeps_a_window_captures_alpha() {
+        let bounds = PhysicalRect::new(10, 10, 2, 1);
+        let window = MonitorFrame {
+            bgra: vec![1, 2, 3, 0, 4, 5, 6, 128],
+            has_alpha: true,
+            ..frame(0, bounds)
+        };
+        let c = compose(&[&window], bounds).unwrap();
+        assert_eq!(c.rgba, vec![3, 2, 1, 0, 6, 5, 4, 128]);
     }
 
     fn px(img: &RgbaImage, x: u32, y: u32) -> [u8; 4] {

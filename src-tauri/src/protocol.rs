@@ -293,6 +293,7 @@ mod tests {
             width: 2,
             height: 1,
             bgra: vec![1, 2, 3, 0, 4, 5, 6, 0],
+            has_alpha: false,
         };
         let bmp = encode_bmp(&frame);
         assert_eq!(bmp.len(), 54 + 8);

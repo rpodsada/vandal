@@ -193,6 +193,7 @@ pub fn run() {
             let settings = settings::load(app.handle());
             app.manage(AppState {
                 capturer: Box::new(GdiCapturer),
+                window_capturer: Box::new(capture::wgc::WgcCapturer::default()),
                 frames: Mutex::new(FrameStore::new(
                     settings.history.keep_frames_in_memory as usize,
                 )),
@@ -204,6 +205,10 @@ pub fn run() {
                 editors: Mutex::new(editor::Editors::default()),
                 perf_log: Mutex::new(Vec::new()),
             });
+
+            // The window capturer's D3D device takes ~200 ms: make it now.
+            let handle = app.handle().clone();
+            std::thread::spawn(move || handle.state::<AppState>().window_capturer.prepare());
 
             overlay::create_pool(app.handle(), &monitors)?;
             overlay::watch_displays(app.handle());

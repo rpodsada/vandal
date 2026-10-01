@@ -586,6 +586,7 @@ mod tests {
                 width: 100,
                 height: 100,
                 bgra: vec![],
+                has_alpha: false,
             })
         };
         // Left monitor at negative x, then primary, then right.

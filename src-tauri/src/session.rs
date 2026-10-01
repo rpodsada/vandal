@@ -10,11 +10,11 @@ use specta::Type;
 use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
 
-use crate::capture::{CaptureTiming, MonitorFrame};
+use crate::capture::{CaptureTiming, MonitorFrame, WindowImage};
 use crate::compose;
 use crate::editor::LayerKind;
 use crate::frames::{Capture, CaptureId};
-use crate::geometry::{monitor_at, virtual_bounds, MonitorInfo, PhysicalRect};
+use crate::geometry::{monitor_at, virtual_bounds, MonitorInfo, PhysicalPoint, PhysicalRect};
 use crate::protocol::{self, TransferFormat};
 use crate::redact::{self, Redaction};
 use crate::state::AppState;
@@ -122,6 +122,8 @@ pub struct Session {
     /// Window enumeration, right after the grab.
     enumerated: Duration,
     windows: Vec<SnapWindow>,
+    /// A picked window is being captured (PLAN 3H.2): ignore further picks.
+    capturing_window: bool,
     loads: Vec<OverlayLoad>,
     pending: HashSet<u32>,
     pub reports: Vec<OverlayReport>,
@@ -400,6 +402,7 @@ fn start_region_for(app: &AppHandle, into: Option<editor::EditorId>) -> bool {
         captured,
         enumerated,
         windows,
+        capturing_window: false,
         loads: loads.clone(),
         pending: monitors.iter().map(|m| m.index).collect(),
         reports: Vec::new(),
@@ -647,6 +650,113 @@ pub fn cancel(app: &AppHandle, capture_id: CaptureId) {
 }
 
 pub fn commit(app: &AppHandle, capture_id: CaptureId, target: CaptureTarget) {
+    if let CaptureTarget::Window { index } = target {
+        {
+            let state = app.state::<AppState>();
+            let mut guard = state.session.lock().unwrap();
+            let Some(s) = guard.as_mut().filter(|s| s.capture_id == capture_id) else {
+                return;
+            };
+            if s.capturing_window {
+                return;
+            }
+            s.capturing_window = true;
+        }
+        // Waits for the window to repaint: off the main thread.
+        let app = app.clone();
+        std::thread::spawn(move || commit_window(&app, capture_id, index));
+        return;
+    }
+    commit_now(app, capture_id, target);
+}
+
+/// A picked window (PLAN 3H.2): make it active while the overlays stay on top,
+/// capture its own pixels with transparent corners, then end the capture and
+/// deliver it. If the window capture fails, it's cut from the frozen screen.
+fn commit_window(app: &AppHandle, capture_id: CaptureId, index: u32) {
+    let started = Instant::now();
+    let state = app.state::<AppState>();
+    let window = {
+        let guard = state.session.lock().unwrap();
+        guard
+            .as_ref()
+            .filter(|s| s.capture_id == capture_id)
+            .and_then(|s| s.windows.get(index as usize).copied())
+    };
+    let Some(window) = window else {
+        return;
+    };
+    let activated = winenum::activate(window.hwnd);
+    match state.window_capturer.capture_window(window.hwnd) {
+        Ok(image) => {
+            eprintln!(
+                "[perf] #{capture_id}: window {}×{} by {} in {:.1}ms ({} frames, settled {:.1}ms, activated: {activated})",
+                image.width,
+                image.height,
+                state.window_capturer.name(),
+                ms(started.elapsed()),
+                image.frames,
+                ms(image.settle),
+            );
+            deliver_window(app, capture_id, window.rect, image, started);
+        }
+        Err(e) => {
+            eprintln!("[capture] window capture failed ({e}); cutting it from the frozen screen");
+            commit_now(app, capture_id, CaptureTarget::Window { index });
+        }
+    }
+}
+
+/// Store a window capture as a capture of its own (one frame with real alpha,
+/// over the window's rect), so the editor and the output actions take it like
+/// any other.
+fn deliver_window(
+    app: &AppHandle,
+    capture_id: CaptureId,
+    rect: PhysicalRect,
+    image: WindowImage,
+    started: Instant,
+) {
+    // Cancelled while the window was being captured.
+    let Some(session) = end(app, capture_id) else {
+        return;
+    };
+    let state = app.state::<AppState>();
+    let bounds = PhysicalRect::new(rect.x, rect.y, image.width as i32, image.height as i32);
+    let centre = PhysicalPoint {
+        x: rect.x + rect.width / 2,
+        y: rect.y + rect.height / 2,
+    };
+    let scale_factor = {
+        let monitors = state.monitors.read().unwrap();
+        monitor_at(&monitors, centre)
+            .or_else(|| monitors.iter().find(|m| m.is_primary))
+            .map_or(1.0, |m| m.scale_factor)
+    };
+    let frame = MonitorFrame {
+        monitor: MonitorInfo {
+            index: 0,
+            name: "window".into(),
+            physical_bounds: bounds,
+            work_area: bounds,
+            scale_factor,
+            is_primary: false,
+        },
+        width: image.width,
+        height: image.height,
+        bgra: image.bgra,
+        has_alpha: true,
+    };
+    let capture = state.frames.lock().unwrap().insert(vec![frame]);
+    if let Some(id) = session.into {
+        editor::open_capture_into(app, &capture, bounds, id);
+        return;
+    }
+    let to_editor = state.settings.read().unwrap().quick_edit.enabled;
+    finish(app, &capture, bounds, started, to_editor);
+}
+
+fn commit_now(app: &AppHandle, capture_id: CaptureId, target: CaptureTarget) {
     let started = Instant::now();
     let Some(session) = end(app, capture_id) else {
         return;
@@ -670,7 +780,8 @@ pub fn commit(app: &AppHandle, capture_id: CaptureId, target: CaptureTarget) {
             .map(|m| m.physical_bounds)
             .unwrap_or_default(),
         CaptureTarget::AllMonitors => virtual_bounds(&monitors),
-        // For now cut from the frozen screen, minus any part off the desktop.
+        // The window capture failed: cut from the frozen screen, minus any
+        // part off the desktop.
         CaptureTarget::Window { index } => match session
             .windows
             .get(index as usize)
