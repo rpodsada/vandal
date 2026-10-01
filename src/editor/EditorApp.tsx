@@ -4,7 +4,7 @@ import { docStore, hasUnsavedChanges } from "../markup/model/store";
 import { useMarkupKeys } from "../markup/useMarkupKeys";
 import { emptyDoc } from "../markup/model/types";
 import { initialDoc } from "./handoff";
-import { markupToJson } from "./markupJson";
+import { markupFromJson, markupToJson } from "./markupJson";
 import { useRedactSource } from "../markup/redact";
 import {
   commands,
@@ -220,10 +220,10 @@ export function EditorApp() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Hidden: the markup as JSON (markupJson.ts). Ctrl+Alt is never a tool's shortcut.
-      if (e.ctrlKey && e.altKey && e.shiftKey && e.code === "KeyC") {
+      if (e.ctrlKey && e.altKey && e.shiftKey && (e.code === "KeyC" || e.code === "KeyV")) {
         if (emptyRef.current || isTyping(e.target)) return;
         e.preventDefault();
-        void copyMarkup();
+        void (e.code === "KeyC" ? copyMarkup() : pasteMarkup());
         return;
       }
       if (!e.ctrlKey || e.altKey) return;
@@ -285,6 +285,31 @@ export function EditorApp() {
       } catch (e) {
         setNotice({ text: `Markup not copied: ${errorText(e)}`, error: true });
       }
+    };
+    const pasteMarkup = async () => {
+      // From Rust: WebView2 asks permission for navigator.clipboard.readText.
+      const read = await commands.clipboardText();
+      if (read.status === "error") {
+        setNotice({ text: `Markup not pasted: ${read.error}`, error: true });
+        return;
+      }
+      const text = read.data;
+      const store = docStore.getState();
+      const pasted = markupFromJson(text, store.doc);
+      if (!pasted.ok) {
+        setNotice({ text: `Markup not pasted: ${pasted.reason}`, error: true });
+        return;
+      }
+      store.replace(pasted.doc);
+      const { madeFor } = pasted;
+      setNotice(
+        madeFor
+          ? {
+              text: `Markup pasted, without its crop: it was made for a ${madeFor.width}×${madeFor.height} image`,
+              error: true,
+            }
+          : { text: "Markup pasted", success: true },
+      );
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

@@ -47,6 +47,8 @@ export interface DocState {
   remove: (ids: readonly AnnotationId[]) => void;
   reorder: (ids: readonly AnnotationId[], how: Reorder) => void;
   crop: (rect: Rect) => void;
+  /** Swap in another Doc as one undo step (pasted markup). */
+  replace: (doc: Doc) => void;
 
   beginGesture: () => void;
   endGesture: () => void;
@@ -124,6 +126,10 @@ export function createDocStore(initial: Doc = emptyDoc({ width: 1, height: 1 }))
       },
       reorder: (ids, how) => apply((doc) => reorderAnnotations(doc, ids, how)),
       crop: (rect) => apply((doc) => setCrop(doc, rect)),
+      replace: (doc) => {
+        apply(() => doc);
+        pruneSelection();
+      },
 
       beginGesture: () => {
         if (!get().gestureStart) set({ gestureStart: get().doc });

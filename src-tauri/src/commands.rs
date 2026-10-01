@@ -295,6 +295,13 @@ pub fn editor_paste(app: AppHandle, window: WebviewWindow) {
     editor::open_clipboard(&app, editor::empty_editor(&app, window.label()));
 }
 
+/// The clipboard's text, for the editor's hidden markup paste (`markupJson.ts`).
+#[tauri::command]
+#[specta::specta]
+pub fn clipboard_text() -> Result<String, String> {
+    output::paste_text()
+}
+
 /// Show a file selected in Explorer.
 #[tauri::command]
 #[specta::specta]

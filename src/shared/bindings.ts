@@ -71,6 +71,8 @@ export const commands = {
 	editorOpenHere: (paths: string[]) => __TAURI_INVOKE<void>("editor_open_here", { paths }),
 	/**  Ctrl+V in an empty editor (PLAN 3G): the clipboard's image loads into it. */
 	editorPaste: () => __TAURI_INVOKE<void>("editor_paste"),
+	/**  The clipboard's text, for the editor's hidden markup paste (`markupJson.ts`). */
+	clipboardText: () => typedError<string, string>(__TAURI_INVOKE("clipboard_text")),
 	/**  The Windows accent color, for the accent setting's "Windows" choice. */
 	windowsAccent: () => __TAURI_INVOKE<{
 	light: string,

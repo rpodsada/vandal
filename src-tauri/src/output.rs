@@ -237,6 +237,16 @@ pub fn paste_image() -> Result<RgbaImage, String> {
     })
 }
 
+/// The text on the clipboard. Read here, not in the page, where WebView2
+/// would ask the user for permission.
+pub fn paste_text() -> Result<String, String> {
+    let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+    clipboard.get_text().map_err(|e| match e {
+        arboard::Error::ContentNotAvailable => "the clipboard has no text".to_string(),
+        e => e.to_string(),
+    })
+}
+
 // ---------- files ----------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

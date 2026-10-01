@@ -26,6 +26,18 @@ describe("doc store", () => {
     expect(s.getState().past).toHaveLength(2);
   });
 
+  it("replaces the Doc as one undo step, dropping a stale selection", () => {
+    const s = fresh();
+    const id = s.getState().add(rect());
+    s.getState().select([id]);
+    const before = s.getState().doc;
+    s.getState().replace({ ...before, annotations: [] });
+    expect(s.getState().doc.annotations).toHaveLength(0);
+    expect(s.getState().selection).toEqual([]);
+    s.getState().undo();
+    expect(s.getState().doc).toBe(before);
+  });
+
   it("undoes and redoes add / update / delete", () => {
     const s = fresh();
     const id = s.getState().add(rect(1));
