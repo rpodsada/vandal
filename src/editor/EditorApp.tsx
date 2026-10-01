@@ -5,7 +5,13 @@ import { useMarkupKeys } from "../markup/useMarkupKeys";
 import { emptyDoc } from "../markup/model/types";
 import { initialDoc } from "./handoff";
 import { useRedactSource } from "../markup/redact";
-import { commands, type EditorInit, type ExportAction, type Settings } from "../shared/ipc";
+import {
+  commands,
+  type EditorInit,
+  type ExportAction,
+  type LeaveReason,
+  type Settings,
+} from "../shared/ipc";
 import { alreadyDone, exportImage, markDelivered } from "./actions";
 import { CommandBar } from "./CommandBar";
 import { CropOptions } from "./CropOptions";
@@ -142,40 +148,59 @@ export function EditorApp() {
     }
   }, []);
 
-  // Closing (X, Alt+F4, Ctrl+W) runs the on-close actions not already done
-  // since the last change, or asks before losing changes (PLAN Phase 2). An
-  // image file always asks instead (PLAN 2D).
+  // Before the document goes (closing, or another image opening in its
+  // place, PLAN 3H.6): run the on-close actions not already done since the
+  // last change, or ask before losing changes (PLAN Phase 2). An image file
+  // always asks instead (PLAN 2D). False: keep it. Throws if an export fails.
+  const leaveDocument = useCallback(async (reason: LeaveReason): Promise<boolean> => {
+    const init = initRef.current;
+    if (!init || init.empty) return true;
+    const onClose = settingsRef.current?.editor.onClose ?? { copy: true, save: false };
+    applyCrop();
+    await flushToolStyles();
+    if (init.file) {
+      if (!hasUnsavedChanges(docStore.getState())) return true;
+      const choice = await commands.editorConfirmClose(reason);
+      if (choice === "cancel") return false;
+      // Save can still be cancelled (the overwrite warning, Save As).
+      return choice !== "save" || (await exportImage(init, "save")).kind !== "cancelled";
+    }
+    if (onClose.copy && !alreadyDone("copy")) await exportImage(init, "copy");
+    if (onClose.save && !alreadyDone("save")) await exportImage(init, "save");
+    if (!onClose.copy && !onClose.save && hasUnsavedChanges(docStore.getState())) {
+      const choice = await commands.editorConfirmClose(reason);
+      if (choice === "cancel") return false;
+      if (choice === "save") await exportImage(init, "save");
+    }
+    return true;
+  }, []);
+
+  // Closing: X, Alt+F4, Ctrl+W.
   useEffect(() => {
     const unlisten = getCurrentWindow().onCloseRequested(async (event) => {
-      const init = initRef.current;
-      if (!init || init.empty) return;
-      const onClose = settingsRef.current?.editor.onClose ?? { copy: true, save: false };
-      applyCrop();
-      await flushToolStyles();
       try {
-        if (init.file) {
-          if (!hasUnsavedChanges(docStore.getState())) return;
-          const choice = await commands.editorConfirmClose();
-          if (choice === "cancel") event.preventDefault();
-          // Save can still be cancelled (the overwrite warning, Save As).
-          if (choice === "save" && (await exportImage(init, "save")).kind === "cancelled")
-            event.preventDefault();
-          return;
-        }
-        if (onClose.copy && !alreadyDone("copy")) await exportImage(init, "copy");
-        if (onClose.save && !alreadyDone("save")) await exportImage(init, "save");
-        if (!onClose.copy && !onClose.save && hasUnsavedChanges(docStore.getState())) {
-          const choice = await commands.editorConfirmClose();
-          if (choice === "cancel") event.preventDefault();
-          if (choice === "save") await exportImage(init, "save");
-        }
+        if (!(await leaveDocument("close"))) event.preventDefault();
       } catch (e) {
         event.preventDefault();
         setNotice({ text: `Not closed: ${errorText(e)}`, error: true });
       }
     });
     return () => void unlisten.then((f) => f());
-  }, []);
+  }, [leaveDocument]);
+
+  /** Ctrl+O / Open: the picked image takes this one's place (PLAN 3H.6). */
+  const openImage = useCallback(async () => {
+    if (busyRef.current) return;
+    const paths = await commands.editorPickImages();
+    if (!paths.length) return;
+    try {
+      if (!(await leaveDocument("open"))) return;
+    } catch (e) {
+      setNotice({ text: `Not opened: ${errorText(e)}`, error: true });
+      return;
+    }
+    await commands.editorOpenHere(paths);
+  }, [leaveDocument]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -202,7 +227,7 @@ export function EditorApp() {
           break;
         case "KeyO":
           if (e.shiftKey) return;
-          void commands.editorOpenImage();
+          void openImage();
           break;
         case "Comma":
           if (e.shiftKey) return;
@@ -233,7 +258,7 @@ export function EditorApp() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [run]);
+  }, [run, openImage]);
 
   return (
     <div className={styles.app}>
@@ -244,7 +269,7 @@ export function EditorApp() {
         onCrop={() => (cropping ? applyCrop() : status.kind === "ready" && beginCrop())}
         onPickTool={applyCrop}
         onNewCapture={() => void commands.editorNewCapture()}
-        onOpen={() => void commands.editorOpenImage()}
+        onOpen={() => void openImage()}
         onCopy={() => void run("copy")}
         onSave={() => void run("save")}
         onSaveAs={() => void run("saveAs")}
@@ -255,7 +280,7 @@ export function EditorApp() {
       {status.kind === "empty" ? (
         <EmptyEditor
           onNewCapture={() => void commands.editorNewCapture()}
-          onOpen={() => void commands.editorOpenImage()}
+          onOpen={() => void openImage()}
         />
       ) : (
         <Stage

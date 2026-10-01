@@ -180,6 +180,15 @@ pub enum ExportOutcome {
     Cancelled,
 }
 
+/// Why an editor's document is about to go, for the "save first?" question.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum LeaveReason {
+    Close,
+    /// Another image opens in its place (PLAN 3H.6).
+    Open,
+}
+
 /// The answer to "save before closing?".
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -250,6 +259,7 @@ fn open_frames(
             crop.relative_to(bounds.origin()),
             &title,
             None,
+            false,
         );
         bring_back(app, id);
         if loaded {
@@ -325,15 +335,17 @@ fn open_or_load(
     file: Option<PathBuf>,
 ) {
     if let Some(id) = into {
-        if load_into(app, id, image.clone(), crop, &title, file.clone()) {
+        if load_into(app, id, image.clone(), crop, &title, file.clone(), false) {
             return;
         }
     }
     open(app, Some(image), crop, None, title, file, false);
 }
 
-/// Put a document into an empty editor (PLAN 3G): its page reloads and shows
-/// it. False if the editor is gone or already has an image.
+/// Put a document into an empty editor (PLAN 3G), or with `replace` in place
+/// of the one it has (PLAN 3H.6: its page has already run its on-close
+/// actions or asked). Its page reloads and shows it. False if the editor is
+/// gone, or already has an image and `replace` is off.
 fn load_into(
     app: &AppHandle,
     id: EditorId,
@@ -341,6 +353,7 @@ fn load_into(
     crop: PhysicalRect,
     title: &str,
     file: Option<PathBuf>,
+    replace: bool,
 ) -> bool {
     let Some(window) = app.get_webview_window(&label(id)) else {
         return false;
@@ -348,12 +361,24 @@ fn load_into(
     {
         let state = app.state::<AppState>();
         let mut editors = state.editors.lock().unwrap();
-        let Some(e) = editors.open.get_mut(&id).filter(|e| e.image.is_none()) else {
+        let Some(e) = editors
+            .open
+            .get_mut(&id)
+            .filter(|e| replace || e.image.is_none())
+        else {
             return false;
         };
-        e.image = Some(image);
-        e.crop = crop;
-        e.file = file;
+        *e = Editor {
+            image: Some(image),
+            crop,
+            maximized: e.maximized,
+            layer: None,
+            highlights: None,
+            markup: None,
+            file,
+            overwrite_confirmed: false,
+            delivered: false,
+        };
     }
     let _ = window.set_title(title);
     if let Err(e) = window.eval("location.reload()") {
@@ -362,10 +387,9 @@ fn load_into(
     true
 }
 
-/// Ask for image files and open each in its own editor (Ctrl+O in an editor,
-/// the tray). Modal to `parent` if given; an empty `parent` takes the first
-/// (PLAN 3G). Blocks: call off the main thread.
-pub fn ask_open(app: &AppHandle, parent: Option<&WebviewWindow>) {
+/// Ask for image files, modal to `parent` if given. Blocks: call off the
+/// main thread.
+pub fn pick_images(app: &AppHandle, parent: Option<&WebviewWindow>) -> Vec<PathBuf> {
     let mut dialog = app
         .dialog()
         .file()
@@ -375,12 +399,48 @@ pub fn ask_open(app: &AppHandle, parent: Option<&WebviewWindow>) {
     if let Some(parent) = parent {
         dialog = dialog.set_parent(parent);
     }
-    let mut into = parent.and_then(|p| empty_editor(app, p.label()));
-    for path in dialog.blocking_pick_files().unwrap_or_default() {
-        match path.into_path() {
-            Ok(path) => open_file_in(app, &path, into.take()),
-            Err(e) => eprintln!("[editor] can't open a picked file: {e}"),
+    dialog
+        .blocking_pick_files()
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|path| {
+            path.into_path()
+                .map_err(|e| eprintln!("[editor] can't open a picked file: {e}"))
+                .ok()
+        })
+        .collect()
+}
+
+/// The tray's "Open image…": each picked file in its own editor.
+pub fn ask_open(app: &AppHandle) {
+    for path in pick_images(app, None) {
+        open_file(app, &path);
+    }
+}
+
+/// The editor `id`'s Open (PLAN 3H.6): the first file takes the place of its
+/// image (the page has run its on-close actions or asked first), the rest
+/// open in new windows.
+pub fn open_files_here(app: &AppHandle, id: EditorId, paths: Vec<PathBuf>) {
+    let mut paths = paths.into_iter();
+    let Some(first) = paths.next() else {
+        return;
+    };
+    let handle = app.clone();
+    std::thread::spawn(move || match decode::decode_file(&first) {
+        Ok(image) => {
+            let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
+            let title = file_title(&handle, &first);
+            let image = Arc::new(image);
+            let file = Some(first);
+            if !load_into(&handle, id, image.clone(), crop, &title, file.clone(), true) {
+                open(&handle, Some(image), crop, None, title, file, false);
+            }
         }
+        Err(message) => output::notify_error(&handle, "Couldn't open the image", &message),
+    });
+    for path in paths {
+        open_file(app, &path);
     }
 }
 
@@ -827,8 +887,8 @@ fn ask_save_path(app: &AppHandle, window: &WebviewWindow) -> Option<std::path::P
     Some(path)
 }
 
-/// "Save changes before closing?", modal to the editor.
-pub fn confirm_close(app: &AppHandle, window: &WebviewWindow) -> CloseChoice {
+/// "Save changes first?", modal to the editor, before its document goes.
+pub fn confirm_close(app: &AppHandle, window: &WebviewWindow, reason: LeaveReason) -> CloseChoice {
     let is_file = id_from_label(window.label()).is_some_and(|id| {
         let state = app.state::<AppState>();
         let editors = state.editors.lock().unwrap();
@@ -842,7 +902,10 @@ pub fn confirm_close(app: &AppHandle, window: &WebviewWindow) -> CloseChoice {
     let result = window
         .dialog()
         .message(message)
-        .title("Save before closing?")
+        .title(match reason {
+            LeaveReason::Close => "Save before closing?",
+            LeaveReason::Open => "Save before opening another image?",
+        })
         .kind(MessageDialogKind::Warning)
         .parent(window)
         .buttons(MessageDialogButtons::YesNoCancelCustom(

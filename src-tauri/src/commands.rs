@@ -1,10 +1,14 @@
 //! All `#[tauri::command]`s. TS bindings are generated into
 //! `src/shared/bindings.ts` on debug runs; call them via `src/shared/ipc.ts`.
 
+use std::path::PathBuf;
+
 use tauri::{AppHandle, Manager, WebviewWindow};
 use tauri_plugin_dialog::DialogExt;
 
-use crate::editor::{self, CloseChoice, EditorInit, ExportAction, ExportMarkup, ExportOutcome};
+use crate::editor::{
+    self, CloseChoice, EditorInit, ExportAction, ExportMarkup, ExportOutcome, LeaveReason,
+};
 use crate::frames::CaptureId;
 use crate::geometry::PhysicalRect;
 use crate::output;
@@ -232,11 +236,16 @@ pub async fn editor_export(
     .map_err(|e| e.to_string())?
 }
 
-/// Ask whether to save unsaved changes before the editor closes.
+/// Ask whether to save unsaved changes before the editor's document goes
+/// (it closes, or another image replaces it).
 #[tauri::command]
 #[specta::specta]
-pub async fn editor_confirm_close(app: AppHandle, window: WebviewWindow) -> CloseChoice {
-    tauri::async_runtime::spawn_blocking(move || editor::confirm_close(&app, &window))
+pub async fn editor_confirm_close(
+    app: AppHandle,
+    window: WebviewWindow,
+    reason: LeaveReason,
+) -> CloseChoice {
+    tauri::async_runtime::spawn_blocking(move || editor::confirm_close(&app, &window, reason))
         .await
         .unwrap_or(CloseChoice::Cancel)
 }
@@ -248,11 +257,25 @@ pub fn editor_new_capture(app: AppHandle, window: WebviewWindow) {
     editor::new_capture(&app, &window);
 }
 
-/// Ctrl+O / "Open": pick image files, each opening in a new editor.
+/// Ctrl+O / "Open", step 1: pick image files (none if dismissed).
 #[tauri::command]
 #[specta::specta]
-pub async fn editor_open_image(app: AppHandle, window: WebviewWindow) {
-    editor::ask_open(&app, Some(&window));
+pub async fn editor_pick_images(app: AppHandle, window: WebviewWindow) -> Vec<String> {
+    editor::pick_images(&app, Some(&window))
+        .into_iter()
+        .map(|p| p.display().to_string())
+        .collect()
+}
+
+/// Ctrl+O / "Open", step 2, once the page has dealt with its document: the
+/// first file loads into this editor, the rest in new windows (PLAN 3H.6).
+#[tauri::command]
+#[specta::specta]
+pub fn editor_open_here(app: AppHandle, window: WebviewWindow, paths: Vec<String>) {
+    let Some(id) = editor::id_from_label(window.label()) else {
+        return;
+    };
+    editor::open_files_here(&app, id, paths.into_iter().map(PathBuf::from).collect());
 }
 
 /// Ctrl+V in an empty editor (PLAN 3G): the clipboard's image loads into it.

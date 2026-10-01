@@ -62,8 +62,13 @@ export const commands = {
 	 *  JSON array in virtual-desktop px) to a new editor window.
 	 */
 	quickOpenEditor: (captureId: number, rect: PhysicalRect, annotations: string) => typedError<null, string>(__TAURI_INVOKE("quick_open_editor", { captureId, rect, annotations })),
-	/**  Ctrl+O / "Open": pick image files, each opening in a new editor. */
-	editorOpenImage: () => __TAURI_INVOKE<void>("editor_open_image"),
+	/**  Ctrl+O / "Open", step 1: pick image files (none if dismissed). */
+	editorPickImages: () => __TAURI_INVOKE<string[]>("editor_pick_images"),
+	/**
+	 *  Ctrl+O / "Open", step 2, once the page has dealt with its document: the
+	 *  first file loads into this editor, the rest in new windows (PLAN 3H.6).
+	 */
+	editorOpenHere: (paths: string[]) => __TAURI_INVOKE<void>("editor_open_here", { paths }),
 	/**  Ctrl+V in an empty editor (PLAN 3G): the clipboard's image loads into it. */
 	editorPaste: () => __TAURI_INVOKE<void>("editor_paste"),
 	/**  The Windows accent color, for the accent setting's "Windows" choice. */
@@ -168,8 +173,11 @@ export const commands = {
 	 *  `layerMs` (render + upload time in the page) is only for the perf log.
 	 */
 	editorExport: (crop: PhysicalRect, markup: ExportMarkup, action: ExportAction, layerMs: number | null) => typedError<ExportOutcome, string>(__TAURI_INVOKE("editor_export", { crop, markup, action, layerMs })),
-	/**  Ask whether to save unsaved changes before the editor closes. */
-	editorConfirmClose: () => __TAURI_INVOKE<CloseChoice>("editor_confirm_close"),
+	/**
+	 *  Ask whether to save unsaved changes before the editor's document goes
+	 *  (it closes, or another image replaces it).
+	 */
+	editorConfirmClose: (reason: LeaveReason) => __TAURI_INVOKE<CloseChoice>("editor_confirm_close", { reason }),
 	/**  Start a new region capture from the editor. */
 	editorNewCapture: () => __TAURI_INVOKE<void>("editor_new_capture"),
 	/**  Show a file selected in Explorer. */
@@ -393,6 +401,11 @@ export type IconAction =
 "capture" | 
 /**  An empty editor window. */
 "editor";
+
+/**  Why an editor's document is about to go, for the "save first?" question. */
+export type LeaveReason = "close" | 
+/**  Another image opens in its place (PLAN 3H.6). */
+"open";
 
 export type MonitorInfo = {
 	index: number,

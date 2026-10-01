@@ -119,7 +119,7 @@ pub fn create(app: &AppHandle, s: &Settings) -> tauri::Result<()> {
                         "open" => {
                             // The dialog blocks; keep the tray responsive.
                             let app = app.clone();
-                            std::thread::spawn(move || editor::ask_open(&app, None));
+                            std::thread::spawn(move || editor::ask_open(&app));
                         }
                         "clipboard" => editor::open_clipboard(app, None),
                         "new-editor" => editor::open_empty(app),

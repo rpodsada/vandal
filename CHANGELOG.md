@@ -11,13 +11,16 @@ All notable changes to Vandal are listed here. The format follows
 - Window capture: press W on the selection screen, then click a window to capture it. The window
   under the pointer is highlighted (across monitors too), and clicks never reach the window itself.
   Press W or Esc to go back to selecting an area. Win+Alt+F12 (changeable in Settings › Keyboard
-  shortcuts) and the tray's "Capture window" start straight in window mode. The capture is the window's own picture: parts
-  covered by other windows are included, it's shown as the active window, and it's a clean
-  cutout: rounded corners stay transparent, without the window's border, shadow or (when
-  maximized) the edge that hangs off the screen.
+  shortcuts) and the tray's "Capture window" start straight in window mode. The capture is the
+  window's own picture: parts covered by other windows are included, it's shown as the active
+  window, and it's a clean cutout: rounded corners stay transparent, without the window's border,
+  shadow or (when maximized) the edge that hangs off the screen.
 
 ### Changed
 
+- The editor's Open (Ctrl+O) loads the image into the same window instead of a new one. The
+  current image is handled as when closing: your "when you close the editor" actions run, or
+  Vandal asks first if there are changes that haven't been saved.
 - An empty editor no longer shows "1 × 1 px" and zoom controls, and its hint line lists only
   what works there: capture, open, paste, drop a file, settings.
 - Copied images keep their transparency for apps that support it, and apps that don't (such as
