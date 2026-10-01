@@ -1,6 +1,7 @@
 //! Screen capture behind a trait so backends can be swapped (GDI → DXGI/WGC)
 //! without touching the rest of the app (PLAN §1.6).
 
+pub mod cutout;
 pub mod gdi;
 pub mod wgc;
 

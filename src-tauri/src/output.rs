@@ -1,6 +1,5 @@
 //! Post-capture actions: clipboard, save to file, toast (PLAN §4.2, Phase 1.5).
 
-use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fs::File;
 use std::io::BufWriter;
@@ -209,14 +208,7 @@ fn save_recent(app: &AppHandle, image_id: u32) {
 // ---------- clipboard ----------
 
 pub fn copy_to_clipboard(image: &RgbaImage) -> Result<(), String> {
-    let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
-    clipboard
-        .set_image(arboard::ImageData {
-            width: image.width as usize,
-            height: image.height as usize,
-            bytes: Cow::Borrowed(&image.rgba),
-        })
-        .map_err(|e| e.to_string())
+    crate::clipboard::set_image(image)
 }
 
 /// The image on the clipboard ("New from clipboard").
@@ -364,7 +356,12 @@ pub fn save_with_template(save: &SaveSettings, image: &RgbaImage) -> Result<Path
 /// PNG with fast compression: saving must not feel slow.
 pub fn write_png(image: &RgbaImage, path: &Path) -> Result<(), String> {
     let file = File::create(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    let mut encoder = png::Encoder::new(BufWriter::new(file), image.width, image.height);
+    write_png_to(image, BufWriter::new(file))
+}
+
+/// [`write_png`] into any writer (the clipboard's PNG is made in memory).
+pub fn write_png_to(image: &RgbaImage, out: impl std::io::Write) -> Result<(), String> {
+    let mut encoder = png::Encoder::new(out, image.width, image.height);
     encoder.set_color(png::ColorType::Rgba);
     encoder.set_depth(png::BitDepth::Eight);
     encoder.set_compression(png::Compression::Fast);

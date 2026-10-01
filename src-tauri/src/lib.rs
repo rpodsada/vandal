@@ -3,6 +3,7 @@ mod bench;
 mod browser_keys;
 mod capture;
 mod cli;
+mod clipboard;
 mod commands;
 mod compose;
 mod decode;

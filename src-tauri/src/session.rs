@@ -10,7 +10,7 @@ use specta::Type;
 use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
 
-use crate::capture::{CaptureTiming, MonitorFrame, WindowImage};
+use crate::capture::{cutout, CaptureTiming, MonitorFrame, WindowImage};
 use crate::compose;
 use crate::editor::LayerKind;
 use crate::frames::{Capture, CaptureId};
@@ -714,7 +714,7 @@ fn deliver_window(
     app: &AppHandle,
     capture_id: CaptureId,
     rect: PhysicalRect,
-    image: WindowImage,
+    mut image: WindowImage,
     started: Instant,
 ) {
     // Cancelled while the window was being captured.
@@ -722,7 +722,6 @@ fn deliver_window(
         return;
     };
     let state = app.state::<AppState>();
-    let bounds = PhysicalRect::new(rect.x, rect.y, image.width as i32, image.height as i32);
     let centre = PhysicalPoint {
         x: rect.x + rect.width / 2,
         y: rect.y + rect.height / 2,
@@ -733,6 +732,14 @@ fn deliver_window(
             .or_else(|| monitors.iter().find(|m| m.is_primary))
             .map_or(1.0, |m| m.scale_factor)
     };
+    // A crisp cutout: no border, margin or shadow (PLAN 3H.3).
+    let (dx, dy) = cutout::clean(&mut image, scale_factor);
+    let bounds = PhysicalRect::new(
+        rect.x + dx,
+        rect.y + dy,
+        image.width as i32,
+        image.height as i32,
+    );
     let frame = MonitorFrame {
         monitor: MonitorInfo {
             index: 0,

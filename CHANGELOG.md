@@ -11,8 +11,14 @@ All notable changes to Vandal are listed here. The format follows
 - Window capture: press W on the selection screen, then click a window to capture it. The window
   under the pointer is highlighted (across monitors too), and clicks never reach the window itself.
   Press W or Esc to go back to selecting an area. The capture is the window's own picture: parts
-  covered by other windows are included, it's shown as the active window, and its rounded
-  corners are transparent (in PNG files).
+  covered by other windows are included, it's shown as the active window, and it's a clean
+  cutout: rounded corners stay transparent, without the window's border, shadow or (when
+  maximized) the edge that hangs off the screen.
+
+### Changed
+
+- Copied images keep their transparency for apps that support it, and apps that don't (such as
+  Paint) now show transparent areas as white rather than black.
 
 ## [0.3.0-beta.2] - 2026-09-30
 
