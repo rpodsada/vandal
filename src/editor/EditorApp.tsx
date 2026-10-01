@@ -4,6 +4,7 @@ import { docStore, hasUnsavedChanges } from "../markup/model/store";
 import { useMarkupKeys } from "../markup/useMarkupKeys";
 import { emptyDoc } from "../markup/model/types";
 import { initialDoc } from "./handoff";
+import { markupToJson } from "./markupJson";
 import { useRedactSource } from "../markup/redact";
 import {
   commands,
@@ -218,6 +219,13 @@ export function EditorApp() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Hidden: the markup as JSON (markupJson.ts). Ctrl+Alt is never a tool's shortcut.
+      if (e.ctrlKey && e.altKey && e.shiftKey && e.code === "KeyC") {
+        if (emptyRef.current || isTyping(e.target)) return;
+        e.preventDefault();
+        void copyMarkup();
+        return;
+      }
       if (!e.ctrlKey || e.altKey) return;
       const view = useViewStore.getState();
       // An empty editor: only what gets an image, and closing (PLAN 3G).
@@ -269,6 +277,14 @@ export function EditorApp() {
           return;
       }
       e.preventDefault();
+    };
+    const copyMarkup = async () => {
+      try {
+        await navigator.clipboard.writeText(markupToJson(docStore.getState().doc));
+        setNotice({ text: "Markup copied as JSON", success: true });
+      } catch (e) {
+        setNotice({ text: `Markup not copied: ${errorText(e)}`, error: true });
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
