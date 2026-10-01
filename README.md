@@ -90,9 +90,12 @@ where every screenshot should look the same.
 
 1. Download the latest `Vandal_<version>_x64-setup.exe` (download link coming soon).
 2. Run it. Vandal installs for your user account only, so no administrator rights are needed.
-3. **Windows SmartScreen will probably warn you** ("Windows protected your PC"). Beta
-   builds aren't code-signed yet, so Windows doesn't recognize them. Click
-   **More info → Run anyway**.
+3. **Windows SmartScreen will warn you** ("Windows protected your PC"). Beta builds
+   aren't code-signed yet, so Windows doesn't recognize them. Click **More info**, then
+   **Run anyway**:
+
+   <img src="docs/images/smartscreen-more-info.png" width="380" alt="The Windows protected your PC dialog, with the More info link highlighted">
+   <img src="docs/images/smartscreen-run-anyway.png" width="380" alt="The same dialog after More info, with the Run anyway button highlighted">
 4. Vandal starts in the tray (bottom-right, next to the clock; it may be under the **^**
    overflow arrow). You can drag its icon onto the taskbar to keep it visible.
 
