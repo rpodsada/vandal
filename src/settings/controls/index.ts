@@ -7,6 +7,7 @@ import { Choice } from "./Choice";
 import { FolderInput } from "./FolderInput";
 import { HotkeyField } from "./HotkeyField";
 import { FontPickerSetting } from "./FontPickerEditor";
+import { AboutCard } from "./AboutCard";
 import { Info } from "./Info";
 import { KeyList } from "./KeyList";
 import { ShortcutField } from "./ShortcutField";
@@ -26,8 +27,11 @@ export interface ControlProps<I extends Item> {
 
 interface ControlDef<I extends Item> {
   component: ComponentType<ControlProps<I>>;
-  /** `inline`: control to the right of the label. `stacked`: full width below. */
-  layout: "inline" | "stacked";
+  /**
+   * `inline`: control to the right of the label. `stacked`: full width below.
+   * `bare`: the control alone, its label only for search.
+   */
+  layout: "inline" | "stacked" | "bare";
 }
 
 type Registry = { [K in ItemKind]: ControlDef<Extract<Item, { kind: K }>> };
@@ -45,6 +49,7 @@ export const controls: Registry = {
   hotkey: { component: HotkeyField, layout: "stacked" },
   shortcut: { component: ShortcutField, layout: "inline" },
   keyList: { component: KeyList, layout: "stacked" },
+  about: { component: AboutCard, layout: "bare" },
   text: { component: TextInput, layout: "stacked" },
   folder: { component: FolderInput, layout: "stacked" },
 };

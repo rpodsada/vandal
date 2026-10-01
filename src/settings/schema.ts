@@ -128,6 +128,11 @@ export interface KeyListItem extends BaseItem {
   entries: KeyEntry[];
 }
 
+/** The About card: logo, name, version, description, author, link. */
+export interface AboutItem extends BaseItem {
+  kind: "about";
+}
+
 /** Read-only value, for things not editable yet or informational. */
 export interface InfoItem extends BaseItem {
   kind: "info";
@@ -148,6 +153,7 @@ export type Item =
   | HotkeyItem
   | ShortcutItem
   | KeyListItem
+  | AboutItem
   | InfoItem;
 export type ItemKind = Item["kind"];
 

@@ -238,6 +238,13 @@ function Row({ item, settings }: { item: Item; settings: Settings }) {
   const Control = def.component as ComponentType<ControlProps<Item>>;
   const disabled = item.disabled?.(settings) ?? false;
   const id = `setting-${item.id}`;
+  // A control that is its own content (the About card): no label column.
+  if (def.layout === "bare")
+    return (
+      <div className={styles.rowStacked}>
+        <Control item={item} id={id} disabled={disabled} />
+      </div>
+    );
   return (
     <div
       className={def.layout === "stacked" ? styles.rowStacked : styles.row}

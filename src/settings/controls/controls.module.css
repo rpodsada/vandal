@@ -800,3 +800,71 @@
   margin: 0;
   font-size: 13px;
 }
+
+/* ---- About ---- */
+
+.about {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 8px 4px;
+}
+
+.aboutLogo {
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.aboutText {
+  /* Wraps instead of running out of the card when the window is narrow. */
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.aboutText p {
+  margin: 0;
+}
+
+.aboutName {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.aboutVersion {
+  margin-left: 6px;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.aboutDescription {
+  font-size: 14px;
+}
+
+.aboutMeta {
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.aboutLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.aboutLink:hover {
+  text-decoration-thickness: 2px;
+}

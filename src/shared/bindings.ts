@@ -73,6 +73,11 @@ export const commands = {
 	printScreenOpensSnipping: () => __TAURI_INVOKE<boolean>("print_screen_opens_snipping"),
 	/**  Windows Settings › Accessibility › Keyboard (the Print Screen switch). */
 	openKeyboardSettings: () => __TAURI_INVOKE<void>("open_keyboard_settings"),
+	/**
+	 *  Vandal's project page, in the default browser (Settings › About). A fixed
+	 *  address: the page can't open others.
+	 */
+	openProjectPage: () => __TAURI_INVOKE<void>("open_project_page"),
 	/**  The default settings, for "Reset" buttons. */
 	defaultSettings: () => __TAURI_INVOKE<Settings>("default_settings"),
 	/**  Quick edit: this overlay's selection now has markup (or no longer has). */

@@ -3,7 +3,6 @@
 // Pages follow the capture flow (PLAN §4.7): General (the app itself),
 // Capture (taking the shot), Copy & save (where the image goes), Markup (tools
 // and styles, shared by quick edit and the editor), Keyboard shortcuts, About.
-import pkg from "../../package.json";
 import { SHORTCUT_NAMES, type ShortcutId } from "../markup/shortcuts";
 import { commands } from "../shared/ipc";
 import { EDITOR_KEYS, MARKUP_KEYS, QUICK_EDIT_KEYS } from "./fixedShortcuts";
@@ -671,10 +670,10 @@ export const sections: Section[] = [
       {
         items: [
           {
-            id: "version",
-            kind: "info",
-            label: "Version",
-            value: () => pkg.version,
+            id: "about",
+            kind: "about",
+            label: "About Vandal",
+            keywords: ["version", "author", "copyright", "license", "github", "website"],
           },
         ],
       },

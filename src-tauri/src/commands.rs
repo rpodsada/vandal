@@ -126,6 +126,16 @@ pub fn open_keyboard_settings() {
         .spawn();
 }
 
+/// Vandal's project page, in the default browser (Settings › About). A fixed
+/// address: the page can't open others.
+#[tauri::command]
+#[specta::specta]
+pub fn open_project_page() {
+    let _ = std::process::Command::new("explorer.exe")
+        .arg("https://github.com/rpodsada/vandal")
+        .spawn();
+}
+
 /// The default settings, for "Reset" buttons.
 #[tauri::command]
 #[specta::specta]

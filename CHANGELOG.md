@@ -70,6 +70,8 @@ All notable changes to Vandal are listed here. The format follows
 - Settings › General › Tray icon and app icon: choose what clicking the tray icon and opening
   Vandal (its desktop or Start menu icon) do: capture a region, as before, or open the editor.
   Starting with Windows never does either.
+- Settings › About: the Vandal logo, version, tagline, author, copyright and license,
+  and a link to the project on GitHub.
 - Open Settings from quick edit with the gear on its toolbar, or with Ctrl+, (in the editor too).
   Settings opens above quick edit and stays there while you work, so changes show straight away.
 
