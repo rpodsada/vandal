@@ -219,6 +219,13 @@ export type AfterCapture = {
 	 */
 	openEditor?: boolean,
 	autoSave?: boolean,
+	/**
+	 *  Notify when a capture is copied / saved (PLAN 3H.12). A capture that
+	 *  was neither always notifies: its notification is the way to save or
+	 *  edit it.
+	 */
+	notifyCopied?: boolean,
+	notifySaved?: boolean,
 };
 
 export type Appearance = {
@@ -571,7 +578,10 @@ export type Redaction = {
 export type SaveSettings = {
 	/**  May contain `%ENV%` variables. */
 	directory?: string,
-	/**  Tokens: `{yyyy} {MM} {dd} {HH} {mm} {ss}`. */
+	/**
+	 *  Tokens: `{yyyy} {MM} {dd} {HH} {mm} {ss}`, and `{n}`, `{nn}`... for
+	 *  an auto number (PLAN 3H.8).
+	 */
 	filenameTemplate?: string,
 	format?: string,
 	/**  Offer a "Save" button on the capture notification when not auto-saved. */

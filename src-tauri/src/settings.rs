@@ -136,6 +136,11 @@ pub struct AfterCapture {
     /// editor, which copies/saves itself.
     pub open_editor: bool,
     pub auto_save: bool,
+    /// Notify when a capture is copied / saved (PLAN 3H.12). A capture that
+    /// was neither always notifies: its notification is the way to save or
+    /// edit it.
+    pub notify_copied: bool,
+    pub notify_saved: bool,
 }
 
 impl Default for AfterCapture {
@@ -144,6 +149,8 @@ impl Default for AfterCapture {
             copy_to_clipboard: true,
             open_editor: false,
             auto_save: false,
+            notify_copied: true,
+            notify_saved: true,
         }
     }
 }
@@ -153,7 +160,8 @@ impl Default for AfterCapture {
 pub struct SaveSettings {
     /// May contain `%ENV%` variables.
     pub directory: String,
-    /// Tokens: `{yyyy} {MM} {dd} {HH} {mm} {ss}`.
+    /// Tokens: `{yyyy} {MM} {dd} {HH} {mm} {ss}`, and `{n}`, `{nn}`... for
+    /// an auto number (PLAN 3H.8).
     pub filename_template: String,
     pub format: String,
     /// Offer a "Save" button on the capture notification when not auto-saved.
@@ -732,6 +740,7 @@ mod tests {
         assert_eq!(s.save.directory, "D:/x");
         assert!(s.save.notification_save_button);
         assert!(s.editor.notification_edit_button);
+        assert!(s.after_capture.notify_copied && s.after_capture.notify_saved);
     }
 
     #[test]

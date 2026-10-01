@@ -96,6 +96,22 @@ export const sections: Section[] = [
         title: "Notifications",
         items: [
           {
+            id: "notify-copied",
+            kind: "toggle",
+            path: "afterCapture.notifyCopied",
+            label: "Notify when a capture is copied",
+            keywords: ["toast", "popup", "clipboard", "quiet", "silent"],
+          },
+          {
+            id: "notify-saved",
+            kind: "toggle",
+            path: "afterCapture.notifySaved",
+            label: "Notify when a capture is saved",
+            description:
+              "A capture that's neither copied nor saved always notifies, so you can still save or edit it. Windows holds notifications back while Do Not Disturb is on.",
+            keywords: ["toast", "popup", "file", "quiet", "silent", "do not disturb", "focus"],
+          },
+          {
             id: "notification-save-button",
             kind: "toggle",
             path: "save.notificationSaveButton",

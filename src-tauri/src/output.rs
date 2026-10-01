@@ -160,6 +160,9 @@ pub fn deliver(
             None
         };
 
+        if !wants_notification(&settings, copied, saved.is_some()) {
+            return;
+        }
         let preview = saved.clone().or_else(|| write_preview(&image).ok());
         notify_capture(
             &app,
@@ -177,6 +180,14 @@ pub fn deliver(
     });
 }
 
+/// Whether a capture's notification shows (PLAN 3H.12): for a copy or a save
+/// whose notification is on. One that was neither copied nor saved always
+/// shows, as it's the way to save or edit it.
+fn wants_notification(settings: &Settings, copied: bool, saved: bool) -> bool {
+    let a = &settings.after_capture;
+    (!copied && !saved) || (copied && a.notify_copied) || (saved && a.notify_saved)
+}
+
 /// The notification's "Save" button: write a recent capture with the current
 /// save settings, then confirm with an "Open folder" notification.
 fn save_recent(app: &AppHandle, image_id: u32) {
@@ -188,6 +199,7 @@ fn save_recent(app: &AppHandle, image_id: u32) {
     let settings = state.settings.read().unwrap().clone();
     let save = settings.save;
     match save_with_template(&save, &image) {
+        Ok(_) if !settings.after_capture.notify_saved => {}
         Ok(path) => notify_capture(
             app,
             CaptureToast {
@@ -559,6 +571,22 @@ pub fn notify_error(app: &AppHandle, title: &str, body: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn notifications_follow_their_switches() {
+        let mut s = Settings::default();
+        let shows = |s: &Settings, copied, saved| wants_notification(s, copied, saved);
+        assert!(shows(&s, true, false) && shows(&s, false, true) && shows(&s, true, true));
+        s.after_capture.notify_copied = false;
+        assert!(!shows(&s, true, false));
+        assert!(shows(&s, true, true), "the save's notification is still on");
+        s.after_capture.notify_saved = false;
+        assert!(!shows(&s, true, true) && !shows(&s, false, true));
+        assert!(
+            shows(&s, false, false),
+            "neither: always, to save or edit it"
+        );
+    }
 
     const T: Timestamp = Timestamp {
         year: 2026,
