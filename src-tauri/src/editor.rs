@@ -100,6 +100,8 @@ pub enum LayerKind {
 pub struct Editors {
     next_id: EditorId,
     open: HashMap<EditorId, Editor>,
+    /// The editor that last had focus, for the tray click (PLAN 3H.9).
+    last_focused: Option<EditorId>,
 }
 
 impl Editors {
@@ -107,6 +109,13 @@ impl Editors {
         self.next_id = self.next_id.wrapping_add(1).max(1);
         self.open.insert(self.next_id, editor);
         self.next_id
+    }
+
+    /// The editor to bring back: the one last focused, else the newest.
+    fn latest(&self) -> Option<EditorId> {
+        self.last_focused
+            .filter(|id| self.open.contains_key(id))
+            .or_else(|| self.open.keys().max().copied())
     }
 
     pub fn image(&self, id: EditorId) -> Option<Arc<RgbaImage>> {
@@ -297,6 +306,24 @@ pub fn open_file_in(app: &AppHandle, path: &Path, into: Option<EditorId>) {
         }
         Err(message) => output::notify_error(&app, "Couldn't open the image", &message),
     });
+}
+
+/// The tray click or launching Vandal, set to open the editor: bring back the
+/// editor last used, and open an empty one only if there's none (PLAN 3H.9:
+/// a click per window piled up empty editors).
+pub fn show_or_open(app: &AppHandle) {
+    let latest = app.state::<AppState>().editors.lock().unwrap().latest();
+    match latest {
+        Some(id) if app.get_webview_window(&label(id)).is_some() => bring_back(app, id),
+        _ => open_empty(app),
+    }
+}
+
+/// An editor window got focus: it's the one the tray brings back.
+pub fn focused(app: &AppHandle, window_label: &str) {
+    if let Some(id) = id_from_label(window_label) {
+        app.state::<AppState>().editors.lock().unwrap().last_focused = Some(id);
+    }
 }
 
 /// An editor with no image (PLAN 3G): the tray's "New editor window".

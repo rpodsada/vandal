@@ -25,6 +25,9 @@ All notable changes to Vandal are listed here. The format follows
   first. Captures from the shortcuts or the tray still open a new window.
 - An empty editor no longer shows "1 × 1 px" and zoom controls, and its hint line lists only
   what works there: capture, open, paste, drop a file, settings.
+- With the tray icon (or launching Vandal) set to open the editor, it brings back the editor you
+  last used instead of opening another empty one each time. The tray menu's "New editor window"
+  still opens a new one.
 - Copied images keep their transparency for apps that support it, and apps that don't (such as
   Paint) now show transparent areas as white rather than black.
 

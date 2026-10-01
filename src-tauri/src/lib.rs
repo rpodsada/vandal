@@ -255,6 +255,7 @@ pub fn run() {
                 editor::closing(window.app_handle(), window);
             }
             WindowEvent::Destroyed => editor::destroyed(window.app_handle(), window.label()),
+            WindowEvent::Focused(true) => editor::focused(window.app_handle(), window.label()),
             // Files dropped on an editor open in editors of their own; an
             // empty editor takes the first (PLAN 3G).
             WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. })

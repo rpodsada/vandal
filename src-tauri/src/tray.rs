@@ -206,11 +206,11 @@ pub fn apply_autostart(app: &AppHandle, enabled: bool) {
 }
 
 /// Do what the settings say for clicking the tray icon or launching Vandal
-/// (PLAN 3G): a region capture or an empty editor.
+/// (PLAN 3G): a region capture, or the editor (the open one, PLAN 3H.9).
 pub fn icon_action(app: &AppHandle, which: impl Fn(&Settings) -> IconAction) {
     let action = which(&app.state::<AppState>().settings.read().unwrap());
     match action {
         IconAction::Capture => session::start_region(app),
-        IconAction::Editor => editor::open_empty(app),
+        IconAction::Editor => editor::show_or_open(app),
     }
 }
