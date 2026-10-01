@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src-tauri/icons/128x128.png" width="96" height="96" alt="Vandal icon">
+  <img src="assets/vandal-icon-tray.png" width="128" height="128" alt="Vandal logo">
 </p>
 
 <h1 align="center">Vandal</h1>
@@ -23,8 +23,7 @@ and hover states stay in the picture.
 <!-- TODO(Phase 4): screenshot: selecting a region on a dimmed screen (docs/images/select.png) -->
 <!-- TODO(Phase 4): screenshot: quick edit toolbar under a selection (docs/images/quick-edit.png) -->
 
-> **Vandal is in beta.** It's being tested by a small group before a public release.
-> Expect rough edges, and please [report anything odd](#feedback-and-bug-reports).
+> **Vandal is in beta.** Expect rough edges, and please [report anything odd](#feedback-and-bug-reports).
 
 ## Why Vandal?
 
@@ -34,23 +33,26 @@ screenshot.
 
 - **Less click, more markup.** Keys to pick tools, number keys set the line width or font size,
   Ctrl+number picks a color, Alt+number picks a font. Mark up without hunting through menus.
-- **Only the options you use.** Choose exactly which colors, widths, fonts and font sizes appear
+- **Simplicity.** Only the most useful markup tools, designed and built well with a nice UI,
+  and no extra fluff. Vandal isn't meant to be a kitchen sink.
+- **Personalize to your workflow.** Choose exactly which colors, widths, fonts and font sizes appear
   in the pickers, for every tool or per tool. Load your brand or project styles once and skip
   scrolling through hundreds of fonts.
-- **Use the controls you like.** A size can be a row of buttons, a dropdown, a stepped
-  slider or a free slider with your own range.
-- **It remembers.** Each tool keeps its own color, size, font, arrowheads and more, even after a
-  restart. Set a style once and every screenshot after it matches.
-- **Automate the routine.** Decide what happens after a capture: copy, save to a file, open in
-  the editor, or any mix.
-- **Free, private and light.** Open source, no account, no tracking, no network connections,
-  and no admin rights needed.
+- **Use the controls you like.** A size picker can be a row of buttons, a dropdown, a stepped
+  slider or a free slider with your own values. Make the UI fit your workflow and needs, not the
+  other way around.
+- **It remembers.** Each tool remembers its own settings (color, size, font, options, everything),
+  even after a restart. Set your style once, and every screenshot after will match.
+- **Free, fast, private, and lightweight.** Open source, no account, no tracking, no network connections,
+  and no admin rights needed. Built in Rust with a ~2MB installer.
 
 ### Who it's for
 
 People who take and mark up screenshots many times a day: **developers, QA testers, technical
 writers, support teams and account managers**. It's especially handy for guides and manuals,
 where every screenshot should look the same.
+
+> If you suffer from the Windows Snipping Tool, like I did, this will change your life.
 
 ### Driving principles
 
@@ -95,30 +97,32 @@ If it's missing, the installer downloads it for you.
 
 ## Getting started
 
-1. Press **Win+F12**.
-2. Drag over the part of the screen you want.
-3. Press **Enter** (or double-click inside the selection).
+1. Press **Win+F12** (you can change it in **Settings › Keyboard shortcuts**).
+2. Drag over the part of the screen you want. A toolbar appears under the selection: this is
+   [quick edit](#quick-edit). Pick a tool and mark up the screenshot right there, or skip it.
+3. Press **Enter** (or click **Done**, or double-click inside the selection).
 
 The image is now on your clipboard. Paste it anywhere with Ctrl+V. A notification confirms
-the capture; click it to open the image in the editor.
+the capture; click it (or its **Edit** button) to keep working on it in the editor, with your
+marks still editable. Nothing is saved to a file unless you press **Save** (Ctrl+S) or turn on
+auto-save.
 
-To draw on it first, pick a tool from the toolbar under the selection before you press Enter
-(see [Quick edit](#quick-edit)).
+You can also left-click the tray icon to start a capture, or right-click it for the menu:
 
-You can also left-click the tray icon to start a capture (or open the editor instead: Settings ›
-General › Tray icon and app icon), or right-click it for the menu:
+| Tray menu item        | What it does                                                               |
+| --------------------- | -------------------------------------------------------------------------- |
+| Capture region        | Same as Win+F12                                                            |
+| Capture full screen   | Same as Win+Shift+F12: every monitor, opened in the editor                 |
+| New editor window     | An empty editor: open, paste or capture an image into it                   |
+| Open image…           | Open an image file in the editor                                           |
+| New from clipboard    | Open the image on the clipboard in the editor                              |
+| Save captures to file | Turn auto-save on or off (shown once you turn it on in Settings › General) |
+| Launch on login       | Start Vandal with Windows (on by default)                                  |
+| Settings…             | Open Settings                                                              |
+| Quit                  | Close Vandal                                                               |
 
-| Tray menu item        | What it does                                               |
-| --------------------- | ---------------------------------------------------------- |
-| Capture region        | Same as Win+F12                                            |
-| Capture full screen   | Same as Win+Shift+F12: every monitor, opened in the editor |
-| New editor window     | An empty editor: open, paste or capture an image into it   |
-| Open image…           | Open an image file in the editor                           |
-| New from clipboard    | Open the image on the clipboard in the editor              |
-| Save captures to file | Turn auto-save on or off                                   |
-| Launch on login       | Start Vandal with Windows (on by default)                  |
-| Settings…             | Open Settings                                              |
-| Quit                  | Close Vandal                                               |
+Clicking the tray icon, and opening Vandal from its desktop or Start menu icon, can open an
+empty editor instead of starting a capture: **Settings › General › Tray icon and app icon**.
 
 ## Capturing
 
@@ -146,37 +150,55 @@ F and A work only before you've drawn a selection. After that, A is the arrow to
 ## Quick edit
 
 When you release the mouse, a toolbar appears under the selection (or above it if there's no
-room). Pick a tool and draw straight onto the frozen screen.
+room). Pick a tool and draw straight onto the frozen screen. Every markup tool is there; only
+Crop is the editor's.
 
 <!-- TODO(Phase 4): screenshot: quick edit with an arrow and a text label (docs/images/quick-edit-markup.png) -->
 
 - **Enter** or **Done** finishes: the result is copied (and saved, if auto-save is on).
 - **Ctrl+C** copies and **Ctrl+S** saves, then quick edit closes.
 - **Ctrl+E** or **Open in editor** moves your selection and marks into the full editor, still editable.
+- **Ctrl+,** or the gear opens Settings on top of quick edit, so you see changes as you make them.
 - **Esc** goes back one step at a time: stop typing, deselect, put the tool down, and finally
   close without saving.
 
 Once you've drawn something, dragging outside the selection and right-clicking no longer cancel,
 so a stray click can't lose your work. To turn quick edit off (Enter then just copies the region),
-use **Settings › Capture**.
+use **Settings › Capture**. With quick edit off, the full-screen shortcut and **F** / **A** copy
+the capture instead of opening the editor.
 
 ## The editor
 
 The editor opens for full-screen captures, from **Open in editor**, when you click a capture
-notification, and for image files.
+notification, and for image files. **New editor window** in the tray menu opens an empty one:
+open, drop, paste (Ctrl+V) or capture an image into it.
 
 <!-- TODO(Phase 4): screenshot: the editor window with markup (docs/images/editor.png) -->
 
 - **Tools:** Select (V), Pen (P), Highlighter (H), Line (L), Arrow (A), Rectangle (R),
-  Ellipse (E), Text (T) and Crop (C). The same tools, apart from Crop, are in quick edit.
-- **Styles:** the options bar shows the current tool's color, width, fill, font, size, and so
-  on. Changing a style while a mark is selected restyles that mark.
+  Ellipse (E), Text (T), Callout (O), Redact (B), Spotlight (S), Step marker (N) and Crop (C).
+  The same tools, apart from Crop, are in quick edit. You can change their keys in
+  **Settings › Keyboard shortcuts**.
+  - **Callout:** a text box with a pointer. Drag from what to point at to where the text goes.
+    The box can be filled, outlined or an underline, and the pointer can end in an arrow or a dot.
+  - **Redact:** pixelate or blur an area. The pixels in the copied or saved image are really
+    changed.
+  - **Spotlight:** darken everything outside a rectangle or ellipse.
+  - **Step marker:** click to place numbered (or lettered) markers that count up and renumber
+    themselves.
+  - **Lines and arrows** bend: drag the diamond handle on a selected one. Rectangles can have
+    rounded corners.
+- **Styles:** the options bar shows the current tool's colors, width, fill, font, size, and so
+  on. Changing a style while a mark is selected restyles that mark. Where there are two colors
+  (fill and border, text and its box), **X** swaps them.
 - **Editing marks:** click a mark to select it, drag to move it, and drag its handles to reshape
   it. Double-click text (or press Enter) to edit it.
 - **Crop** never throws pixels away: undo it, or choose **Show full capture** in crop mode to
   get the rest back.
 - **Zoom and pan:** Ctrl+mouse wheel, Ctrl+= / Ctrl+−, Ctrl+0 to fit, Ctrl+Shift+0 for actual
   size. Pan with Space+drag or the middle mouse button.
+- **Capture** (Ctrl+N) takes a new screenshot without quick edit and brings it back to the
+  editor: into the same window if it's empty, otherwise a new one.
 - **Closing** copies the image by default (you can change this in **Settings › Copy & save**).
   If nothing copies or saves it on close, Vandal asks before discarding changes.
 
@@ -188,7 +210,7 @@ Vandal can mark up existing images too:
   default app for anything.
 - **Open image…** in the tray menu or the editor (Ctrl+O)
 - drag files onto an editor window
-- **New from clipboard** in the tray menu
+- **New from clipboard** in the tray menu, or Ctrl+V in an empty editor
 - `vandal --edit <file>` (see [Command line](#command-line))
 
 It opens PNG, JPEG, BMP, GIF (first frame), TIFF, ICO and WebP, plus HEIC and AVIF if Windows
@@ -215,16 +237,18 @@ Capture notifications have buttons to **Edit**, **Save**, or **Open folder** (af
 
 ## Settings
 
-Open Settings from the tray menu, or with `vandal --settings`. Changes apply immediately, with
-no restart. Use the search box to find a setting by name.
+Open Settings from the tray menu, with Ctrl+, in quick edit or the editor, or with
+`vandal --settings`. Changes apply immediately, with no restart. Use the search box to find a
+setting by name.
 
-| Page        | What's there                                                                                                  |
-| ----------- | ------------------------------------------------------------------------------------------------------------- |
-| General     | Theme (light, dark or follow Windows), accent color, launch on login, notification buttons, tray menu options |
-| Capture     | Capture shortcuts, screen dimming, selection size readout, quick edit behavior                                |
-| Copy & save | What happens after a capture and when the editor closes, save folder, file-name pattern, overwrite warning    |
-| Markup      | Color presets, line widths, fonts and font sizes (also per tool), how the pickers look, shortcut hints        |
-| About       | Version                                                                                                       |
+| Page               | What's there                                                                                                                                                      |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| General            | Theme (light, dark or follow Windows), accent color, launch on login, what the tray icon and opening Vandal do, notification buttons, tray menu                   |
+| Capture            | Screen dimming, selection size readout, quick edit behavior                                                                                                       |
+| Copy & save        | What happens after a capture and when the editor closes, save folder, file-name pattern, overwrite warning                                                        |
+| Markup             | Colors, line widths, fonts and font sizes, redact strengths, spotlight darkness, step markers, corner radii (also per tool), how the pickers look, shortcut hints |
+| Keyboard shortcuts | The capture shortcuts, each tool's key and swap colors, and a list of the shortcuts that can't be changed                                                         |
+| About              | Version, license and a link to the project                                                                                                                        |
 
 Settings are stored in `%APPDATA%\com.vandal.desktop\settings.json`. They're kept when you
 update Vandal.
@@ -251,25 +275,29 @@ Then a first launch opens the editor too.
 Keys are matched by position, so they work on any keyboard layout and on the number row or the
 numpad.
 
-**Tools** (editor and quick edit)
+**Tools** (editor and quick edit). These are the defaults: change them, or add Ctrl, Alt or
+Shift, in **Settings › Keyboard shortcuts**, which also lists every shortcut.
 
-| Key | Tool               | Key | Tool      |
-| --- | ------------------ | --- | --------- |
-| V   | Select             | A   | Arrow     |
-| P   | Pen                | R   | Rectangle |
-| H   | Highlighter        | E   | Ellipse   |
-| L   | Line               | T   | Text      |
-| C   | Crop (editor only) |     |           |
+| Key | Tool        | Key | Tool               |
+| --- | ----------- | --- | ------------------ |
+| V   | Select      | E   | Ellipse            |
+| P   | Pen         | T   | Text               |
+| H   | Highlighter | O   | Callout            |
+| L   | Line        | B   | Redact             |
+| A   | Arrow       | S   | Spotlight          |
+| R   | Rectangle   | N   | Step marker        |
+| X   | Swap colors | C   | Crop (editor only) |
 
 **Styles**
 
-| Keys              | Action                                                   |
-| ----------------- | -------------------------------------------------------- |
-| 1–9, 0            | Line width, or font size for text (0 is the 10th choice) |
-| Ctrl+1–9, 0       | Color preset                                             |
-| Ctrl+Shift+1–9, 0 | Fill color                                               |
-| Alt+1–9, 0        | Font (text)                                              |
-| Ctrl+B / Ctrl+I   | Bold / italic (text)                                     |
+| Keys              | Action                                                                                 |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| 1–9, 0            | Line width, text size, redact strength, darkness or marker size (0 is the 10th choice) |
+| Shift+1–9, 0      | A callout's pointer thickness                                                          |
+| Ctrl+1–9, 0       | Color (with two colors: the fill, text or label)                                       |
+| Ctrl+Shift+1–9, 0 | The second color (the border, text box, marker or callout)                             |
+| Alt+1–9, 0        | Font (text, callouts, step markers), or corner radius (rectangles, spotlight)          |
+| Ctrl+B / Ctrl+I   | Bold / italic (text)                                                                   |
 
 The number keys pick the choices in the order the pickers show them. Their shortcut numbers are
 printed on the pickers (you can hide them in Settings).
@@ -285,8 +313,10 @@ printed on the pickers (you can hide them in Settings).
 | Delete / Backspace   | Delete the selected marks                                      |
 | Arrow keys           | Move the selected marks by 1 pixel (Shift: 10)                 |
 | Ctrl+] / Ctrl+[      | Bring forward / send backward (with Shift: to front / to back) |
-| Enter                | Edit the selected text                                         |
+| Enter                | Edit the selected text, callout or step marker's label         |
 | Esc                  | Step back: deselect, then put the tool down                    |
+| Shift while drawing  | Square, circle, or lines at 45° steps                          |
+| Shift while moving   | Move only horizontally or vertically                           |
 
 **Editor window**
 
@@ -296,8 +326,10 @@ printed on the pickers (you can hide them in Settings).
 | Ctrl+S                | Save (captures use your file-name pattern; opened files are overwritten) |
 | Ctrl+Shift+S          | Save As                                                                  |
 | Ctrl+O                | Open an image                                                            |
-| Ctrl+N                | New capture                                                              |
+| Ctrl+N                | Capture, back into the editor                                            |
+| Ctrl+V                | Paste an image (into an empty editor)                                    |
 | Ctrl+W                | Close                                                                    |
+| Ctrl+,                | Settings                                                                 |
 | Ctrl+= / Ctrl+−       | Zoom in / out                                                            |
 | Ctrl+0 / Ctrl+Shift+0 | Fit to window / actual size                                              |
 
@@ -308,6 +340,7 @@ printed on the pickers (you can hide them in Settings).
 | Enter / double-click | Done                                        |
 | Ctrl+C / Ctrl+S      | Copy / save, then close                     |
 | Ctrl+E               | Open in the editor                          |
+| Ctrl+,               | Settings                                    |
 | Esc                  | Step back, and finally close without saving |
 
 ## Updating and uninstalling
@@ -324,6 +357,9 @@ never touched.
 **A shortcut doesn't do anything.** Another app (or Windows) may already use that key
 combination. Choose a different one in **Settings › Keyboard shortcuts**. Vandal
 checks whether a new shortcut is free before saving it.
+
+**A tool's key doesn't work.** Check its key in **Settings › Keyboard shortcuts**: you may have
+changed or cleared it, or given it to another tool.
 
 **I want to use the PrintScreen key.** Windows 11 gives PrintScreen to Snipping Tool by default.
 Settings › Keyboard shortcuts has a button that opens the Windows setting to turn that
@@ -361,10 +397,14 @@ Vandal doesn't collect usage data and doesn't make network connections.
 **Markup**
 
 - Pen, highlighter, line, arrow, rectangle, ellipse and text
+- Callouts (a text box with a pointer), redaction (pixelate or blur), spotlight and numbered
+  step markers
+- Curved lines and arrows, rounded corners, and two colors with a one-key swap
 - Quick edit: draw right on the frozen screen, without opening a window
 - Full editor with zoom, pan, undo/redo and crop that never throws pixels away
 - Every mark stays editable: select, move, resize, restyle, duplicate, reorder or delete it
-- Single-key tools, plus number-key shortcuts for widths, font sizes, colors, fill and fonts
+- Single-key tools (keys you can change), plus number-key shortcuts for sizes, colors, fonts and
+  corners
 - Shortcuts work on any keyboard layout, on the number row or the numpad
 
 **Make it yours**
@@ -373,7 +413,8 @@ Vandal doesn't collect usage data and doesn't make network connections.
 - Pick how each picker looks: buttons, dropdown, stepped slider or free slider
 - Each tool remembers its styles between sessions
 - Light, dark or follow-Windows theme; accent color that follows Windows or one you pick
-- Choose what happens after a capture and when the editor closes (copy, save, open in the editor)
+- Choose what happens after a capture and when the editor closes (copy, save, open in the editor),
+  and whether the tray icon and app icon capture or open the editor
 - Auto-save folder and file-name pattern with date and time
 - Searchable settings that apply immediately, with no restart
 
