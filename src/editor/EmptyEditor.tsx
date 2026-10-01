@@ -26,7 +26,7 @@ export function EmptyEditor({ onNewCapture, onOpen }: Props) {
               <rect x="3" y="5" width="18" height="14" rx="2" strokeDasharray="3 2.5" />
               <path d="M12 9v6M9 12h6" />
             </svg>
-            New capture
+            Capture
           </button>
           <button
             type="button"

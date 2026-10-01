@@ -115,6 +115,10 @@ pub struct Session {
     /// Quick edit's latest layers (straight-alpha RGBA the size of the region).
     layer: Option<Vec<u8>>,
     highlights: Option<Vec<u8>>,
+    /// Started from an editor's New capture (PLAN 3G): no quick edit, the
+    /// selection goes to the editor (into it, if it's empty), and cancelling
+    /// brings it back as it was.
+    into: Option<editor::EditorId>,
 }
 
 /// What quick edit's image is: the region and the markup's revision (the page
@@ -310,22 +314,36 @@ fn grab(state: &AppState) -> Option<(Vec<MonitorInfo>, bool, Vec<MonitorFrame>, 
 /// Region-capture entry point (hotkey, tray, second launch). Grabs pixels
 /// *first*: nothing may change focus or show a window before that (PLAN §1.1).
 pub fn start_region(app: &AppHandle) {
+    start_region_for(app, None);
+}
+
+/// A region capture from the editor `id` (its New capture, PLAN 3G): the
+/// plain selection, which then goes to the editor, into `id` if it's empty.
+pub fn start_region_into(app: &AppHandle, id: editor::EditorId) {
+    // No capture after all (one already on screen): the editor comes back.
+    if !start_region_for(app, Some(id)) {
+        editor::bring_back(app, id);
+    }
+}
+
+/// False if no capture started.
+fn start_region_for(app: &AppHandle, into: Option<editor::EditorId>) -> bool {
     let started = Instant::now();
     let state = app.state::<AppState>();
     let mut session = state.session.lock().unwrap();
     if session.is_some() {
         eprintln!("[capture] ignored: a capture is already on screen");
-        return;
+        return false;
     }
     let Some((monitors, layout_changed, frames, capture_timing)) = grab(&state) else {
-        return;
+        return false;
     };
     let captured = started.elapsed();
     let capture = state.frames.lock().unwrap().insert(frames);
     let format = *state.transfer_format.lock().unwrap();
     let (overlay_settings, quick_edit) = {
         let s = state.settings.read().unwrap();
-        (s.overlay.clone(), s.quick_edit.enabled)
+        (s.overlay.clone(), s.quick_edit.enabled && into.is_none())
     };
     let loads: Vec<OverlayLoad> = capture
         .frames
@@ -364,6 +382,7 @@ pub fn start_region(app: &AppHandle) {
         markup_owner: None,
         layer: None,
         highlights: None,
+        into,
     });
     drop(session);
 
@@ -388,6 +407,7 @@ pub fn start_region(app: &AppHandle) {
             show(&app, id, true);
         });
     }
+    true
 }
 
 fn emit_loads(app: &AppHandle, loads: &[OverlayLoad]) {
@@ -574,14 +594,17 @@ fn end(app: &AppHandle, capture_id: CaptureId) -> Option<Session> {
 }
 
 pub fn cancel(app: &AppHandle, capture_id: CaptureId) {
-    end(app, capture_id);
+    // From an editor: it comes back as it was.
+    if let Some(id) = end(app, capture_id).and_then(|s| s.into) {
+        editor::bring_back(app, id);
+    }
 }
 
 pub fn commit(app: &AppHandle, capture_id: CaptureId, target: CaptureTarget) {
     let started = Instant::now();
-    if end(app, capture_id).is_none() {
+    let Some(session) = end(app, capture_id) else {
         return;
-    }
+    };
     let state = app.state::<AppState>();
     let Some(capture) = state.frames.lock().unwrap().get(capture_id) else {
         return;
@@ -601,6 +624,10 @@ pub fn commit(app: &AppHandle, capture_id: CaptureId, target: CaptureTarget) {
             .unwrap_or_default(),
         CaptureTarget::AllMonitors => virtual_bounds(&monitors),
     };
+    if let Some(id) = session.into {
+        editor::open_capture_into(app, &capture, rect, id);
+        return;
+    }
     finish(app, &capture, rect, started, whole_screens_to_editor);
 }
 

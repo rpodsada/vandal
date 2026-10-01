@@ -206,7 +206,14 @@ pub fn open_capture(
     rect: PhysicalRect,
     annotations: Option<String>,
 ) {
-    open_frames(app, &capture.frames, rect, annotations, false);
+    open_frames(app, &capture.frames, rect, annotations, false, None);
+}
+
+/// [`open_capture`] for a capture started from the editor `into` (PLAN 3G):
+/// it loads there if that editor is empty, else in a new window, with `into`
+/// back on screen behind it.
+pub fn open_capture_into(app: &AppHandle, capture: &Capture, rect: PhysicalRect, into: EditorId) {
+    open_frames(app, &capture.frames, rect, None, false, Some(into));
 }
 
 /// [`open_capture`] on some of a capture's frames. `delivered`: the document
@@ -217,6 +224,7 @@ fn open_frames(
     rect: PhysicalRect,
     annotations: Option<String>,
     delivered: bool,
+    into: Option<EditorId>,
 ) {
     let touched = output::touched_frames(frames, rect);
     let touched: Vec<&MonitorFrame> = touched.iter().map(|f| f.as_ref()).collect();
@@ -233,9 +241,24 @@ fn open_frames(
         dy: -bounds.y,
     });
     let title = capture_title(app);
+    let image = Arc::new(image);
+    if let Some(id) = into {
+        let loaded = load_into(
+            app,
+            id,
+            image.clone(),
+            crop.relative_to(bounds.origin()),
+            &title,
+            None,
+        );
+        bring_back(app, id);
+        if loaded {
+            return;
+        }
+    }
     open(
         app,
-        Some(Arc::new(image)),
+        Some(image),
         crop.relative_to(bounds.origin()),
         markup,
         title,
@@ -421,7 +444,7 @@ pub fn open_recent(app: &AppHandle, image_id: u32) {
         return;
     };
     let doc = recent.doc;
-    open_frames(app, &doc.frames, doc.rect, doc.annotations, true);
+    open_frames(app, &doc.frames, doc.rect, doc.annotations, true, None);
 }
 
 fn open(
@@ -838,15 +861,30 @@ pub fn confirm_close(app: &AppHandle, window: &WebviewWindow) -> CloseChoice {
 }
 
 /// Start a region capture from an editor: get the editor out of the way first
-/// so it isn't in the shot.
+/// so it isn't in the shot. The capture skips quick edit and comes back to
+/// the editor: into this window if it's empty, else a new one (PLAN 3G,
+/// Richard: from the editor you mean to stay in the editor).
 pub fn new_capture(app: &AppHandle, window: &WebviewWindow) {
+    let into = id_from_label(window.label());
     let _ = window.minimize();
     let app = app.clone();
     std::thread::spawn(move || {
         // Let the minimize animation finish before grabbing the screen.
         std::thread::sleep(Duration::from_millis(300));
-        session::start_region(&app);
+        match into {
+            Some(id) => session::start_region_into(&app, id),
+            None => session::start_region(&app),
+        }
     });
+}
+
+/// Restore the editor `id` (minimized for a capture) and bring it to the front.
+pub fn bring_back(app: &AppHandle, id: EditorId) {
+    let Some(window) = app.get_webview_window(&label(id)) else {
+        return;
+    };
+    let _ = window.unminimize();
+    reveal(app, &window);
 }
 
 /// Editor page → Rust: the image is painted, show the window.

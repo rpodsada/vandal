@@ -83,7 +83,7 @@ export const CONTROL_HINTS = {
   head: "The shape of the arrow heads",
   "ends.one": "Click again to flip the arrow",
   "ends.both": "Heads on both ends",
-  newCapture: "[Ctrl+N] New capture",
+  newCapture: "[Ctrl+N] Capture a region, back into the editor",
   open: "[Ctrl+O] Open an image file · or drop one on the window",
   copy: "[Ctrl+C] Copy the image with its markup",
   save: "[Ctrl+S] Save · [Ctrl+Shift+S] Save as",

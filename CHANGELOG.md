@@ -66,13 +66,15 @@ All notable changes to Vandal are listed here. The format follows
   leaves that tool without one. Tooltips and the hint line show the keys you chose. The page
   also lists the shortcuts that can't be changed, for marking up, quick edit and the editor.
 - New editor window, in the tray menu: an editor with no image yet. Open an image, drop a file on
-  it or paste one with Ctrl+V, and it loads into that window.
+  it, paste one with Ctrl+V or take a new capture, and it loads into that window.
 - Open Settings from quick edit with the gear on its toolbar, or with Ctrl+, (in the editor too).
   Settings opens above quick edit and stays there while you work, so changes show straight away.
 
 ### Changed
 
 - The capture shortcuts have moved to a new Settings page, Keyboard shortcuts.
+- The editor's New capture button is now Capture: it skips quick edit and opens the capture in the editor (in the same window
+  if it has no image yet).
 - Holding Shift while moving objects keeps the move horizontal or vertical.
 - In quick edit, a callout's options take two rows, with its text and colors on the second, so
   the toolbar is less wide.

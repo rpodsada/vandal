@@ -47,7 +47,7 @@ export const QUICK_EDIT_KEYS: KeyEntry[] = [
 
 export const EDITOR_KEYS: KeyEntry[] = [
   { keys: ["Ctrl+Shift+S"], what: "Save as" },
-  { keys: ["Ctrl+N"], what: "New capture" },
+  { keys: ["Ctrl+N"], what: "Capture" },
   { keys: ["Ctrl+O"], what: "Open an image" },
   { keys: ["Ctrl+W"], what: "Close" },
   { keys: ["Ctrl+=", "Ctrl+-"], what: "Zoom in, zoom out" },

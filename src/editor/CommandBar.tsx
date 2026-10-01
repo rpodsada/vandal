@@ -10,7 +10,7 @@ interface Props {
   busy: boolean;
   /** Crop mode is on (the crop button shows pressed, the tools don't). */
   cropping: boolean;
-  /** No image yet (PLAN 3G): only New capture and Open work. */
+  /** No image yet (PLAN 3G): only Capture and Open work. */
   empty: boolean;
   onCrop: () => void;
   /** Picking a tool while cropping applies the crop first. */
@@ -65,15 +65,15 @@ export function CommandBar({
         type="button"
         className={styles.button}
         {...hint("newCapture")}
-        aria-label="New capture (Ctrl+N)"
-        title="New capture (Ctrl+N)"
+        aria-label="Capture (Ctrl+N)"
+        title="Capture (Ctrl+N)"
         onClick={onNewCapture}
       >
         <svg viewBox="0 0 24 24" aria-hidden>
           <rect x="3" y="5" width="18" height="14" rx="2" strokeDasharray="3 2.5" />
           <path d="M12 9v6M9 12h6" />
         </svg>
-        <span className={styles.label}>New capture</span>
+        <span className={styles.label}>Capture</span>
       </button>
       <button
         type="button"
