@@ -123,6 +123,30 @@ export function stampChangelog(changelog, { version, previous, date, repoUrl }) 
   return text.replace(/\n/g, eol);
 }
 
+const DESCRIBE = /^v(.+)-(\d+)-g([0-9a-f]+)(-dirty)?$/;
+
+/**
+ * The version for a local build (PLAN Versioning › Build numbers), from
+ * `git describe --tags --match v* --long --dirty` and package.json's version.
+ * Builds after a release tag get `+<commits since it>`: semver ignores build
+ * metadata, so the updater treats them as that release, and NSIS puts the
+ * number in the exe's file version (0.3.0.5), which is why it's digits only.
+ * After `release:bump` but before tagging, it's the new version as-is.
+ */
+export function localBuildVersion(describe, packageVersion) {
+  const m = DESCRIBE.exec(describe.trim());
+  if (!m || !parseVersion(m[1])) throw new Error(`Unexpected git describe output: ${describe}`);
+  const [, tagged, count, commit, dirty] = m;
+  const order = compareVersions(packageVersion, tagged);
+  if (order < 0) {
+    throw new Error(`package.json has ${packageVersion}, older than the last tag v${tagged}`);
+  }
+  const commits = Number(count);
+  let version = packageVersion;
+  if (order === 0 && commits > 0) version = `${packageVersion}+${commits}`;
+  return { version, commit, modified: Boolean(dirty), untagged: order > 0 };
+}
+
 function escape(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

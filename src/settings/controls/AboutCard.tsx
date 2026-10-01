@@ -5,6 +5,17 @@ import type { AboutItem } from "../schema";
 import type { ControlProps } from "./index";
 import styles from "./controls.module.css";
 
+/**
+ * The version, with the build number and commit for `npm run build:local` builds:
+ * "0.3.0-beta.3+5 (2cf53f9, modified)". Release builds show package.json's.
+ */
+function versionLabel(): string {
+  const { VITE_BUILD_VERSION, VITE_BUILD_COMMIT, VITE_BUILD_MODIFIED } = import.meta.env;
+  const version = VITE_BUILD_VERSION || pkg.version;
+  const details = [VITE_BUILD_COMMIT, VITE_BUILD_MODIFIED && "modified"].filter(Boolean);
+  return details.length ? `${version} (${details.join(", ")})` : version;
+}
+
 /** Settings › About: the logo, name and version, what Vandal is, who made it, and where it lives. */
 export function AboutCard({ id }: ControlProps<AboutItem>) {
   return (
@@ -12,7 +23,7 @@ export function AboutCard({ id }: ControlProps<AboutItem>) {
       <img className={styles.aboutLogo} src={logo} alt="" />
       <div className={styles.aboutText}>
         <p className={styles.aboutName}>
-          Vandal <span className={styles.aboutVersion}>{pkg.version}</span>
+          Vandal <span className={styles.aboutVersion}>{versionLabel()}</span>
         </p>
         {/* The README's tagline. */}
         <p className={styles.aboutDescription}>The screenshot tool that gets out of your way.</p>

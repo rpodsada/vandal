@@ -40,18 +40,57 @@ npm run lint; npm test; npx tsc --noEmit
 ## Build an installer
 
 ```powershell
-npm run tauri build
+npm run build:local
 ```
 
-The NSIS installer lands in `src-tauri/target/release/bundle/nsis/`. For a quick release exe
-without an installer, use `npm run tauri build -- --no-bundle`.
+This builds a release installer with a build number. It lands in
+`src-tauri/target/release/bundle/nsis/`, for example `Vandal_0.3.0-beta.3+5_x64-setup.exe`.
+Settings › About shows the same version and the commit it was built from, for example
+`0.3.0-beta.3+5 (2cf53f9)`. For just the release exe (`src-tauri/target/release/vandal.exe`),
+without an installer, use `npm run build:local -- --no-bundle`. Other arguments are passed on to
+`tauri build` too.
+
+How the build number works:
+
+- **`+5` is the number of commits since the last release tag** (`v0.3.0-beta.3`), taken from
+  `git describe`. Every new commit gives the next build a higher number. Nothing in the repo
+  changes, so there's nothing to commit.
+- **Build exactly on a tag and you get the plain version** (`0.3.0-beta.3`), the same as the
+  CI release.
+- **Uncommitted changes** don't change the number, but About adds "modified" and the script
+  warns. Commit first if you want the build to be traceable.
+- **Build after `release:bump` but before tagging** and you get the new version without a build
+  number. That build is the release candidate.
+- **Semver ignores everything after `+`.** The updater treats `0.3.0-beta.3+5` as
+  `0.3.0-beta.3`, so it still offers `beta.4`, and it never "updates" you back to `beta.3`.
+- **The build number must be digits only.** Windows file versions are numeric, so NSIS writes
+  the number into the exe's file version (`0.3.0.5`) and would replace anything else with `0`.
+
+Build-numbered installers are for your own machine. A build that goes to anyone else should be
+a release (below), so it has a tag and release notes.
+
+`npm run tauri build` still works. It builds the version in `package.json` with no build number,
+like CI does.
 
 ## Releasing
 
 `package.json` holds the version, which `tauri.conf.json` reads. `src-tauri/Cargo.toml` and
 both lockfiles must match it. Versions follow semver and stay at 0.x for now. Builds for
 testers are prereleases of the next version (`0.3.0-beta.1`, `0.3.0-beta.2`...), which sort
-before the release itself (`0.3.0`). Every build must have a new, higher number.
+before the release itself (`0.3.0`). Every release must have a new, higher number:
+
+- **Tester build during a phase:** the next beta (`0.3.0-beta.4`).
+- **Phase done:** the final version (`0.3.0`). Each phase raises the minor version, and the
+  going-public release is `1.0.0`.
+- **Fix to a final release:** the next patch (`0.3.1`). Don't use a patch number for in-between
+  builds: `0.3.1` sorts after `0.3.0`, so it would claim the phase is done and outrank every
+  later beta. Local builds get a build number instead (see Build an installer).
+- **After 1.0:** major if something users rely on breaks (settings that can't migrate, a
+  feature removed, a Windows version dropped), minor for new features, patch for fixes only.
+- **Never reuse a version, or move or delete a published tag.** If a published release is
+  broken, release the next number. A tag whose release is still a draft can be moved (below).
+- **Keep the dot in `beta.10`.** It then sorts as a number, after `beta.9`. Without the dot,
+  `beta10` sorts as text, before `beta9`.
 
 1. As you work, add changes under `## [Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md).
 2. Bump the version:

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   cargoTomlVersion,
   compareVersions,
+  localBuildVersion,
   releaseNotes,
   setCargoLockVersion,
   setCargoTomlVersion,
@@ -152,5 +153,41 @@ describe("stampChangelog", () => {
 
   it("refuses a version that already has a section", () => {
     expect(() => stamp(CHANGELOG, "0.2.0")).toThrow(/already/);
+  });
+});
+
+describe("localBuildVersion", () => {
+  it("adds the commits since the release tag as the build number", () => {
+    expect(localBuildVersion("v0.3.0-beta.3-5-g2cf53f9\n", "0.3.0-beta.3")).toEqual({
+      version: "0.3.0-beta.3+5",
+      commit: "2cf53f9",
+      modified: false,
+      untagged: false,
+    });
+  });
+
+  it("builds on the tag itself have the plain version", () => {
+    expect(localBuildVersion("v0.3.0-0-gabc1234", "0.3.0").version).toBe("0.3.0");
+  });
+
+  it("flags uncommitted changes", () => {
+    expect(localBuildVersion("v0.3.0-beta.3-5-g2cf53f9-dirty", "0.3.0-beta.3").modified).toBe(true);
+  });
+
+  it("uses a bumped but untagged version as-is", () => {
+    expect(localBuildVersion("v0.3.0-beta.3-6-g1111111", "0.3.0-beta.4")).toEqual({
+      version: "0.3.0-beta.4",
+      commit: "1111111",
+      modified: false,
+      untagged: true,
+    });
+  });
+
+  it("refuses a package version older than the tag", () => {
+    expect(() => localBuildVersion("v0.3.0-1-g1111111", "0.3.0-beta.3")).toThrow(/older/);
+  });
+
+  it("refuses output it doesn't recognize", () => {
+    expect(() => localBuildVersion("2cf53f9", "0.3.0")).toThrow(/describe/);
   });
 });
