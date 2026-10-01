@@ -39,6 +39,10 @@ use crate::frames::FrameStore;
 use crate::protocol::TransferFormat;
 use crate::state::AppState;
 
+/// The login start's argument (`launchOnLogin`): Vandal starts in the tray
+/// and does nothing else (PLAN 3G).
+const AUTOSTART_ARG: &str = "--autostart";
+
 fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
     tauri_specta::Builder::<tauri::Wry>::new()
         .commands(collect_commands![
@@ -134,15 +138,15 @@ pub fn run() {
     let bench = std::env::var_os("CAPTURE_BENCH").is_some();
     let mut builder = tauri::Builder::default();
     if !bench {
-        // Must be the first plugin. A second launch triggers a capture instead.
+        // Must be the first plugin. A second launch acts in the first instead:
         // `--settings` opens Settings, `--edit <path>` opens an image; a
-        // plain second launch starts a capture.
+        // plain one does the launch action (a capture or an editor, PLAN 3G).
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
             let files = cli::edit_paths(&args, std::path::Path::new(&cwd));
             if args.iter().any(|a| a == "--settings") {
                 settings_window::open(app);
-            } else if files.is_empty() {
-                session::start_region(app);
+            } else if files.is_empty() && !args.iter().any(|a| a == AUTOSTART_ARG) {
+                tray::icon_action(app, |s| s.startup.launch_action);
             }
             for file in files {
                 editor::open_file(app, &file);
@@ -152,7 +156,12 @@ pub fn run() {
     let app = builder
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_autostart::Builder::new().build())
+        // Started on login: it never acts on launch (PLAN 3G).
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .args([AUTOSTART_ARG])
+                .build(),
+        )
         .plugin(hotkeys::plugin())
         .register_asynchronous_uri_scheme_protocol(protocol::SCHEME, protocol::handle)
         .invoke_handler(specta.invoke_handler())
@@ -210,7 +219,14 @@ pub fn run() {
             }
             let args: Vec<String> = std::env::args().collect();
             let cwd = std::env::current_dir().unwrap_or_default();
-            for file in cli::edit_paths(&args, &cwd) {
+            let files = cli::edit_paths(&args, &cwd);
+            // Launched by hand with nothing to open: the editor, if that's
+            // the launch action; a capture right at startup would surprise.
+            let plain = files.is_empty() && args.len() == 1;
+            if plain && settings.startup.launch_action == settings::IconAction::Editor {
+                editor::open_empty(app.handle());
+            }
+            for file in files {
                 editor::open_file(app.handle(), &file);
             }
             eprintln!("[startup] ready");

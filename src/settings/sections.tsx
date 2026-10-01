@@ -10,6 +10,12 @@ import { EDITOR_KEYS, MARKUP_KEYS, QUICK_EDIT_KEYS } from "./fixedShortcuts";
 import { AboutIcon, CaptureIcon, GeneralIcon, KeyboardIcon, MarkupIcon, SaveIcon } from "./icons";
 import type { Section } from "./schema";
 
+/** What clicking the tray icon or opening Vandal does (PLAN 3G). */
+const ICON_ACTIONS = [
+  { value: "capture", label: "Capture a region" },
+  { value: "editor", label: "Open the editor" },
+] as const;
+
 export const sections: Section[] = [
   {
     id: "general",
@@ -53,6 +59,37 @@ export const sections: Section[] = [
             label: "Launch on login",
             description: "Start in the tray when you sign in to Windows.",
             keywords: ["startup", "autostart", "boot"],
+          },
+        ],
+      },
+      {
+        title: "Tray icon and app icon",
+        items: [
+          {
+            id: "tray-click-action",
+            kind: "choice",
+            path: "tray.clickAction",
+            label: "Clicking the tray icon",
+            options: ICON_ACTIONS,
+            keywords: ["tray", "click", "editor", "capture"],
+          },
+          {
+            id: "launch-action",
+            kind: "choice",
+            path: "startup.launchAction",
+            label: "Opening Vandal",
+            description:
+              "From its desktop or Start menu icon. If Vandal isn't running yet, it starts in the tray and only opens the editor, never a capture.",
+            options: ICON_ACTIONS,
+            keywords: [
+              "launch",
+              "desktop",
+              "start menu",
+              "icon",
+              "shortcut",
+              "double-click",
+              "editor",
+            ],
           },
         ],
       },

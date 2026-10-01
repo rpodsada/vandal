@@ -276,16 +276,32 @@ impl Default for EditorSettings {
     }
 }
 
+/// What clicking the tray icon or launching Vandal does (PLAN 3G).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum IconAction {
+    /// A region capture.
+    #[default]
+    Capture,
+    /// An empty editor window.
+    Editor,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Startup {
     pub launch_on_login: bool,
+    /// Launching Vandal (its desktop or Start menu icon). While it's running:
+    /// this. When it isn't: it starts in the tray, and opens the editor if
+    /// that's the choice, but never starts a capture. Never on login.
+    pub launch_action: IconAction,
 }
 
 impl Default for Startup {
     fn default() -> Self {
         Self {
             launch_on_login: true,
+            launch_action: IconAction::Capture,
         }
     }
 }
@@ -309,6 +325,8 @@ impl Default for History {
 pub struct TraySettings {
     /// Show "Save captures to file" (auto-save) as a checkbox in the tray menu.
     pub show_auto_save_toggle: bool,
+    /// Clicking the tray icon (PLAN 3G).
+    pub click_action: IconAction,
 }
 
 /// Rust → all windows: settings changed (from any source), here's the new state.
@@ -728,6 +746,8 @@ mod tests {
         assert_eq!(v["editor"]["rememberToolStyles"], true);
         assert_eq!(v["styles"]["width"]["control"], "slider");
         assert_eq!(v["shortcuts"]["callout"], "O");
+        assert_eq!(v["tray"]["clickAction"], "capture");
+        assert_eq!(v["startup"]["launchAction"], "capture");
         assert_eq!(v["shortcuts"]["swapColors"], "X");
     }
 

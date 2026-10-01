@@ -67,6 +67,9 @@ All notable changes to Vandal are listed here. The format follows
   also lists the shortcuts that can't be changed, for marking up, quick edit and the editor.
 - New editor window, in the tray menu: an editor with no image yet. Open an image, drop a file on
   it, paste one with Ctrl+V or take a new capture, and it loads into that window.
+- Settings › General › Tray icon and app icon: choose what clicking the tray icon and opening
+  Vandal (its desktop or Start menu icon) do: capture a region, as before, or open the editor.
+  Starting with Windows never does either.
 - Open Settings from quick edit with the gear on its toolbar, or with Ctrl+, (in the editor too).
   Settings opens above quick edit and stays there while you work, so changes show straight away.
 

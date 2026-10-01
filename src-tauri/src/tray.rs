@@ -5,10 +5,11 @@
 
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Wry};
+use tauri::{AppHandle, Manager, Wry};
 use tauri_plugin_autostart::ManagerExt;
 
-use crate::settings::{self, Settings};
+use crate::settings::{self, IconAction, Settings};
+use crate::state::AppState;
 use crate::{editor, session, settings_window};
 
 const TRAY_ID: &str = "main";
@@ -131,7 +132,7 @@ pub fn create(app: &AppHandle, s: &Settings) -> tauri::Result<()> {
                 ..
             } = event
             {
-                session::start_region(tray.app_handle());
+                icon_action(tray.app_handle(), |s| s.tray.click_action);
             }
         });
     builder = builder.icon(tray_icon()?);
@@ -193,5 +194,15 @@ pub fn apply_autostart(app: &AppHandle, enabled: bool) {
     };
     if let Err(e) = result {
         eprintln!("[startup] autostart {enabled}: {e}");
+    }
+}
+
+/// Do what the settings say for clicking the tray icon or launching Vandal
+/// (PLAN 3G): a region capture or an empty editor.
+pub fn icon_action(app: &AppHandle, which: impl Fn(&Settings) -> IconAction) {
+    let action = which(&app.state::<AppState>().settings.read().unwrap());
+    match action {
+        IconAction::Capture => session::start_region(app),
+        IconAction::Editor => editor::open_empty(app),
     }
 }

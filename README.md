@@ -105,12 +105,14 @@ the capture; click it to open the image in the editor.
 To draw on it first, pick a tool from the toolbar under the selection before you press Enter
 (see [Quick edit](#quick-edit)).
 
-You can also left-click the tray icon to start a capture, or right-click it for the menu:
+You can also left-click the tray icon to start a capture (or open the editor instead: Settings ›
+General › Tray icon and app icon), or right-click it for the menu:
 
 | Tray menu item        | What it does                                               |
 | --------------------- | ---------------------------------------------------------- |
 | Capture region        | Same as Win+F12                                            |
 | Capture full screen   | Same as Win+Shift+F12: every monitor, opened in the editor |
+| New editor window     | An empty editor: open, paste or capture an image into it   |
 | Open image…           | Open an image file in the editor                           |
 | New from clipboard    | Open the image on the clipboard in the editor              |
 | Save captures to file | Turn auto-save on or off                                   |
@@ -232,14 +234,17 @@ update Vandal.
 `vandal.exe` is in `%LOCALAPPDATA%\Vandal\`. Only one copy of Vandal runs at a time. Running it
 again passes the command to the copy that's already running.
 
-| Command                | What it does                                                    |
-| ---------------------- | --------------------------------------------------------------- |
-| `vandal`               | Starts Vandal. If it's already running, starts a region capture |
-| `vandal --settings`    | Opens Settings                                                  |
-| `vandal --edit <file>` | Opens an image in the editor. Repeat `--edit` to open several   |
+| Command                | What it does                                                     |
+| ---------------------- | ---------------------------------------------------------------- |
+| `vandal`               | Starts Vandal. If it's already running, starts a region capture¹ |
+| `vandal --settings`    | Opens Settings                                                   |
+| `vandal --edit <file>` | Opens an image in the editor. Repeat `--edit` to open several    |
 
 A second launch that starts a capture is handy for mapping a capture to a mouse button, a
 Stream Deck key or a launcher.
+
+¹ Or opens the editor, if Settings › General › Tray icon and app icon › Opening Vandal says so.
+Then a first launch opens the editor too.
 
 ## Keyboard reference
 

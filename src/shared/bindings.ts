@@ -362,6 +362,13 @@ export type Hotkeys = {
 	repeatLast?: string | null,
 };
 
+/**  What clicking the tray icon or launching Vandal does (PLAN 3G). */
+export type IconAction = 
+/**  A region capture. */
+"capture" | 
+/**  An empty editor window. */
+"editor";
+
 export type MonitorInfo = {
 	index: number,
 	/**  GDI device name, e.g. `\\.\DISPLAY1`. */
@@ -549,6 +556,12 @@ export type Shortcuts = {
 
 export type Startup = {
 	launchOnLogin?: boolean,
+	/**
+	 *  Launching Vandal (its desktop or Start menu icon). While it's running:
+	 *  this. When it isn't: it starts in the tray, and opens the editor if
+	 *  that's the choice, but never starts a capture. Never on login.
+	 */
+	launchAction?: IconAction,
 };
 
 export type Styles = {
@@ -604,6 +617,8 @@ export type TransferFormat =
 export type TraySettings = {
 	/**  Show "Save captures to file" (auto-save) as a checkbox in the tray menu. */
 	showAutoSaveToggle?: boolean,
+	/**  Clicking the tray icon (PLAN 3G). */
+	clickAction?: IconAction,
 };
 
 /**
