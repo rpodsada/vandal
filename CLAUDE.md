@@ -77,6 +77,7 @@ Run Node tooling from PowerShell. Git Bash on this machine has an old nvm Node 1
 - `CAPTURE_TRANSFER=bmp` switches the overlay transfer format.
 - Releasing: `npm run release:bump -- <version>`, then tag `v<version>` and push. CI builds a draft
   GitHub release (steps in `DEVELOPMENT.md` › Releasing). Add changes under `[Unreleased]`
-  in `CHANGELOG.md` as you go.
+  in `CHANGELOG.md` as you go. Each release also updates the landing page and commits it
+  locally in the site repo (`internal/landing-page.md` › On each release); Remind the user to deploy the landing page after the GitHub release is tested and published.
 - Rust unit tests must stay on pure modules. Test binaries that link the Tauri runtime crash on
   Windows (see the PLAN decisions log).
