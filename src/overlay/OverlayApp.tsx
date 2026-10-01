@@ -109,8 +109,8 @@ export function OverlayApp() {
       setPointer(null);
       setNotice(null);
       setBusy(false);
-      setPicking(false);
-      setHovered(null);
+      setPicking(payload.picking);
+      setHovered(payload.hovered);
       resetMarkup(payload);
       setMarkupOwner(null);
       try {

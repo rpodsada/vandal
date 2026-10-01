@@ -101,7 +101,7 @@ impl Default for Appearance {
 pub struct Hotkeys {
     pub region: Option<String>,
     pub fullscreen: Option<String>,
-    /// For window capture, which isn't built yet; not registered.
+    /// Window capture (PLAN 3H.4): the overlay opens in window mode.
     pub window: Option<String>,
     pub repeat_last: Option<String>,
 }
@@ -352,11 +352,20 @@ pub fn validate(mut s: Settings) -> Result<Settings, String> {
     s.history.keep_frames_in_memory = s.history.keep_frames_in_memory.clamp(1, 20);
     s.styles = s.styles.normalized();
     s.shortcuts = s.shortcuts.checked()?;
-    if let (Some(a), Some(b)) = (&s.hotkeys.region, &s.hotkeys.fullscreen) {
-        if a.eq_ignore_ascii_case(b) {
-            return Err(format!(
-                "{a} can't capture both a region and the full screen: pick another shortcut."
-            ));
+    let captures = [
+        (&s.hotkeys.region, "a region"),
+        (&s.hotkeys.fullscreen, "the full screen"),
+        (&s.hotkeys.window, "a window"),
+    ];
+    for (i, (a, what_a)) in captures.iter().enumerate() {
+        for (b, what_b) in &captures[i + 1..] {
+            if let (Some(a), Some(b)) = (a, b) {
+                if a.eq_ignore_ascii_case(b) {
+                    return Err(format!(
+                        "{a} can't capture both {what_a} and {what_b}: pick another shortcut."
+                    ));
+                }
+            }
         }
     }
     s.appearance.accent = crate::styles::normalize_color(&s.appearance.accent)
@@ -681,7 +690,10 @@ mod tests {
         s.hotkeys.fullscreen = Some("ctrl+win+f9".into());
         assert!(validate(s.clone()).is_err());
         s.hotkeys.fullscreen = None;
-        assert!(validate(s).is_ok());
+        assert!(validate(s.clone()).is_ok());
+        s.hotkeys.window = Some("CTRL+WIN+F9".into());
+        let e = validate(s).unwrap_err();
+        assert!(e.contains("a region and a window"), "{e}");
     }
 
     #[test]

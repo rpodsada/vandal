@@ -626,6 +626,13 @@ export const sections: Section[] = [
             label: "Capture the full screen",
             keywords: ["hotkey", "shortcut", "keyboard", "key", "all monitors", "printscreen"],
           },
+          {
+            id: "hotkey-window",
+            kind: "hotkey",
+            path: "hotkeys.window",
+            label: "Capture a window",
+            keywords: ["hotkey", "shortcut", "keyboard", "key", "window", "printscreen"],
+          },
         ],
       },
       {

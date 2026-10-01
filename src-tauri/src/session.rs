@@ -49,6 +49,10 @@ pub struct OverlayLoad {
     /// px), topmost first, for window mode (PLAN 3H). `CaptureTarget::Window`
     /// picks one by its index here.
     pub windows: Vec<PhysicalRect>,
+    /// Start in window mode (the window shortcut, PLAN 3H.4), with this
+    /// window under the cursor highlighted.
+    pub picking: bool,
+    pub hovered: Option<u32>,
 }
 
 /// Rust → overlays: you're now shown; reply with `overlay_visible` once painted.
@@ -339,20 +343,26 @@ fn grab(state: &AppState) -> Option<(Vec<MonitorInfo>, bool, Vec<MonitorFrame>, 
 /// Region-capture entry point (hotkey, tray, second launch). Grabs pixels
 /// *first*: nothing may change focus or show a window before that (PLAN §1.1).
 pub fn start_region(app: &AppHandle) {
-    start_region_for(app, None);
+    start_region_for(app, None, false);
+}
+
+/// Window-capture entry point (the window shortcut, PLAN 3H.4): the region
+/// overlay, already in window mode.
+pub fn start_window(app: &AppHandle) {
+    start_region_for(app, None, true);
 }
 
 /// A region capture from the editor `id` (its New capture, PLAN 3G): the
 /// plain selection, which then goes to the editor, into `id` if it's empty.
 pub fn start_region_into(app: &AppHandle, id: editor::EditorId) {
     // No capture after all (one already on screen): the editor comes back.
-    if !start_region_for(app, Some(id)) {
+    if !start_region_for(app, Some(id), false) {
         editor::bring_back(app, id);
     }
 }
 
-/// False if no capture started.
-fn start_region_for(app: &AppHandle, into: Option<editor::EditorId>) -> bool {
+/// False if no capture started. `picking`: start in window mode.
+fn start_region_for(app: &AppHandle, into: Option<editor::EditorId>, picking: bool) -> bool {
     let started = Instant::now();
     let state = app.state::<AppState>();
     let mut session = state.session.lock().unwrap();
@@ -368,6 +378,11 @@ fn start_region_for(app: &AppHandle, into: Option<editor::EditorId>) -> bool {
     let windows = winenum::enumerate(virtual_bounds(&monitors));
     let enumerated = t.elapsed();
     let window_rects: Vec<PhysicalRect> = windows.iter().map(|w| w.rect).collect();
+    let hovered = picking
+        .then(overlay::cursor_position)
+        .flatten()
+        .and_then(|p| window_rects.iter().position(|r| r.contains(p)))
+        .map(|i| i as u32);
     let capture = state.frames.lock().unwrap().insert(frames);
     let format = *state.transfer_format.lock().unwrap();
     let (overlay_settings, quick_edit) = {
@@ -392,6 +407,8 @@ fn start_region_for(app: &AppHandle, into: Option<editor::EditorId>) -> bool {
             layer_url: protocol::capture_layer_url(capture.id, LayerKind::Annotations),
             highlights_url: protocol::capture_layer_url(capture.id, LayerKind::Highlights),
             windows: window_rects.clone(),
+            picking,
+            hovered,
         })
         .collect();
     *session = Some(Session {

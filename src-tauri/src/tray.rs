@@ -33,6 +33,13 @@ fn build_menu(app: &AppHandle, s: &Settings) -> tauri::Result<Menu<Wry>> {
     )?)?;
     menu.append(&MenuItem::with_id(
         app,
+        "window",
+        "Capture window",
+        true,
+        hk.window.as_deref(),
+    )?)?;
+    menu.append(&MenuItem::with_id(
+        app,
         "new-editor",
         "New editor window",
         true,
@@ -107,6 +114,7 @@ pub fn create(app: &AppHandle, s: &Settings) -> tauri::Result<()> {
                     match other {
                         "region" => session::start_region(app),
                         "fullscreen" => session::capture_fullscreen(app),
+                        "window" => session::start_window(app),
                         "settings" => settings_window::open(app),
                         "open" => {
                             // The dialog blocks; keep the tray responsive.

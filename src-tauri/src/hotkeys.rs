@@ -27,6 +27,7 @@ pub fn to_accelerator(hotkey: &str) -> String {
 enum Action {
     Region,
     Fullscreen,
+    Window,
 }
 
 impl Action {
@@ -34,6 +35,7 @@ impl Action {
         match self {
             Self::Region => "region capture",
             Self::Fullscreen => "full-screen capture",
+            Self::Window => "window capture",
         }
     }
 }
@@ -132,6 +134,7 @@ pub fn register(app: &AppHandle, hotkeys: &Hotkeys) {
     let bindings = [
         (hotkeys.region.as_deref(), Action::Region),
         (hotkeys.fullscreen.as_deref(), Action::Fullscreen),
+        (hotkeys.window.as_deref(), Action::Window),
     ];
     let mut failures = Vec::new();
     for (hotkey, action) in bindings {
@@ -143,6 +146,7 @@ pub fn register(app: &AppHandle, hotkeys: &Hotkeys) {
                 match action {
                     Action::Region => session::start_region(app),
                     Action::Fullscreen => session::capture_fullscreen(app),
+                    Action::Window => session::start_window(app),
                 }
             }
         });

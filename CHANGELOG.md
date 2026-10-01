@@ -10,7 +10,8 @@ All notable changes to Vandal are listed here. The format follows
 
 - Window capture: press W on the selection screen, then click a window to capture it. The window
   under the pointer is highlighted (across monitors too), and clicks never reach the window itself.
-  Press W or Esc to go back to selecting an area. The capture is the window's own picture: parts
+  Press W or Esc to go back to selecting an area. Win+Alt+F12 (changeable in Settings › Keyboard
+  shortcuts) and the tray's "Capture window" start straight in window mode. The capture is the window's own picture: parts
   covered by other windows are included, it's shown as the active window, and it's a clean
   cutout: rounded corners stay transparent, without the window's border, shadow or (when
   maximized) the edge that hangs off the screen.

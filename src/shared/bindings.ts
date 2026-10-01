@@ -31,6 +31,12 @@ export const commands = {
 	 *  picks one by its index here.
 	 */
 	windows: PhysicalRect[],
+	/**
+	 *  Start in window mode (the window shortcut, PLAN 3H.4), with this
+	 *  window under the cursor highlighted.
+	 */
+	picking: boolean,
+	hovered: number | null,
 } | null>("overlay_pending_load", { monitorIndex }),
 	/**  Overlay finished drawing its frame. */
 	overlayReady: (captureId: number, report: OverlayReport) => __TAURI_INVOKE<void>("overlay_ready", { captureId, report }),
@@ -376,7 +382,7 @@ export type History = {
 export type Hotkeys = {
 	region?: string | null,
 	fullscreen?: string | null,
-	/**  For window capture, which isn't built yet; not registered. */
+	/**  Window capture (PLAN 3H.4): the overlay opens in window mode. */
 	window?: string | null,
 	repeatLast?: string | null,
 };
@@ -435,6 +441,12 @@ export type OverlayLoad = {
 	 *  picks one by its index here.
 	 */
 	windows: PhysicalRect[],
+	/**
+	 *  Start in window mode (the window shortcut, PLAN 3H.4), with this
+	 *  window under the cursor highlighted.
+	 */
+	picking: boolean,
+	hovered: number | null,
 };
 
 /**

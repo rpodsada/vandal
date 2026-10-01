@@ -15,6 +15,7 @@ export const useRecording = create<{ path: string | null }>(() => ({ path: null 
 const ACTIONS: Record<string, string> = {
   region: "Capture a region",
   fullscreen: "Capture the full screen",
+  window: "Capture a window",
 };
 
 /**
