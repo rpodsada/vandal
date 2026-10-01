@@ -42,6 +42,19 @@ pub fn selection_started(app: AppHandle, capture_id: CaptureId, monitor_index: u
     session::selection_started(&app, capture_id, monitor_index);
 }
 
+/// Window mode (PLAN 3H) turned on or off, or the window under the pointer
+/// changed, on one overlay; every overlay follows.
+#[tauri::command]
+#[specta::specta]
+pub fn window_pick_changed(
+    app: AppHandle,
+    capture_id: CaptureId,
+    picking: bool,
+    hovered: Option<u32>,
+) {
+    session::window_pick_changed(&app, capture_id, picking, hovered);
+}
+
 /// Confirm: crop and run the after-capture actions.
 #[tauri::command]
 #[specta::specta]

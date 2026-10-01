@@ -18,6 +18,7 @@ use crate::geometry::{monitor_at, virtual_bounds, MonitorInfo, PhysicalRect};
 use crate::protocol::{self, TransferFormat};
 use crate::redact::{self, Redaction};
 use crate::state::AppState;
+use crate::winenum::{self, SnapWindow};
 use crate::{editor, monitors, output, overlay};
 
 /// Show overlays even if some haven't reported ready by then.
@@ -44,6 +45,10 @@ pub struct OverlayLoad {
     /// Where quick edit POSTs its annotation and highlight layers.
     pub layer_url: String,
     pub highlights_url: String,
+    /// The windows on screen at capture time (visible frames, virtual-desktop
+    /// px), topmost first, for window mode (PLAN 3H). `CaptureTarget::Window`
+    /// picks one by its index here.
+    pub windows: Vec<PhysicalRect>,
 }
 
 /// Rust → overlays: you're now shown; reply with `overlay_visible` once painted.
@@ -70,6 +75,17 @@ pub struct OverlayMarkupOwner {
     pub owner: Option<u32>,
 }
 
+/// Rust → overlays: window mode is on or off, and which window (an index into
+/// `OverlayLoad::windows`) is under the pointer, so a window spanning
+/// monitors is highlighted on each of them.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[serde(rename_all = "camelCase")]
+pub struct OverlayWindowPick {
+    pub capture_id: CaptureId,
+    pub picking: bool,
+    pub hovered: Option<u32>,
+}
+
 /// Overlay → Rust: frame drawn, with the overlay-side timing.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -91,6 +107,10 @@ pub enum CaptureTarget {
     },
     MonitorUnderCursor,
     AllMonitors,
+    /// An index into `OverlayLoad::windows`.
+    Window {
+        index: u32,
+    },
 }
 
 pub struct Session {
@@ -99,6 +119,9 @@ pub struct Session {
     pub started: Instant,
     pub capture_timing: CaptureTiming,
     pub captured: Duration,
+    /// Window enumeration, right after the grab.
+    enumerated: Duration,
+    windows: Vec<SnapWindow>,
     loads: Vec<OverlayLoad>,
     pending: HashSet<u32>,
     pub reports: Vec<OverlayReport>,
@@ -339,6 +362,10 @@ fn start_region_for(app: &AppHandle, into: Option<editor::EditorId>) -> bool {
         return false;
     };
     let captured = started.elapsed();
+    let t = Instant::now();
+    let windows = winenum::enumerate(virtual_bounds(&monitors));
+    let enumerated = t.elapsed();
+    let window_rects: Vec<PhysicalRect> = windows.iter().map(|w| w.rect).collect();
     let capture = state.frames.lock().unwrap().insert(frames);
     let format = *state.transfer_format.lock().unwrap();
     let (overlay_settings, quick_edit) = {
@@ -362,6 +389,7 @@ fn start_region_for(app: &AppHandle, into: Option<editor::EditorId>) -> bool {
             quick_edit,
             layer_url: protocol::capture_layer_url(capture.id, LayerKind::Annotations),
             highlights_url: protocol::capture_layer_url(capture.id, LayerKind::Highlights),
+            windows: window_rects.clone(),
         })
         .collect();
     *session = Some(Session {
@@ -370,6 +398,8 @@ fn start_region_for(app: &AppHandle, into: Option<editor::EditorId>) -> bool {
         started,
         capture_timing,
         captured,
+        enumerated,
+        windows,
         loads: loads.clone(),
         pending: monitors.iter().map(|m| m.index).collect(),
         reports: Vec::new(),
@@ -529,13 +559,15 @@ fn show(app: &AppHandle, capture_id: CaptureId, by_timeout: bool) {
             })
             .collect();
         eprintln!(
-            "[perf] #{} {}/{}: captured {:.1}ms (grab [{}] copy {:.1}) → ready {} → shown {} | {}",
+            "[perf] #{} {}/{}: captured {:.1}ms (grab [{}] copy {:.1}, {} windows {:.1}) → ready {} → shown {} | {}",
             s.capture_id,
             state.capturer.name(),
             s.format.as_str(),
             ms(s.captured),
             grabs.join(", "),
             ms(s.capture_timing.copy),
+            s.windows.len(),
+            ms(s.enumerated),
             opt_ms(s.ready),
             opt_ms(s.shown),
             overlays.join(" | "),
@@ -565,6 +597,20 @@ pub fn selection_started(app: &AppHandle, capture_id: CaptureId, monitor_index: 
     let _ = OverlayClearSelection {
         capture_id,
         monitor_index,
+    }
+    .emit(app);
+}
+
+pub fn window_pick_changed(
+    app: &AppHandle,
+    capture_id: CaptureId,
+    picking: bool,
+    hovered: Option<u32>,
+) {
+    let _ = OverlayWindowPick {
+        capture_id,
+        picking,
+        hovered,
     }
     .emit(app);
 }
@@ -610,8 +656,9 @@ pub fn commit(app: &AppHandle, capture_id: CaptureId, target: CaptureTarget) {
         return;
     };
     let monitors: Vec<MonitorInfo> = capture.frames.iter().map(|f| f.monitor.clone()).collect();
-    // F / A with quick edit on open the editor (PLAN 2B); regions don't get
-    // here in quick edit, and without it everything is as in Phase 1.
+    // F / A and a picked window, with quick edit on, open the editor (PLAN
+    // 2B, 3H); regions don't get here in quick edit, and without it
+    // everything is as in Phase 1.
     let whole_screens_to_editor = !matches!(target, CaptureTarget::Region { .. })
         && state.settings.read().unwrap().quick_edit.enabled;
     let rect = match target {
@@ -623,6 +670,15 @@ pub fn commit(app: &AppHandle, capture_id: CaptureId, target: CaptureTarget) {
             .map(|m| m.physical_bounds)
             .unwrap_or_default(),
         CaptureTarget::AllMonitors => virtual_bounds(&monitors),
+        // For now cut from the frozen screen, minus any part off the desktop.
+        CaptureTarget::Window { index } => match session
+            .windows
+            .get(index as usize)
+            .and_then(|w| w.rect.intersect(&virtual_bounds(&monitors)))
+        {
+            Some(rect) => rect,
+            None => return,
+        },
     };
     if let Some(id) = session.into {
         editor::open_capture_into(app, &capture, rect, id);

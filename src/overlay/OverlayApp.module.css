@@ -122,6 +122,27 @@
   left: 6px;
 }
 
+/* ---- window mode (PLAN 3H) ---- */
+
+/* The picked window: the selection's look, with a bolder edge. */
+.window {
+  outline-width: 2px;
+  outline-offset: -1px;
+}
+
+.windowSize {
+  position: absolute;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: rgb(18 18 20 / 0.84);
+  color: #fff;
+  font-size: 12px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 /* ---- hint bar ---- */
 
 .hint {

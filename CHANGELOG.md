@@ -6,6 +6,12 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Window capture: press W on the selection screen, then click a window to capture it. The window
+  under the pointer is highlighted (across monitors too), and clicks never reach the window itself.
+  Press W or Esc to go back to selecting an area.
+
 ## [0.3.0-beta.2] - 2026-09-30
 
 ### Added

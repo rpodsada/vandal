@@ -25,6 +25,12 @@ export const commands = {
 	/**  Where quick edit POSTs its annotation and highlight layers. */
 	layerUrl: string,
 	highlightsUrl: string,
+	/**
+	 *  The windows on screen at capture time (visible frames, virtual-desktop
+	 *  px), topmost first, for window mode (PLAN 3H). `CaptureTarget::Window`
+	 *  picks one by its index here.
+	 */
+	windows: PhysicalRect[],
 } | null>("overlay_pending_load", { monitorIndex }),
 	/**  Overlay finished drawing its frame. */
 	overlayReady: (captureId: number, report: OverlayReport) => __TAURI_INVOKE<void>("overlay_ready", { captureId, report }),
@@ -32,6 +38,11 @@ export const commands = {
 	overlayVisible: (captureId: number, monitorIndex: number) => __TAURI_INVOKE<void>("overlay_visible", { captureId, monitorIndex }),
 	/**  The user started selecting on this monitor; other overlays clear theirs. */
 	selectionStarted: (captureId: number, monitorIndex: number) => __TAURI_INVOKE<void>("selection_started", { captureId, monitorIndex }),
+	/**
+	 *  Window mode (PLAN 3H) turned on or off, or the window under the pointer
+	 *  changed, on one overlay; every overlay follows.
+	 */
+	windowPickChanged: (captureId: number, picking: boolean, hovered: number | null) => __TAURI_INVOKE<void>("window_pick_changed", { captureId, picking, hovered }),
 	/**  Confirm: crop and run the after-capture actions. */
 	commitSelection: (captureId: number, target: CaptureTarget) => __TAURI_INVOKE<void>("commit_selection", { captureId, target }),
 	/**  Esc / right-click on an overlay. */
@@ -177,6 +188,7 @@ export const events = {
 	overlayLoad: makeEvent<OverlayLoad>("overlay-load"),
 	overlayMarkupOwner: makeEvent<OverlayMarkupOwner>("overlay-markup-owner"),
 	overlayShown: makeEvent<OverlayShown>("overlay-shown"),
+	overlayWindowPick: makeEvent<OverlayWindowPick>("overlay-window-pick"),
 	settingsChanged: makeEvent<SettingsChanged>("settings-changed"),
 	windowsAccentChanged: makeEvent<WindowsAccentChanged>("windows-accent-changed"),
 };
@@ -201,7 +213,9 @@ export type Appearance = {
 /**  What the user chose on the overlay. */
 export type CaptureTarget = 
 /**  Virtual-desktop physical pixels. */
-{ kind: "region"; rect: PhysicalRect } | { kind: "monitorUnderCursor" } | { kind: "allMonitors" };
+{ kind: "region"; rect: PhysicalRect } | { kind: "monitorUnderCursor" } | { kind: "allMonitors" } | 
+/**  An index into `OverlayLoad::windows`. */
+{ kind: "window"; index: number };
 
 /**  The answer to "save before closing?". */
 export type CloseChoice = "save" | "discard" | "cancel";
@@ -415,6 +429,12 @@ export type OverlayLoad = {
 	/**  Where quick edit POSTs its annotation and highlight layers. */
 	layerUrl: string,
 	highlightsUrl: string,
+	/**
+	 *  The windows on screen at capture time (visible frames, virtual-desktop
+	 *  px), topmost first, for window mode (PLAN 3H). `CaptureTarget::Window`
+	 *  picks one by its index here.
+	 */
+	windows: PhysicalRect[],
 };
 
 /**
@@ -444,6 +464,17 @@ export type OverlaySettings = {
 /**  Rust → overlays: you're now shown; reply with `overlay_visible` once painted. */
 export type OverlayShown = {
 	captureId: number,
+};
+
+/**
+ *  Rust → overlays: window mode is on or off, and which window (an index into
+ *  `OverlayLoad::windows`) is under the pointer, so a window spanning
+ *  monitors is highlighted on each of them.
+ */
+export type OverlayWindowPick = {
+	captureId: number,
+	picking: boolean,
+	hovered: number | null,
 };
 
 export type PhysicalPoint = {

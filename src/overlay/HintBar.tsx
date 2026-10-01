@@ -1,6 +1,8 @@
 import styles from "./OverlayApp.module.css";
 
 interface Props {
+  /** Window mode (PLAN 3H): click a window. */
+  picking: boolean;
   hasSelection: boolean;
   /** Quick edit: the selection has a toolbar and Enter means Done. */
   quick: boolean;
@@ -8,10 +10,18 @@ interface Props {
   atBottom: boolean;
 }
 
-export function HintBar({ hasSelection, quick, atBottom }: Props) {
+export function HintBar({ picking, hasSelection, quick, atBottom }: Props) {
   return (
     <div className={`${styles.hint} ${atBottom ? styles.hintBottom : ""}`}>
-      {hasSelection && quick ? (
+      {picking ? (
+        <>
+          <Hint keys={["Click"]} label="capture window" />
+          <Hint keys={["W"]} label="select area" />
+          <Hint keys={["F"]} label="this screen" />
+          <Hint keys={["A"]} label="all screens" />
+          <Hint keys={["Esc"]} label="back" />
+        </>
+      ) : hasSelection && quick ? (
         <>
           <Hint keys={["Enter"]} label="done" />
           <Hint keys={["Ctrl", "C"]} label="copy" />
@@ -32,6 +42,7 @@ export function HintBar({ hasSelection, quick, atBottom }: Props) {
       ) : (
         <>
           <Hint keys={["Drag"]} label="select area" />
+          <Hint keys={["W"]} label="window" />
           <Hint keys={["F"]} label="this screen" />
           <Hint keys={["A"]} label="all screens" />
           <Hint keys={["Esc"]} label="cancel" />

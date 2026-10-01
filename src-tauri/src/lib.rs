@@ -28,6 +28,7 @@ mod state;
 mod styles;
 mod tool_styles;
 mod tray;
+mod winenum;
 
 use std::sync::{Mutex, RwLock};
 
@@ -50,6 +51,7 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::overlay_ready,
             commands::overlay_visible,
             commands::selection_started,
+            commands::window_pick_changed,
             commands::commit_selection,
             commands::cancel_capture,
             commands::quick_output,
@@ -90,6 +92,7 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             session::OverlayLoad,
             session::OverlayShown,
             session::OverlayClearSelection,
+            session::OverlayWindowPick,
             session::OverlayMarkupOwner,
             appearance::WindowsAccentChanged,
             settings::SettingsChanged,

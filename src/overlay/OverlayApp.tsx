@@ -37,6 +37,7 @@ import {
   type Point,
   type Rect,
 } from "./selection";
+import { visiblePart, windowAt } from "./windowPick";
 import styles from "./OverlayApp.module.css";
 
 const monitorIndex = Number(getCurrentWebviewWindow().label.replace("overlay-", ""));
@@ -64,6 +65,12 @@ export function OverlayApp() {
   const [barSize, setBarSize] = useState<Size | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
+  // Window mode (PLAN 3H, key W), shared by every overlay through Rust: the
+  // window under the pointer, as an index into `load.windows`.
+  const [picking, setPicking] = useState(false);
+  const [hovered, setHovered] = useState<number | null>(null);
+  /** The window a click started on; it's picked if the click ends there too. */
+  const pressedWindow = useRef<number | null>(null);
 
   const scale = load?.scaleFactor ?? window.devicePixelRatio;
   const size = useMemo(() => (load ? { width: load.width, height: load.height } : null), [load]);
@@ -102,6 +109,8 @@ export function OverlayApp() {
       setPointer(null);
       setNotice(null);
       setBusy(false);
+      setPicking(false);
+      setHovered(null);
       resetMarkup(payload);
       setMarkupOwner(null);
       try {
@@ -126,6 +135,15 @@ export function OverlayApp() {
       }),
       events.overlayMarkupOwner.listen(({ payload }) => {
         if (payload.captureId === captureId) setMarkupOwner(payload.owner);
+      }),
+      events.overlayWindowPick.listen(({ payload }) => {
+        if (payload.captureId !== captureId) return;
+        setPicking(payload.picking);
+        setHovered(payload.hovered);
+        if (payload.picking) {
+          setSelection(null);
+          setDrag(null);
+        }
       }),
       events.overlayClearSelection.listen(({ payload }) => {
         if (payload.captureId === captureId && payload.monitorIndex !== monitorIndex) {
@@ -162,6 +180,33 @@ export function OverlayApp() {
       rect: { ...selection, x: selection.x + x, y: selection.y + y },
     });
   }, [load, selection]);
+
+  /** Window mode on or off, and the window under the pointer, on every overlay. */
+  const setWindowPick = useCallback(
+    (on: boolean, window: number | null) => {
+      if (!load) return;
+      setPicking(on);
+      setHovered(window);
+      void commands.windowPickChanged(load.captureId, on, window);
+    },
+    [load],
+  );
+
+  /** The window under a monitor-local point. */
+  const windowUnder = useCallback(
+    (p: Point) =>
+      load
+        ? windowAt(load.windows, { x: p.x + load.physicalBounds.x, y: p.y + load.physicalBounds.y })
+        : null,
+    [load],
+  );
+
+  const pickWindow = useCallback(
+    (index: number) => {
+      if (load) void commands.commitSelection(load.captureId, { kind: "window", index });
+    },
+    [load],
+  );
 
   const cancel = useCallback(() => {
     if (load) void commands.cancelCapture(load.captureId);
@@ -251,6 +296,17 @@ export function OverlayApp() {
       if (!load || e.defaultPrevented || isTyping(e.target)) return;
       // The markup is on another monitor: its overlay has the keys.
       if (lockedOut) return;
+      if (picking) {
+        // Esc / W go back to selecting an area; Enter picks the highlighted window.
+        if (e.key === "Escape" || (e.code === "KeyW" && !e.repeat && !hasModifier(e))) {
+          setWindowPick(false, null);
+          return;
+        }
+        if (e.key === "Enter") {
+          if (hovered !== null) pickWindow(hovered);
+          return;
+        }
+      }
       if (e.key === "Escape") return cancel();
       if (e.key === "Enter") return void done();
       if (e.ctrlKey && !e.altKey && !e.shiftKey && e.code === "Comma") {
@@ -279,6 +335,12 @@ export function OverlayApp() {
       }
       if (wholeScreens && (e.key === "a" || e.key === "A")) {
         void commands.commitSelection(load.captureId, { kind: "allMonitors" });
+        return;
+      }
+      if (wholeScreens && !picking && e.code === "KeyW" && !e.repeat && !hasModifier(e)) {
+        setSelection(null);
+        setDrag(null);
+        setWindowPick(true, pointer ? windowUnder(pointer) : null);
         return;
       }
       const delta = arrowDelta(e.key, e.shiftKey ? 10 : 1);
@@ -319,6 +381,12 @@ export function OverlayApp() {
     openInEditor,
     hasMarkup,
     lockedOut,
+    picking,
+    hovered,
+    pointer,
+    setWindowPick,
+    windowUnder,
+    pickWindow,
   ]);
 
   // ---- pointer ----
@@ -355,6 +423,10 @@ export function OverlayApp() {
       return;
     }
     e.currentTarget.setPointerCapture(e.pointerId);
+    if (picking) {
+      pressedWindow.current = windowUnder(toLocal(e));
+      return;
+    }
     const p = toLocal(e);
     const hit = selection ? hitTest(selection, p, HANDLE_TOLERANCE * scale) : null;
     if (selection && hit?.kind === "edge") {
@@ -372,6 +444,11 @@ export function OverlayApp() {
     if (!size) return;
     const p = toLocal(e);
     setPointer(p);
+    if (picking) {
+      const w = windowUnder(p);
+      if (w !== hovered) setWindowPick(true, w);
+      return;
+    }
     if (!drag) return;
     switch (drag.mode) {
       case "create": {
@@ -397,14 +474,21 @@ export function OverlayApp() {
     }
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e: PointerEvent<HTMLDivElement>) => {
+    if (picking) {
+      // Picked on release, so the release can't land on the window below.
+      const w = pressedWindow.current;
+      pressedWindow.current = null;
+      if (e.button === 0 && w !== null && w === windowUnder(toLocal(e))) pickWindow(w);
+      return;
+    }
     // A click without a drag clears the selection rather than making a 1×1 one.
     if (drag?.mode === "create" && !drag.moved) setSelection(null);
     setDrag(null);
   };
 
   const onDoubleClick = (e: { nativeEvent: Event }) => {
-    if (wasTaken(e.nativeEvent)) return;
+    if (wasTaken(e.nativeEvent) || picking) return;
     // In quick edit only with the Select tool: otherwise it's a drawing gesture.
     if (quickEdit && tool !== "select") return;
     if (selection && pointer && hitTest(selection, pointer, 0)?.kind === "inside") {
@@ -427,7 +511,7 @@ export function OverlayApp() {
   // ---- render ----
 
   const css = (v: number) => v / scale;
-  let cursor = "crosshair";
+  let cursor = picking ? "default" : "crosshair";
   if (drag?.mode === "move") cursor = "move";
   else if (drag?.mode === "resize") cursor = cursorFor({ kind: "edge", edges: drag.edges });
   else if (!drag && selection && pointer)
@@ -447,7 +531,17 @@ export function OverlayApp() {
           { width: css(size.width), height: css(size.height) },
         )
       : null;
-  const showGuides = load && !selection && !drag && pointer;
+  const showGuides = load && !selection && !drag && pointer && !picking;
+  // The highlighted window: its part on this monitor, and the whole of it in
+  // this monitor's pixels (it may run off the edges).
+  const picked = picking && load && hovered !== null ? load.windows[hovered] : undefined;
+  const windowShown = picked && load ? visiblePart(picked, load.physicalBounds) : null;
+  const windowRect = picked &&
+    load && {
+      ...picked,
+      x: picked.x - load.physicalBounds.x,
+      y: picked.y - load.physicalBounds.y,
+    };
   const showDimensions = load?.showDimensions ?? true;
 
   return (
@@ -462,7 +556,29 @@ export function OverlayApp() {
       onDoubleClick={onDoubleClick}
     >
       <canvas ref={canvasRef} className={styles.frame} />
-      {load && !selection && <div className={styles.dimAll} />}
+      {load && !selection && !windowShown && <div className={styles.dimAll} />}
+
+      {windowRect && windowShown && (
+        <>
+          <div
+            className={`${styles.selection} ${styles.window}`}
+            style={{
+              left: css(windowRect.x),
+              top: css(windowRect.y),
+              width: css(windowRect.width),
+              height: css(windowRect.height),
+            }}
+          />
+          {showDimensions && (
+            <span
+              className={styles.windowSize}
+              style={{ left: css(windowShown.x) + 8, top: css(windowShown.y) + 8 }}
+            >
+              {windowRect.width} × {windowRect.height}
+            </span>
+          )}
+        </>
+      )}
 
       {showGuides && (
         <>
@@ -537,6 +653,7 @@ export function OverlayApp() {
 
       {load && focused && !drag && !lockedOut && (
         <HintBar
+          picking={picking}
           hasSelection={!!selection}
           quick={quickEdit}
           atBottom={!!selection && css(selection.y) < 72}
@@ -545,6 +662,8 @@ export function OverlayApp() {
     </div>
   );
 }
+
+const hasModifier = (e: KeyboardEvent) => e.ctrlKey || e.altKey || e.shiftKey || e.metaKey;
 
 const HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 /** Grab strips along the edges (quick edit, where the markup covers the rest). */
