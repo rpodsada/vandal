@@ -174,12 +174,16 @@ const TYPING = "[Esc] done · [Ctrl+B] bold · [Ctrl+I] italic · [Alt+1…0] fo
 const CROP =
   "Drag edges or corners, [Shift] keeps proportions · Drag outside for a new box · [Enter] apply · [Esc] cancel · [←↑↓→] nudge, [Ctrl] resize";
 
+/** The editor with no image yet (PLAN 3G): only what gets one. */
+const EMPTY =
+  "[Ctrl+N] capture · [Ctrl+O] open an image · [Ctrl+V] paste one · or drop an image file here · [Ctrl+,] settings";
+
 const IDLE = `{tools} tools · [Ctrl+Z] undo · [Ctrl+C] copy · [Ctrl+S] save · ${PAN_ZOOM}`;
 
 export interface HintState {
   hover: ControlHint | null;
   drag: DragHint | null;
-  /** A host mode instead of a tool (the editor's crop). */
+  /** A host mode instead of a tool (the editor's crop, or no image yet). */
   mode: HostMode | null;
   tool: ToolId;
   selected: number;
@@ -207,6 +211,7 @@ export function chooseHint(s: HintState): string {
   if (s.hover) return CONTROL_HINTS[s.hover];
   if (s.drag) return DRAG_HINTS[s.drag];
   if (s.mode === "crop") return CROP;
+  if (s.mode === "empty") return EMPTY;
   if (s.typing)
     return `${TYPING} · ${colorKeys(s.tool === "callout" || s.calloutSelected ? "callout" : "text", s.twoColors)}`;
   if (s.labelTyping) return LABEL_TYPING;
@@ -283,7 +288,7 @@ export function parseHint(hint: string): HintPart[] {
 }
 
 /** Modes a host adds beside the tools. */
-export type HostMode = "crop";
+export type HostMode = "crop" | "empty";
 
 interface HintSources {
   hover: ControlHint | null;

@@ -18,6 +18,8 @@ All notable changes to Vandal are listed here. The format follows
 
 ### Changed
 
+- An empty editor no longer shows "1 × 1 px" and zoom controls, and its hint line lists only
+  what works there: capture, open, paste, drop a file, settings.
 - Copied images keep their transparency for apps that support it, and apps that don't (such as
   Paint) now show transparent areas as white rather than black.
 

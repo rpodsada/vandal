@@ -26,6 +26,15 @@ describe("chooseHint", () => {
     expect(chooseHint({ ...s, hover: null, drag: null })).toMatch(/^\[Shift\] square/);
   });
 
+  it("shows only how to get an image in an empty editor", () => {
+    const hint = chooseHint({ ...base, mode: "empty" });
+    expect(hint).toMatch(/^\[Ctrl\+N\] capture/);
+    expect(hint).toContain("[Ctrl+O]");
+    expect(hint).not.toContain("tools");
+    // A hovered control still explains itself.
+    expect(chooseHint({ ...base, mode: "empty", hover: "copy" })).toBe(CONTROL_HINTS.copy);
+  });
+
   it("shows the general shortcuts with Select and nothing selected", () => {
     expect(chooseHint(base)).toContain("tools");
     expect(chooseHint({ ...base, selected: 2 })).toMatch(/^\[Del\]/);

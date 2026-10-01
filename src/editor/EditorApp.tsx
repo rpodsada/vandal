@@ -47,7 +47,11 @@ export function EditorApp() {
   useMarkupKeys(() => !emptyRef.current);
   useCropKeys(() => !emptyRef.current);
   const cropping = useCropStore((s) => s.draft !== null);
-  useEffect(() => useHintSources.setState({ mode: cropping ? "crop" : null }), [cropping]);
+  const empty = status.kind === "empty";
+  useEffect(
+    () => useHintSources.setState({ mode: cropping ? "crop" : empty ? "empty" : null }),
+    [cropping, empty],
+  );
 
   // Fetch the base image, paint it, then let Rust show the window.
   useEffect(() => {
@@ -259,7 +263,11 @@ export function EditorApp() {
           message={status.kind === "error" ? status.message : undefined}
         />
       )}
-      <StatusBar notice={notice} onReveal={(path) => void commands.revealFile(path)} />
+      <StatusBar
+        notice={notice}
+        loaded={status.kind === "ready"}
+        onReveal={(path) => void commands.revealFile(path)}
+      />
     </div>
   );
 }

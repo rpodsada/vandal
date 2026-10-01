@@ -22,9 +22,12 @@ const MENU_ZOOMS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 8];
 
 export function StatusBar({
   notice,
+  loaded,
   onReveal,
 }: {
   notice: Notice | null;
+  /** An image is on show: the size and zoom controls apply (not while empty or loading). */
+  loaded: boolean;
   onReveal: (path: string) => void;
 }) {
   const image = useViewStore((s) => s.image);
@@ -58,7 +61,7 @@ export function StatusBar({
         <HintLine />
       )}
       <span className={styles.spacer} />
-      {image && (
+      {loaded && image && (
         <>
           <span className={styles.size}>
             {draft && frame
