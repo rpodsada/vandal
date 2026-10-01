@@ -20,7 +20,7 @@ export const sections: Section[] = [
     id: "general",
     title: "General",
     icon: GeneralIcon,
-    description: "How the app looks and starts, its notifications and its tray menu.",
+    description: "How the app looks and starts, its notifications and its tray icon.",
     groups: [
       {
         title: "Appearance",
@@ -112,19 +112,6 @@ export const sections: Section[] = [
             description:
               "Open a capture in the editor from its notification. Clicking the notification itself does this too.",
             keywords: ["toast", "popup", "editor", "markup"],
-          },
-        ],
-      },
-      {
-        title: "Tray menu",
-        items: [
-          {
-            id: "tray-auto-save-toggle",
-            kind: "toggle",
-            path: "tray.showAutoSaveToggle",
-            label: "Auto-save switch in the tray menu",
-            description: "Turn automatic saving on or off from the tray icon's menu.",
-            keywords: ["tray", "menu", "auto-save", "autosave"],
           },
         ],
       },

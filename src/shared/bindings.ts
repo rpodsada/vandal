@@ -681,8 +681,6 @@ export type TransferFormat =
 "bmp";
 
 export type TraySettings = {
-	/**  Show "Save captures to file" (auto-save) as a checkbox in the tray menu. */
-	showAutoSaveToggle?: boolean,
 	/**  Clicking the tray icon (PLAN 3G). */
 	clickAction?: IconAction,
 };

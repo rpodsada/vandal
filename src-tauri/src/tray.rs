@@ -38,17 +38,12 @@ fn build_menu(app: &AppHandle, s: &Settings) -> tauri::Result<Menu<Wry>> {
         true,
         hk.window.as_deref(),
     )?)?;
+    // Captures | the two "New…" items | Open (PLAN 3H.10).
+    menu.append(&PredefinedMenuItem::separator(app)?)?;
     menu.append(&MenuItem::with_id(
         app,
         "new-editor",
         "New editor window",
-        true,
-        None::<&str>,
-    )?)?;
-    menu.append(&MenuItem::with_id(
-        app,
-        "open",
-        "Open image…",
         true,
         None::<&str>,
     )?)?;
@@ -60,16 +55,14 @@ fn build_menu(app: &AppHandle, s: &Settings) -> tauri::Result<Menu<Wry>> {
         None::<&str>,
     )?)?;
     menu.append(&PredefinedMenuItem::separator(app)?)?;
-    if s.tray.show_auto_save_toggle {
-        menu.append(&CheckMenuItem::with_id(
-            app,
-            "autosave",
-            "Save captures to file",
-            true,
-            s.after_capture.auto_save,
-            None::<&str>,
-        )?)?;
-    }
+    menu.append(&MenuItem::with_id(
+        app,
+        "open",
+        "Open image…",
+        true,
+        None::<&str>,
+    )?)?;
+    menu.append(&PredefinedMenuItem::separator(app)?)?;
     menu.append(&CheckMenuItem::with_id(
         app,
         "autostart",
@@ -104,9 +97,6 @@ pub fn create(app: &AppHandle, s: &Settings) -> tauri::Result<()> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| {
             let result = match event.id().as_ref() {
-                "autosave" => settings::modify(app, |s| {
-                    s.after_capture.auto_save = !s.after_capture.auto_save
-                }),
                 "autostart" => settings::modify(app, |s| {
                     s.startup.launch_on_login = !s.startup.launch_on_login
                 }),

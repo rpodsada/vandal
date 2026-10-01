@@ -28,8 +28,15 @@ All notable changes to Vandal are listed here. The format follows
 - With the tray icon (or launching Vandal) set to open the editor, it brings back the editor you
   last used instead of opening another empty one each time. The tray menu's "New editor window"
   still opens a new one.
+- The tray menu groups its items: the three captures, then "New editor window" and "New from
+  clipboard", then "Open image…".
 - Copied images keep their transparency for apps that support it, and apps that don't (such as
   Paint) now show transparent areas as white rather than black.
+
+### Removed
+
+- The tray menu's "Save captures to file" switch (and its setting under General). Turn automatic
+  saving on or off in Settings › Copy & save.
 
 ## [0.3.0-beta.2] - 2026-09-30
 

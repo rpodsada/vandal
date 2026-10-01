@@ -323,8 +323,8 @@ impl Default for History {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Type)]
 #[serde(default, rename_all = "camelCase")]
 pub struct TraySettings {
-    /// Show "Save captures to file" (auto-save) as a checkbox in the tray menu.
-    pub show_auto_save_toggle: bool,
+    // `showAutoSaveToggle` (an auto-save switch in the tray menu) was dropped
+    // in 3H.10; older files' value is ignored.
     /// Clicking the tray icon (PLAN 3G).
     pub click_action: IconAction,
 }
@@ -732,7 +732,6 @@ mod tests {
         assert_eq!(s.save.directory, "D:/x");
         assert!(s.save.notification_save_button);
         assert!(s.editor.notification_edit_button);
-        assert!(!s.tray.show_auto_save_toggle);
     }
 
     #[test]
