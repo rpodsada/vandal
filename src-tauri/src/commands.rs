@@ -370,13 +370,22 @@ pub async fn pick_folder(window: WebviewWindow, current: String) -> Option<Strin
     ))
 }
 
-/// What a file saved now with this template would be called.
+/// What a file saved now with this template would be called (in the save
+/// folder, for its auto number).
 #[tauri::command]
 #[specta::specta]
-pub fn preview_filename(template: String) -> String {
+pub fn preview_filename(app: AppHandle, template: String) -> String {
+    let dir = app
+        .state::<AppState>()
+        .settings
+        .read()
+        .unwrap()
+        .save
+        .directory
+        .clone();
     format!(
         "{}.png",
-        output::render_template(&template, &output::Timestamp::now_local())
+        output::file_stem(&output::resolve_dir(&dir), &template)
     )
 }
 

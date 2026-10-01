@@ -482,7 +482,10 @@ fn capture_title(app: &AppHandle) -> String {
         .clone();
     format!(
         "{} — {}",
-        output::render_template(&save.filename_template, &output::Timestamp::now_local()),
+        output::file_stem(
+            &output::resolve_dir(&save.directory),
+            &save.filename_template
+        ),
         crate::product_name(app)
     )
 }
@@ -865,10 +868,7 @@ fn ask_save_path(app: &AppHandle, window: &WebviewWindow) -> Option<std::path::P
         .save
         .clone();
     let dir = output::resolve_dir(&save.directory);
-    let name = format!(
-        "{}.png",
-        output::render_template(&save.filename_template, &output::Timestamp::now_local())
-    );
+    let name = format!("{}.png", output::file_stem(&dir, &save.filename_template));
     let mut dialog = window
         .dialog()
         .file()

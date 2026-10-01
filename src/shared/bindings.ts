@@ -129,7 +129,10 @@ export const commands = {
 	 *  come back as `%USERPROFILE%\...`.
 	 */
 	pickFolder: (current: string) => __TAURI_INVOKE<string | null>("pick_folder", { current }),
-	/**  What a file saved now with this template would be called. */
+	/**
+	 *  What a file saved now with this template would be called (in the save
+	 *  folder, for its auto number).
+	 */
 	previewFilename: (template: string) => __TAURI_INVOKE<string>("preview_filename", { template }),
 	/**
 	 *  Open a (settings-style, may contain `%VARS%`) folder in Explorer,

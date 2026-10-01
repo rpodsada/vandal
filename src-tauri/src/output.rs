@@ -263,6 +263,96 @@ pub fn render_template(template: &str, t: &Timestamp) -> String {
     sanitize_file_name(&name)
 }
 
+/// The file name (no extension) a save into `dir` gets now: the template with
+/// the date and time filled in, and its auto number (`{n}`, PLAN 3H.8) one
+/// more than the highest already in `dir`.
+pub fn file_stem(dir: &Path, template: &str) -> String {
+    let rendered = render_template(template, &Timestamp::now_local());
+    if !rendered.contains("{n") {
+        return rendered;
+    }
+    let names = std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|entry| {
+            let path = entry.path();
+            path.file_stem().map(|s| s.to_string_lossy().into_owned())
+        });
+    number_stem(&rendered, names)
+}
+
+/// A piece of a rendered template: text, or an auto number of at least
+/// this many digits (`{n}`, `{nn}`, `{nnn}`...).
+#[derive(Debug, PartialEq)]
+enum StemPart<'a> {
+    Text(&'a str),
+    Number(usize),
+}
+
+fn stem_parts(stem: &str) -> Vec<StemPart<'_>> {
+    let mut parts = Vec::new();
+    let mut rest = stem;
+    while let Some(start) = rest.find("{n") {
+        let digits = rest[start + 1..].bytes().take_while(|&b| b == b'n').count();
+        if rest[start + 1 + digits..].starts_with('}') {
+            if start > 0 {
+                parts.push(StemPart::Text(&rest[..start]));
+            }
+            parts.push(StemPart::Number(digits));
+            rest = &rest[start + digits + 2..];
+        } else {
+            // "{nope}": plain text.
+            parts.push(StemPart::Text(&rest[..start + 2]));
+            rest = &rest[start + 2..];
+        }
+    }
+    if !rest.is_empty() {
+        parts.push(StemPart::Text(rest));
+    }
+    parts
+}
+
+/// The number in `name` if it fits `parts` (letter case aside, as Windows
+/// file names do): the first auto number's digits.
+fn number_in(name: &str, parts: &[StemPart]) -> Option<u64> {
+    let name = name.to_lowercase();
+    let mut rest = name.as_str();
+    let mut found = None;
+    for part in parts {
+        match part {
+            StemPart::Text(text) => rest = rest.strip_prefix(text.to_lowercase().as_str())?,
+            StemPart::Number(_) => {
+                let len = rest.bytes().take_while(u8::is_ascii_digit).count();
+                if len == 0 {
+                    return None;
+                }
+                let n = rest[..len].parse().ok()?;
+                found.get_or_insert(n);
+                rest = &rest[len..];
+            }
+        }
+    }
+    rest.is_empty().then_some(found).flatten()
+}
+
+/// Fill a rendered template's auto numbers with one more than the highest
+/// among `names` that fit it (1 if none do; gaps aren't refilled).
+fn number_stem(rendered: &str, names: impl Iterator<Item = String>) -> String {
+    let parts = stem_parts(rendered);
+    let next = names
+        .filter_map(|name| number_in(&name, &parts))
+        .max()
+        .map_or(1, |n| n.saturating_add(1));
+    parts
+        .iter()
+        .map(|part| match part {
+            StemPart::Text(text) => (*text).to_string(),
+            StemPart::Number(width) => format!("{next:0width$}"),
+        })
+        .collect()
+}
+
 /// Replace characters Windows forbids in file names; never returns empty.
 pub fn sanitize_file_name(name: &str) -> String {
     let cleaned: String = name
@@ -347,7 +437,7 @@ pub fn unique_path(dir: &Path, stem: &str, ext: &str, exists: impl Fn(&Path) -> 
 pub fn save_with_template(save: &SaveSettings, image: &RgbaImage) -> Result<PathBuf, String> {
     let dir = resolve_dir(&save.directory);
     std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-    let stem = render_template(&save.filename_template, &Timestamp::now_local());
+    let stem = file_stem(&dir, &save.filename_template);
     let path = unique_path(&dir, &stem, "png", |p| p.exists());
     write_png(image, &path)?;
     Ok(path)
@@ -600,6 +690,45 @@ mod tests {
         // Shared, not copied.
         let touched = touched_frames(&frames, PhysicalRect::new(10, 10, 20, 20));
         assert!(Arc::ptr_eq(&touched[0], &frames[1]));
+    }
+
+    #[test]
+    fn auto_number_counts_up_from_the_highest() {
+        let names = |list: &[&str]| list.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        let next = |stem: &str, list: &[&str]| number_stem(stem, names(list).into_iter());
+        assert_eq!(next("screenshot-{n}", &[]), "screenshot-1");
+        assert_eq!(next("screenshot-{n}", &["screenshot-1"]), "screenshot-2");
+        // Gaps stay: with 1 and 3 there, the next is 4.
+        assert_eq!(
+            next("screenshot-{n}", &["screenshot-1", "Screenshot-3"]),
+            "screenshot-4"
+        );
+        // Other names, and near misses, don't count.
+        assert_eq!(
+            next(
+                "shot {n}",
+                &["shot 7 (2)", "shot x", "shot ", "other 9", "shot 2"]
+            ),
+            "shot 3"
+        );
+    }
+
+    #[test]
+    fn auto_number_pads_to_its_ns() {
+        let next =
+            |stem: &str, list: &[&str]| number_stem(stem, list.iter().map(|s| s.to_string()));
+        assert_eq!(next("img {nnn}", &[]), "img 001");
+        assert_eq!(next("img {nnn}", &["img 009"]), "img 010");
+        // Padding is a minimum, and unpadded names count too.
+        assert_eq!(next("img {nn}", &["img 99"]), "img 100");
+        assert_eq!(next("img {nn}", &["img 5"]), "img 06");
+        // The date is part of the match, so a dated template restarts daily.
+        assert_eq!(
+            next("2026-10-01 {n}", &["2026-09-30 4", "2026-10-01 2"]),
+            "2026-10-01 3"
+        );
+        // Not an auto number.
+        assert_eq!(next("{nope} {n}", &["{nope} 1"]), "{nope} 2");
     }
 
     #[test]

@@ -15,6 +15,8 @@ All notable changes to Vandal are listed here. The format follows
   window's own picture: parts covered by other windows are included, it's shown as the active
   window, and it's a clean cutout: rounded corners stay transparent, without the window's border,
   shadow or (when maximized) the edge that hangs off the screen.
+- `{n}` in the file name template: a number that counts up from the highest already in the save
+  folder (screenshot-1, screenshot-2…). `{nn}`, `{nnn}`… pad it with zeros (01, 001).
 
 ### Changed
 
