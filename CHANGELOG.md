@@ -6,6 +6,8 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0-beta.2] - 2026-09-30
+
 ### Added
 
 - Redact tool (B) in quick edit and the editor: drag over an area to pixelate or blur it. The choice of Pixelate or
@@ -156,6 +158,7 @@ The first build for beta testers.
 - Copy to clipboard, auto-save with a file-name pattern, and capture notifications.
 - Searchable Settings window where changes apply immediately.
 
-[Unreleased]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.1...HEAD
+[Unreleased]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.2...HEAD
+[0.3.0-beta.2]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.1...v0.3.0-beta.2
 [0.3.0-beta.1]: https://github.com/rpodsada/vandal/compare/v0.2.0...v0.3.0-beta.1
 [0.2.0]: https://github.com/rpodsada/vandal/releases/tag/v0.2.0
