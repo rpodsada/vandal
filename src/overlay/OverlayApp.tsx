@@ -21,7 +21,13 @@ import { useMarkupKeys } from "../markup/useMarkupKeys";
 import { useStyleSettings } from "../markup/useStyleSettings";
 import { startToolStylesSync } from "../editor/toolStylesSync";
 import { isTyping } from "../shared/dom";
-import { handoffAnnotations, resetMarkup, uploadMarkup } from "./quickEdit";
+import { findText, setTextRecognizer } from "../markup/textRedact";
+import {
+  handoffAnnotations,
+  resetMarkup,
+  selectionTextRecognizer,
+  uploadMarkup,
+} from "./quickEdit";
 import { QuickBar } from "./QuickBar";
 import { toolbarPlacement, type Size } from "./toolbarPlacement";
 import {
@@ -237,6 +243,17 @@ export function OverlayApp() {
     },
     [load, selection, busy],
   );
+
+  // Detect text reads the selection's words (PLAN 3J.6): again once the
+  // selection settles after a move or resize, if it's on.
+  const settled = quickActive && !drag ? selection : null;
+  useEffect(() => {
+    if (!load || !settled) return;
+    setTextRecognizer(selectionTextRecognizer(load, settled));
+    if (useToolStore.getState().redactText) void findText();
+    // The rect's values, not its identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [load, settled?.x, settled?.y, settled?.width, settled?.height]);
 
   // Tell the other overlays when this selection gains or loses its markup.
   useEffect(() => {

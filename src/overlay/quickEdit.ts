@@ -11,7 +11,8 @@ import { emptyDoc } from "../markup/model/types";
 import { finishTextEdit } from "../markup/textEditing";
 import { useToolStore } from "../markup/toolStore";
 import { loadToolStyles } from "../editor/toolStylesSync";
-import { uploadPixels, type OverlayLoad, type QuickMarkup } from "../shared/ipc";
+import { setTextRecognizer } from "../markup/textRedact";
+import { commands, uploadPixels, type OverlayLoad, type QuickMarkup } from "../shared/ipc";
 import type { Rect } from "./selection";
 
 /** Counts document changes, so Rust can tell whether a copy is still current. */
@@ -24,8 +25,35 @@ docStore.subscribe((s, prev) => {
 export function resetMarkup(load: OverlayLoad): void {
   // The source is this monitor's frame, in its physical pixels.
   docStore.getState().load(emptyDoc({ width: load.width, height: load.height }));
-  useToolStore.setState({ tool: "select", editing: null, colorSlot: "first" });
+  // Detect text starts off for every capture, and the last one's words go (PLAN 3J.6).
+  useToolStore.setState({ tool: "select", editing: null, colorSlot: "first", redactText: false });
+  setTextRecognizer(null);
   void loadToolStyles();
+}
+
+/**
+ * How Detect text reads the words in `selection` (PLAN 3J.6): Rust works in
+ * virtual-desktop px, the document in this monitor's.
+ */
+export function selectionTextRecognizer(load: OverlayLoad, selection: Rect) {
+  const { x: dx, y: dy } = load.physicalBounds;
+  const rect = {
+    x: Math.round(selection.x) + dx,
+    y: Math.round(selection.y) + dy,
+    width: Math.round(selection.width),
+    height: Math.round(selection.height),
+  };
+  return async () => {
+    const result = await commands.quickRecognizeText(load.captureId, rect);
+    if (result.status === "error") return result;
+    const lines = result.data.map((line) => ({
+      words: line.words.map((w) => ({
+        ...w,
+        rect: { ...w.rect, x: w.rect.x - dx, y: w.rect.y - dy },
+      })),
+    }));
+    return { status: "ok" as const, data: lines };
+  };
 }
 
 /**
