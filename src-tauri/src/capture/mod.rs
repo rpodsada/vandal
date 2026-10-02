@@ -79,6 +79,23 @@ pub trait WindowCapturer: Send + Sync {
     /// Capture `hwnd` once its picture has settled (it may be repainting,
     /// e.g. as it becomes the active window).
     fn capture_window(&self, hwnd: isize) -> Result<WindowImage, CaptureError>;
+
+    /// Start watching `hwnd`. Use it on the thread that made it.
+    fn stream(&self, hwnd: isize) -> Result<Box<dyn WindowStream>, CaptureError>;
+}
+
+/// A window watched over time (scrolling capture, PLAN 3K): frames arrive as
+/// the window changes.
+pub trait WindowStream {
+    /// The window's picture once it settles: wait up to `first` for it to
+    /// change, then until it hasn't changed for `quiet`, `cap` at most. If
+    /// nothing changes, the last picture again.
+    fn settled(
+        &mut self,
+        first: Duration,
+        quiet: Duration,
+        cap: Duration,
+    ) -> Result<WindowImage, CaptureError>;
 }
 
 pub trait Capturer: Send + Sync {

@@ -18,6 +18,14 @@ pub fn edit_paths(args: &[String], cwd: &Path) -> Vec<PathBuf> {
     paths
 }
 
+/// Dev builds: `--scroll-at x,y` runs a scrolling capture on the area at that
+/// screen point (physical px), before the overlay can start one (PLAN 3K.3).
+pub fn scroll_at(args: &[String]) -> Option<(i32, i32)> {
+    let i = args.iter().position(|a| a == "--scroll-at")?;
+    let (x, y) = args.get(i + 1)?.split_once(',')?;
+    Some((x.trim().parse().ok()?, y.trim().parse().ok()?))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -44,6 +52,16 @@ mod tests {
             got,
             [PathBuf::from(r"C:\work\a.png"), PathBuf::from(r"D:\b.jpg")]
         );
+    }
+
+    #[test]
+    fn reads_a_scroll_point() {
+        assert_eq!(
+            scroll_at(&args(&["app.exe", "--scroll-at", "540,-20"])),
+            Some((540, -20))
+        );
+        assert_eq!(scroll_at(&args(&["app.exe", "--scroll-at", "540"])), None);
+        assert_eq!(scroll_at(&args(&["app.exe", "--scroll-at"])), None);
     }
 
     #[test]

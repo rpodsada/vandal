@@ -308,6 +308,12 @@ pub fn open_file_in(app: &AppHandle, path: &Path, into: Option<EditorId>) {
     });
 }
 
+/// Open an editor on an image made in memory (a scrolling capture, PLAN 3K).
+pub fn open_image(app: &AppHandle, image: RgbaImage, title: String) {
+    let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
+    open_or_load(app, None, Arc::new(image), crop, title, None);
+}
+
 /// The tray click or launching Vandal, set to open the editor: bring back the
 /// editor last used, and open an empty one only if there's none (PLAN 3H.9:
 /// a click per window piled up empty editors).

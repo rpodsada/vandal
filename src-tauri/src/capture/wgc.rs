@@ -26,7 +26,7 @@ use windows::Win32::System::WinRT::Direct3D11::{
 };
 use windows::Win32::System::WinRT::Graphics::Capture::IGraphicsCaptureItemInterop;
 
-use super::{CaptureError, WindowCapturer, WindowImage};
+use super::{CaptureError, WindowCapturer, WindowImage, WindowStream};
 
 /// The picture counts as settled once no new frame has come for this long
 /// (WGC only delivers a frame when the window's content changes).
@@ -194,6 +194,98 @@ impl Device {
     }
 }
 
+/// A capture session left running on one window (PLAN 3K.3). It has its own
+/// D3D device, so it never waits on (or blocks) one-shot window captures.
+pub struct WgcStream {
+    device: Device,
+    pool: Direct3D11CaptureFramePool,
+    session: windows::Graphics::Capture::GraphicsCaptureSession,
+    rx: mpsc::Receiver<Direct3D11CaptureFrame>,
+    last: Option<Direct3D11CaptureFrame>,
+}
+
+impl WgcStream {
+    fn start(hwnd: HWND) -> windows::core::Result<Self> {
+        let device = Device::new()?;
+        let interop = windows::core::factory::<GraphicsCaptureItem, IGraphicsCaptureItemInterop>()?;
+        let item: GraphicsCaptureItem = unsafe { interop.CreateForWindow(hwnd)? };
+        let pool = Direct3D11CaptureFramePool::CreateFreeThreaded(
+            &device.winrt,
+            DirectXPixelFormat::B8G8R8A8UIntNormalized,
+            2,
+            item.Size()?,
+        )?;
+        let session = pool.CreateCaptureSession(&item)?;
+        let _ = session.SetIsBorderRequired(false);
+        let _ = session.SetIsCursorCaptureEnabled(false);
+        let (tx, rx) = mpsc::channel::<Direct3D11CaptureFrame>();
+        pool.FrameArrived(&TypedEventHandler::new(
+            move |pool: Ref<Direct3D11CaptureFramePool>, _| {
+                if let Some(pool) = pool.as_ref() {
+                    if let Ok(frame) = pool.TryGetNextFrame() {
+                        let _ = tx.send(frame);
+                    }
+                }
+                Ok(())
+            },
+        ))?;
+        session.StartCapture()?;
+        Ok(Self {
+            device,
+            pool,
+            session,
+            rx,
+            last: None,
+        })
+    }
+}
+
+impl WindowStream for WgcStream {
+    fn settled(
+        &mut self,
+        first: Duration,
+        quiet: Duration,
+        cap: Duration,
+    ) -> Result<WindowImage, CaptureError> {
+        let started = Instant::now();
+        let mut frames = 0;
+        let mut wait = first;
+        // The very first call has no picture yet: wait for one.
+        if self.last.is_none() {
+            wait = wait.max(FIRST_FRAME);
+        }
+        loop {
+            let left = cap.saturating_sub(started.elapsed());
+            if left.is_zero() {
+                break;
+            }
+            match self.rx.recv_timeout(wait.min(left)) {
+                Ok(frame) => {
+                    self.last = Some(frame);
+                    frames += 1;
+                    wait = quiet;
+                }
+                Err(_) => break,
+            }
+        }
+        let last = self
+            .last
+            .as_ref()
+            .ok_or_else(|| CaptureError("the window sent no picture".into()))?;
+        let mut image = self.device.read(last)?;
+        image.frames = frames;
+        image.settle = started.elapsed();
+        Ok(image)
+    }
+}
+
+impl Drop for WgcStream {
+    fn drop(&mut self) {
+        let _ = self.session.Close();
+        let _ = self.pool.Close();
+    }
+}
+
 impl WindowCapturer for WgcCapturer {
     fn name(&self) -> &'static str {
         "wgc"
@@ -228,6 +320,10 @@ impl WindowCapturer for WgcCapturer {
             }
         }
         unreachable!()
+    }
+
+    fn stream(&self, hwnd: isize) -> Result<Box<dyn WindowStream>, CaptureError> {
+        Ok(Box::new(WgcStream::start(HWND(hwnd as *mut _))?))
     }
 }
 

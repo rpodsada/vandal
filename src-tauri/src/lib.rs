@@ -22,6 +22,7 @@ mod output;
 mod overlay;
 mod protocol;
 mod redact;
+mod scroll;
 mod session;
 mod settings;
 mod settings_window;
@@ -156,11 +157,18 @@ pub fn run() {
             let files = cli::edit_paths(&args, std::path::Path::new(&cwd));
             if args.iter().any(|a| a == "--settings") {
                 settings_window::open(app);
-            } else if files.is_empty() && !args.iter().any(|a| a == AUTOSTART_ARG) {
+            } else if files.is_empty()
+                && !args.iter().any(|a| a == AUTOSTART_ARG)
+                && cli::scroll_at(&args).is_none()
+            {
                 tray::icon_action(app, |s| s.startup.launch_action);
             }
             for file in files {
                 editor::open_file(app, &file);
+            }
+            #[cfg(debug_assertions)]
+            if let Some((x, y)) = cli::scroll_at(&args) {
+                scroll::app::capture_at(app, x, y);
             }
         }));
     }
@@ -233,6 +241,10 @@ pub fn run() {
             // Dev builds leave the Run key alone unless toggled from the tray.
             #[cfg(not(debug_assertions))]
             tray::apply_autostart(app.handle(), settings.startup.launch_on_login);
+            #[cfg(debug_assertions)]
+            if let Some((x, y)) = cli::scroll_at(&std::env::args().collect::<Vec<_>>()) {
+                scroll::app::capture_at(app.handle(), x, y);
+            }
             if std::env::args().any(|a| a == "--settings") {
                 settings_window::open(app.handle());
             }
