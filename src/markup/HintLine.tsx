@@ -3,6 +3,7 @@ import { useDoc } from "./model/store";
 import { chooseHint, parseHint, useHintSources, withShortcuts, type ControlHint } from "./hints";
 import { colorSlots, styleTarget, targetSections, targetValues } from "./restyle";
 import { useStyleConfig } from "./styles";
+import { textLayout, useTextRedact } from "./textRedact";
 import { useToolStore } from "./toolStore";
 import styles from "./markup.module.css";
 
@@ -40,6 +41,9 @@ export function HintLine() {
     return !!id && s.doc.annotations.find((a) => a.id === id)?.kind === "callout";
   });
   const labelTyping = useToolStore((s) => s.labelEditing !== null);
+  const textOn = useToolStore((s) => s.redactText);
+  const textStatus = useTextRedact((s) => s.status);
+  const redactText = textOn && !!textLayout(textStatus);
   const config = useStyleConfig();
   // For naming the second color only when there is one.
   const doc = useDoc((s) => s.doc);
@@ -89,6 +93,7 @@ export function HintLine() {
       overObject,
       twoColors,
       drawingToolsSelect: config.drawingToolsSelect,
+      redactText,
     }),
     config.shortcuts,
   );

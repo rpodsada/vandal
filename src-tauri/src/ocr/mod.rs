@@ -138,6 +138,39 @@ pub fn build_lines(raw: Vec<Vec<(String, RawBox)>>, at: Placement) -> Vec<OcrLin
         .collect()
 }
 
+/// Add what a second pass found (over an inverted copy, which reads light
+/// text on dark that the first pass misses) to the first pass's lines: words
+/// none of the first pass's words overlap, with a letter or digit in them
+/// (the second pass reads specks as dots). They go at the end as lines of
+/// their own, so a drag reaching them may take a wider range.
+pub fn merge_passes(mut first: Vec<OcrLine>, second: Vec<OcrLine>) -> Vec<OcrLine> {
+    let known: Vec<PhysicalRect> = first
+        .iter()
+        .flat_map(|l| l.words.iter().map(|w| w.rect))
+        .collect();
+    for line in second {
+        let words: Vec<OcrWord> = line
+            .words
+            .into_iter()
+            .filter(|w| w.text.chars().any(char::is_alphanumeric))
+            .filter(|w| !known.iter().any(|k| overlaps(k, &w.rect)))
+            .collect();
+        if !words.is_empty() {
+            first.push(OcrLine { words });
+        }
+    }
+    first
+}
+
+/// The same word found twice: they share at least 30% of the smaller box.
+fn overlaps(a: &PhysicalRect, b: &PhysicalRect) -> bool {
+    let Some(i) = a.intersect(b) else {
+        return false;
+    };
+    let area = |r: &PhysicalRect| i64::from(r.width) * i64::from(r.height);
+    area(&i) * 10 >= area(a).min(area(b)) * 3
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -189,6 +222,37 @@ mod tests {
         assert_eq!(px(1, 1), [10, 20, 30, 0]);
         assert_eq!(px(2, 1), [99, 99, 99, 255]);
         assert!(pad_to(&padded, 4).is_none());
+    }
+
+    fn line(words: &[(&str, i32, i32, i32, i32)]) -> OcrLine {
+        OcrLine {
+            words: words
+                .iter()
+                .map(|&(text, x, y, w, h)| OcrWord {
+                    text: text.into(),
+                    rect: PhysicalRect::new(x, y, w, h),
+                })
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn the_second_pass_adds_only_new_words() {
+        let first = vec![line(&[
+            ("Tech", 23, 173, 25, 9),
+            ("Report", 52, 173, 34, 12),
+        ])];
+        let second = vec![
+            // The same words again, a pixel off: already known.
+            line(&[("Tech", 24, 173, 24, 9), ("Report", 52, 174, 34, 12)]),
+            // A word the first pass missed, and a speck read as a dot.
+            line(&[("Form", 45, 69, 27, 9), (".", 80, 70, 2, 2)]),
+        ];
+        let merged = merge_passes(first, second);
+        assert_eq!(merged.len(), 2);
+        assert_eq!(merged[0].words.len(), 2);
+        let added: Vec<&str> = merged[1].words.iter().map(|w| w.text.as_str()).collect();
+        assert_eq!(added, ["Form"]);
     }
 
     #[test]

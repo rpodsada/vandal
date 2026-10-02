@@ -6,6 +6,7 @@ import { emptyDoc } from "../markup/model/types";
 import { initialDoc } from "./handoff";
 import { markupFromJson, markupToJson } from "./markupJson";
 import { useRedactSource } from "../markup/redact";
+import { setTextRecognizer } from "../markup/textRedact";
 import {
   commands,
   type EditorInit,
@@ -83,6 +84,8 @@ export function EditorApp() {
         useRedactSource.setState({
           image: { x: 0, y: 0, width: init.width, height: init.height, data: pixels },
         });
+        // Redact's Detect text toggle reads this image's words (PLAN 3J).
+        setTextRecognizer(() => commands.editorRecognizeText());
         docStore.getState().load(initialDoc(init));
         // Reopened from a notification: already delivered (PLAN 3D.1).
         if (init.delivered) markDelivered(docStore.getState().doc);

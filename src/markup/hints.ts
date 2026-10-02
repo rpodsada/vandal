@@ -59,6 +59,8 @@ export const CONTROL_HINTS = {
   "redact.mode":
     "Solid is the safe choice for text: pixelate and blur can sometimes be undone · the export's pixels are really changed",
   strength: "[1…0] Pick a strength by number",
+  "redact.text":
+    "Find the text in the image, then click or drag across words to redact them · Words found are outlined · Text missed? Drag from empty space for a box",
   "spotlight.shape": "The bright area's shape",
   corner: "[Alt+1…0] Round the corners · 0 is square",
   "corner.callout": "Round the box's corners · 0 is square",
@@ -108,7 +110,8 @@ export type DragHint =
   | "move"
   | "calloutMove"
   | "resize"
-  | "rotate";
+  | "rotate"
+  | "redactText";
 
 const DRAG_HINTS: Record<DragHint, string> = {
   segment: "[Shift] 45° steps",
@@ -122,7 +125,12 @@ const DRAG_HINTS: Record<DragHint, string> = {
   callout: "Release where the text goes · the pointer points where you pressed · [Shift] 45° steps",
   resize: "[Shift] keep proportions",
   rotate: "Snaps to 45° steps near them",
+  redactText: "Release to redact the selected text · [Esc] cancel",
 };
+
+/** Redact with its Detect text toggle on and words found (PLAN 3J). */
+const REDACT_TEXT =
+  "Drag across text to redact it · Click a word · Triple-click a line · Drag from empty space for a box";
 
 const PAN_ZOOM = "[Space]+drag pan · [Ctrl]+wheel zoom";
 
@@ -205,6 +213,8 @@ export interface HintState {
   twoColors: boolean;
   /** `editor.drawingToolsSelect`. */
   drawingToolsSelect: boolean;
+  /** Redact selects text (its Detect text toggle is on and words were found). */
+  redactText: boolean;
 }
 
 /** The hint to show, in the table's bracket format. */
@@ -228,7 +238,7 @@ export function chooseHint(s: HintState): string {
     if (s.selected) return SELECTED;
     return IDLE;
   }
-  const tool = toolHint(s.tool, s.twoColors);
+  const tool = s.tool === "redact" && s.redactText ? REDACT_TEXT : toolHint(s.tool, s.twoColors);
   if (s.tool === "pen" || s.tool === "highlighter") return tool;
   // Over an object, say what a press does and how to get the other behavior.
   if (s.overObject) {

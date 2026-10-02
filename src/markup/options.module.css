@@ -226,6 +226,69 @@
   padding: 0 10px 0 8px;
 }
 
+/* Redact's Text toggle (PLAN 3J): the bar grows out behind the I-beam. */
+.options svg .textBar {
+  width: 0;
+  fill: currentColor;
+  stroke: none;
+  opacity: 0.45;
+  transition: width 200ms ease-out;
+}
+
+.toggle[aria-pressed="true"] svg .textBar {
+  width: 13px;
+}
+
+.options svg .textGlyph {
+  fill: currentColor;
+  stroke: none;
+  transition: opacity 150ms ease-out;
+}
+
+.toggle[aria-pressed="true"] svg .textGlyph {
+  opacity: 0;
+}
+
+.textStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.textProblem {
+  color: var(--error-text);
+  cursor: help;
+}
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .options svg .textBar,
+  .options svg .textGlyph {
+    transition: none;
+  }
+  .spinner {
+    animation-duration: 2.4s;
+  }
+}
+
 .line {
   display: block;
   flex-shrink: 0;

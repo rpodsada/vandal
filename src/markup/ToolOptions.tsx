@@ -23,6 +23,7 @@ import {
   TEXT_SIZE_ICON,
 } from "./pickerIcons";
 import { StepOptions } from "./StepOptions";
+import { TextRedactToggle } from "./TextRedactToggle";
 import {
   applyStyle,
   beginStyleDrag,
@@ -495,6 +496,12 @@ export function ToolOptions({ compact = false }: { compact?: boolean }) {
               </button>
             ))}
           </div>
+          {/* Selecting text is for new redactions, not ones already drawn. */}
+          {target.ids.length === 0 && (
+            <div className={styles.group}>
+              <TextRedactToggle />
+            </div>
+          )}
           {strengthPicker && (
             <span className={styles.hintArea} {...hint("strength")}>
               <NumberPickerControl

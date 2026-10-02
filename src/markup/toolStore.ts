@@ -83,6 +83,8 @@ export interface ToolState {
   /** Redact: solid, pixelate or blur, and each mode's strength once picked. */
   redactMode: RedactMode;
   redactStrengths: Partial<Record<RedactMode, number>>;
+  /** Redact selects detected text instead of drawing a box (PLAN 3J). Never remembered. */
+  redactText: boolean;
   /** Rectangle and Spotlight: the corner radius once picked (PLAN 3D.17). */
   cornerRadii: Partial<Record<ToolId, number>>;
   /** Spotlight: its shape, and the darkness once picked (%). */
@@ -143,6 +145,7 @@ export const useToolStore = create<ToolState>((set) => ({
   // Solid: pixelate and blur can be partly undone on text (PLAN 3I.2).
   redactMode: "solid",
   redactStrengths: {},
+  redactText: false,
   cornerRadii: {},
   spotlightShape: "rect",
   spotlightDim: null,

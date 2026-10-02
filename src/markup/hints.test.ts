@@ -16,6 +16,7 @@ const base: HintState = {
   overObject: false,
   twoColors: false,
   drawingToolsSelect: true,
+  redactText: false,
 };
 
 describe("chooseHint", () => {

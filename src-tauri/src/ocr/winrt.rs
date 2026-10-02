@@ -7,7 +7,9 @@ use windows::Media::Ocr::OcrEngine;
 use windows::Storage::Streams::DataWriter;
 use windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
 
-use super::{build_lines, pad_to, OcrError, OcrLine, Placement, RawBox, TextRecognizer};
+use super::{
+    build_lines, merge_passes, pad_to, OcrError, OcrLine, Placement, RawBox, TextRecognizer,
+};
 use crate::compose::{shrink_to_fit, RgbaImage};
 
 /// The engine finds nothing in an image under 40 px either way; pad to this.
@@ -43,30 +45,45 @@ impl TextRecognizer for WindowsOcr {
             ),
             offset,
         };
-        let result = engine
-            .RecognizeAsync(&bitmap(input)?)
-            .and_then(|op| op.join())
-            .map_err(OcrError::failed)?;
-        let mut raw = Vec::new();
-        for line in &result.Lines().map_err(OcrError::failed)? {
-            let mut words = Vec::new();
-            for word in &line.Words().map_err(OcrError::failed)? {
-                let b = word.BoundingRect().map_err(OcrError::failed)?;
-                let text = word.Text().map_err(OcrError::failed)?.to_string();
-                words.push((
-                    text,
-                    RawBox {
-                        x: b.X,
-                        y: b.Y,
-                        width: b.Width,
-                        height: b.Height,
-                    },
-                ));
-            }
-            raw.push(words);
-        }
-        Ok(build_lines(raw, at))
+        // Light text on dark is often missed (a dark desktop's icon labels),
+        // so an inverted copy is read too and adds what the first pass didn't
+        // find: about twice the time, once per image.
+        let first = read(&engine, input, false, at)?;
+        let second = read(&engine, input, true, at)?;
+        Ok(merge_passes(first, second))
     }
+}
+
+/// One pass over `input` (inverted or not), in `image` pixels via `at`.
+fn read(
+    engine: &OcrEngine,
+    input: &RgbaImage,
+    invert: bool,
+    at: Placement,
+) -> Result<Vec<OcrLine>, OcrError> {
+    let result = engine
+        .RecognizeAsync(&bitmap(input, invert)?)
+        .and_then(|op| op.join())
+        .map_err(OcrError::failed)?;
+    let mut raw = Vec::new();
+    for line in &result.Lines().map_err(OcrError::failed)? {
+        let mut words = Vec::new();
+        for word in &line.Words().map_err(OcrError::failed)? {
+            let b = word.BoundingRect().map_err(OcrError::failed)?;
+            let text = word.Text().map_err(OcrError::failed)?.to_string();
+            words.push((
+                text,
+                RawBox {
+                    x: b.X,
+                    y: b.Y,
+                    width: b.Width,
+                    height: b.Height,
+                },
+            ));
+        }
+        raw.push(words);
+    }
+    Ok(build_lines(raw, at))
 }
 
 /// An engine for the user's languages. Windows gives none when no OCR
@@ -81,12 +98,14 @@ fn engine() -> Result<OcrEngine, OcrError> {
     OcrEngine::TryCreateFromUserProfileLanguages().map_err(|_| OcrError::NoLanguage)
 }
 
-/// Our straight RGBA as the BGRA bitmap the engine reads, alpha ignored.
-fn bitmap(image: &RgbaImage) -> Result<SoftwareBitmap, OcrError> {
+/// Our straight RGBA as the BGRA bitmap the engine reads, alpha ignored;
+/// `invert` turns light on dark into dark on light.
+fn bitmap(image: &RgbaImage, invert: bool) -> Result<SoftwareBitmap, OcrError> {
+    let flip = if invert { 255 } else { 0 };
     let bgra: Vec<u8> = image
         .rgba
         .chunks_exact(4)
-        .flat_map(|p| [p[2], p[1], p[0], 255])
+        .flat_map(|p| [p[2] ^ flip, p[1] ^ flip, p[0] ^ flip, 255])
         .collect();
     let writer = DataWriter::new().map_err(OcrError::failed)?;
     writer.WriteBytes(&bgra).map_err(OcrError::failed)?;

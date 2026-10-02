@@ -58,6 +58,16 @@ import type {
   TextAnnotation,
 } from "./model/types";
 import { redactPixels, redactReads, redactRect, useRedactSource } from "./redact";
+import {
+  lineRects,
+  nearestWord,
+  textLayout,
+  useTextRedact,
+  wordAt,
+  wordRange,
+  type TextLayout,
+  type TextWord,
+} from "./textRedact";
 import { editStepLabel } from "./stepEditing";
 import { StepLabelEditor } from "./StepLabelEditor";
 import { nextStepSeq, stepLabels } from "./steps";
@@ -167,7 +177,27 @@ type Drag =
   | { mode: "text"; start: Point; client: Point }
   | { mode: "callout"; start: Point; client: Point }
   | { mode: "tip"; id: AnnotationId; pivot: Point }
-  | { mode: "marquee"; start: Point; base: AnnotationId[] };
+  | { mode: "marquee"; start: Point; base: AnnotationId[] }
+  | {
+      mode: "redactText";
+      layout: TextLayout;
+      anchor: TextWord;
+      focus: TextWord;
+      client: Point;
+      moved: boolean;
+    };
+
+/**
+ * Text redaction's marks over the image (PLAN 3J), to tune in the editor:
+ * every word found, the word a click would take, and a drag's selection.
+ */
+const WORD_OUTLINE = "rgba(128, 128, 128, 0.7)";
+const WORD_HOVER = "rgba(255, 196, 0, 0.35)";
+const WORD_SELECTED = "rgba(255, 166, 0, 0.45)";
+/** Around a word that still counts as on it, in CSS px. */
+const WORD_SLACK = 3;
+/** Clicks closer together than this make a double or triple click. */
+const MULTI_CLICK_MS = 500;
 
 /** Line-like annotations get endpoint handles instead of the transformer. */
 function hasEndpoints(a: Annotation): a is ArrowAnnotation | LineAnnotation {
@@ -265,6 +295,19 @@ export function MarkupLayer({
     { a: CalloutAnnotation; width: number; height: number; extent: Rect }
   > | null>(null);
   const [marquee, setMarquee] = useState<Rect | null>(null);
+  // Text redaction (PLAN 3J): the words, the one under the pointer, a drag's
+  // selection, and the last clicks (a triple click takes the line).
+  const redactTextOn = useToolStore((s) => s.redactText);
+  const textStatus = useTextRedact((s) => s.status);
+  const words = tool === "redact" && redactTextOn ? textLayout(textStatus) : null;
+  const [hoverWord, setHoverWord] = useState<TextWord | null>(null);
+  const [textSelection, setTextSelection] = useState<TextWord[] | null>(null);
+  const clicks = useRef<{ count: number; at: number; line: number; ids: AnnotationId[] }>({
+    count: 0,
+    at: 0,
+    line: -1,
+    ids: [],
+  });
   /** A callout being dragged out: from its tip to where the text goes. */
   const [pointerPreview, setPointerPreview] = useState<{ from: Point; to: Point } | null>(null);
   // Latest view for window-level drag handlers.
@@ -407,8 +450,23 @@ export function MarkupLayer({
       (a): a is CalloutAnnotation => a.id === hit && a.kind === "callout",
     );
     let drag: Drag;
+    // Text redaction: a press on a word selects text, even over a redaction
+    // (so a triple click can follow a click); Ctrl presses objects instead.
+    const pressedWord =
+      words && !ev.ctrlKey ? wordAt(words, p, WORD_SLACK / view.current.scale) : null;
 
-    if (tool === "pen" || tool === "highlighter") {
+    if (words && pressedWord) {
+      store.select([]);
+      setHoverWord(null);
+      drag = {
+        mode: "redactText",
+        layout: words,
+        anchor: pressedWord,
+        focus: pressedWord,
+        client: { x: ev.clientX, y: ev.clientY },
+        moved: false,
+      };
+    } else if (tool === "pen" || tool === "highlighter") {
       // Freehand tools always draw, even over other annotations.
       const style = toolStroke(tool);
       store.select([]);
@@ -591,7 +649,9 @@ export function MarkupLayer({
                   ? "callout"
                   : drag.mode === "bend"
                     ? "bend"
-                    : null,
+                    : drag.mode === "redactText"
+                      ? "redactText"
+                      : null,
     );
 
     const onMove = (m: PointerEvent) => {
@@ -701,15 +761,46 @@ export function MarkupLayer({
         case "text":
           setMarquee(rectFromDrag(drag.start, q));
           break;
+        case "redactText": {
+          if (!drag.moved) {
+            if (Math.hypot(m.clientX - drag.client.x, m.clientY - drag.client.y) < DRAG_THRESHOLD)
+              return;
+            drag.moved = true;
+          }
+          drag.focus = nearestWord(drag.layout, q) ?? drag.focus;
+          setTextSelection(wordRange(drag.layout, drag.anchor, drag.focus));
+          break;
+        }
       }
     };
 
     const onUp = (u: PointerEvent) => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("keydown", onKey, true);
       setDragHint(null);
       const s = docStore.getState();
       switch (drag.mode) {
+        case "redactText": {
+          setTextSelection(null);
+          if (drag.moved) {
+            clicks.current = { count: 0, at: 0, line: -1, ids: [] };
+            redactWords(drag.layout, wordRange(drag.layout, drag.anchor, drag.focus), []);
+            break;
+          }
+          // A click takes the word, as does a double click; a triple click
+          // takes the line, in place of what the first click made.
+          const c = clicks.current;
+          const now = performance.now();
+          const again = now - c.at < MULTI_CLICK_MS && c.line === drag.anchor.line;
+          const count = again ? c.count + 1 : 1;
+          let ids = c.ids;
+          if (count === 1) ids = redactWords(drag.layout, [drag.anchor], []);
+          else if (count === 3)
+            ids = redactWords(drag.layout, drag.layout.lines[drag.anchor.line].words, c.ids);
+          clicks.current = { count, at: now, line: drag.anchor.line, ids };
+          break;
+        }
         case "move":
           if (drag.began) s.endGesture();
           break;
@@ -812,8 +903,42 @@ export function MarkupLayer({
       }
     };
 
+    // Esc drops a text selection before it becomes redactions.
+    const onKey = (k: KeyboardEvent) => {
+      if (k.key !== "Escape" || drag.mode !== "redactText") return;
+      k.preventDefault();
+      k.stopPropagation();
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("keydown", onKey, true);
+      setDragHint(null);
+      setTextSelection(null);
+    };
+
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("keydown", onKey, true);
+  };
+
+  /**
+   * Redact `selected` words: one redaction per line, in Redact's current
+   * mode, as one undo step, replacing `previous` (a click's word when a
+   * triple click takes its line). Returns the new redactions' ids.
+   */
+  const redactWords = (
+    layout: TextLayout,
+    selected: TextWord[],
+    previous: AnnotationId[],
+  ): AnnotationId[] => {
+    const store = docStore.getState();
+    store.beginGesture();
+    if (previous.length) store.remove(previous);
+    const style = toolRedact();
+    const ids = lineRects(layout, selected).map((rect) =>
+      store.add({ kind: "redact", rect, ...style }),
+    );
+    store.endGesture();
+    return ids;
   };
 
   // Hover cursor: move over shapes, crosshair for drawing tools.
@@ -823,6 +948,13 @@ export function MarkupLayer({
     hovered.current = e.target.name();
     setCursor(hovered.current, e.evt.ctrlKey);
     setOverObject(hovered.current === "annotation" || hovered.current === "endpoint");
+    // Text redaction: show the word a click would take.
+    const word =
+      words && !e.evt.ctrlKey
+        ? wordAt(words, toSource(e.evt.clientX, e.evt.clientY), WORD_SLACK / view.current.scale)
+        : null;
+    if (word !== hoverWord) setHoverWord(word);
+    if (word) stageRef.current!.container().style.cursor = "text";
   };
 
   const onDblClick = (e: KonvaEventObject<MouseEvent>) => {
@@ -952,7 +1084,10 @@ export function MarkupLayer({
         listening={interactive}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onMouseLeave={() => setOverObject(false)}
+        onMouseLeave={() => {
+          setOverObject(false);
+          setHoverWord(null);
+        }}
         onDblClick={onDblClick}
       >
         {/* Under everything, whatever the z-order: redactions hide the image only. */}
@@ -991,6 +1126,18 @@ export function MarkupLayer({
               ))}
           </Group>
         </Layer>
+        {words && (
+          <Layer listening={false}>
+            <Group {...groupProps}>
+              <TextMarks
+                layout={words}
+                hover={textSelection ? null : hoverWord}
+                selection={textSelection}
+                scale={scale}
+              />
+            </Group>
+          </Layer>
+        )}
         <Layer>
           {/* Invisible: only the frame measures them (see `proxies`). */}
           <Group x={offset.x} y={offset.y} scaleX={scale} scaleY={scale} listening={false}>
@@ -1198,6 +1345,52 @@ export function MarkupLayer({
 }
 
 /** A just-drawn annotation smaller than this on screen was a click: drop it. */
+/**
+ * Text redaction's marks (PLAN 3J): an outline round every word found, so
+ * missed text is plain to see, and the hovered word or a drag's selection
+ * filled as the redactions it would make.
+ */
+function TextMarks({
+  layout,
+  hover,
+  selection,
+  scale,
+}: {
+  layout: TextLayout;
+  hover: TextWord | null;
+  selection: TextWord[] | null;
+  scale: number;
+}) {
+  return (
+    <Shape
+      listening={false}
+      perfectDrawEnabled={false}
+      sceneFunc={(ctx) => {
+        const c = ctx._context;
+        // One screen pixel wide, inside the box.
+        const px = 1 / scale;
+        c.lineWidth = px;
+        c.strokeStyle = WORD_OUTLINE;
+        for (const w of layout.words) {
+          const line = layout.lines[w.line];
+          c.strokeRect(
+            w.x - 1 + px / 2,
+            line.top + px / 2,
+            w.width + 2 - px,
+            line.bottom - line.top - px,
+          );
+        }
+        const fill = (words: TextWord[], color: string) => {
+          c.fillStyle = color;
+          for (const r of lineRects(layout, words)) c.fillRect(r.x, r.y, r.width, r.height);
+        };
+        if (selection?.length) fill(selection, WORD_SELECTED);
+        else if (hover) fill([hover], WORD_HOVER);
+      }}
+    />
+  );
+}
+
 function drawnBigEnough(a: Annotation, scale: number): boolean {
   if (hasRect(a)) return a.rect.width * scale >= MIN_DRAWN && a.rect.height * scale >= MIN_DRAWN;
   if (hasEndpoints(a))
