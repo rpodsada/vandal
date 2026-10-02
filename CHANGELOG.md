@@ -13,6 +13,10 @@ All notable changes to Vandal are listed here. The format follows
 
 ### Security
 
+- Redact has a new **Solid** mode that covers the area in black, and it's now the default.
+  Pixelated or blurred text can sometimes be read back with special tools, so use Solid for
+  passwords and the like. Settings › Markup › Redact warns when a pixelate block size is under
+  6 px or a blur under 3 px.
 - The notification's thumbnail of an unsaved capture is now a small copy, and Vandal deletes it
   when it quits. It used to keep a full-size copy in the temp folder indefinitely.
 

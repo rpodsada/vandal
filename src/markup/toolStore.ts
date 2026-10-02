@@ -80,7 +80,7 @@ export interface ToolState {
   /** Text: draw a box behind it, in this color (null: white until picked). */
   textBackground: boolean;
   textBackgroundColor: string | null;
-  /** Redact: pixelate or blur, and each mode's strength once picked. */
+  /** Redact: solid, pixelate or blur, and each mode's strength once picked. */
   redactMode: RedactMode;
   redactStrengths: Partial<Record<RedactMode, number>>;
   /** Rectangle and Spotlight: the corner radius once picked (PLAN 3D.17). */
@@ -140,7 +140,8 @@ export const useToolStore = create<ToolState>((set) => ({
   textItalic: false,
   textBackground: false,
   textBackgroundColor: null,
-  redactMode: "pixelate",
+  // Solid: pixelate and blur can be partly undone on text (PLAN 3I.2).
+  redactMode: "solid",
   redactStrengths: {},
   cornerRadii: {},
   spotlightShape: "rect",

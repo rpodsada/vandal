@@ -1,5 +1,8 @@
-//! Redaction (PLAN 3D.3): pixelate or blur rectangles of an image, baked into
-//! the exported pixels so nothing can be peeled off afterwards.
+//! Redaction (PLAN 3D.3, 3I.2): cover rectangles of an image with solid black,
+//! or pixelate or blur them, baked into the exported pixels so nothing can be
+//! peeled off afterwards. Pixelate and blur can be partly reversed on text at
+//! small strengths (Depix), so Solid is the default and Settings warns about
+//! weak presets; they stay allowed, for a light effect.
 //!
 //! `src/markup/redact.ts` previews with exactly the same arithmetic (integer
 //! averages, the same block grid and blur passes), so the export matches what
@@ -14,6 +17,8 @@ use crate::geometry::PhysicalRect;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum RedactMode {
+    /// Opaque black: nothing of the original survives.
+    Solid,
     Pixelate,
     Blur,
 }
@@ -25,12 +30,15 @@ pub struct Redaction {
     pub rect: PhysicalRect,
     pub mode: RedactMode,
     /// Pixelate: block size. Blur: box radius (three passes). Source px.
+    /// Solid: unused.
     pub strength: u32,
 }
 
-/// Smallest pixelate block and blur radius that still hide anything.
+/// Smallest pixelate block and blur radius that still change anything.
 const MIN_BLOCK: u32 = 2;
 const MIN_RADIUS: u32 = 1;
+/// What Solid covers with.
+const SOLID: [u8; 4] = [0, 0, 0, 255];
 /// Box blur passes (three approximate a Gaussian).
 const PASSES: usize = 3;
 
@@ -65,6 +73,7 @@ pub fn redacted(
     strength: u32,
 ) -> Vec<u8> {
     match mode {
+        RedactMode::Solid => SOLID.repeat((region.width * region.height) as usize),
         RedactMode::Pixelate => pixelate(image, region, strength.max(MIN_BLOCK)),
         RedactMode::Blur => blur(image, region, strength.max(MIN_RADIUS)),
     }
@@ -193,7 +202,7 @@ mod tests {
     fn pixelate_averages_blocks_from_the_region_corner() {
         let img = image(5, 3, |x, y| (x * 10 + y * 100) as u8);
         let region = PhysicalRect::new(1, 0, 3, 3);
-        let out = redacted(&img, region, RedactMode::Pixelate, 2);
+        let out = pixelate(&img, region, 2);
         // Blocks: x 1–2 and 3, y 0–1 and 2. Rounded means.
         assert_eq!(
             reds(&out),
@@ -206,7 +215,7 @@ mod tests {
     #[test]
     fn blur_matches_the_preview() {
         let img = image(6, 1, |x, _| if x == 2 { 255 } else { 0 });
-        let out = redacted(&img, PhysicalRect::new(0, 0, 6, 1), RedactMode::Blur, 1);
+        let out = blur(&img, PhysicalRect::new(0, 0, 6, 1), 1);
         assert_eq!(reds(&out), [38, 57, 66, 57, 28, 9]);
         // Flat channels stay flat.
         assert!(out.chunks_exact(4).all(|p| p[1..] == [10, 20, 255]));
@@ -216,7 +225,7 @@ mod tests {
     fn blur_reads_pixels_around_the_region() {
         // A bright column just outside the region still bleeds in.
         let img = image(4, 1, |x, _| if x == 0 { 255 } else { 0 });
-        let out = redacted(&img, PhysicalRect::new(1, 0, 2, 1), RedactMode::Blur, 1);
+        let out = blur(&img, PhysicalRect::new(1, 0, 2, 1), 1);
         assert_eq!(reds(&out), [85, 38]);
     }
 
@@ -249,5 +258,16 @@ mod tests {
         let region = PhysicalRect::new(0, 0, 2, 1);
         let out = redacted(&img, region, RedactMode::Pixelate, 0);
         assert_eq!(reds(&out), [50, 50]);
+        assert_eq!(
+            redacted(&img, region, RedactMode::Blur, 0),
+            blur(&img, region, MIN_RADIUS)
+        );
+    }
+
+    #[test]
+    fn solid_covers_black() {
+        let img = image(3, 2, |x, _| x as u8 * 50);
+        let out = redacted(&img, PhysicalRect::new(1, 0, 2, 2), RedactMode::Solid, 0);
+        assert_eq!(out, [0, 0, 0, 255].repeat(4));
     }
 }

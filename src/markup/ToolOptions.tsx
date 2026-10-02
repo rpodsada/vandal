@@ -87,6 +87,11 @@ const FILLS: { id: ShapeFill; label: string; icon: ReactNode }[] = [
 
 const REDACT_MODES: { id: RedactMode; label: string; icon: ReactNode }[] = [
   {
+    id: "solid",
+    label: "Solid",
+    icon: <rect x="4" y="4" width="16" height="16" className={styles.solid} />,
+  },
+  {
     id: "pixelate",
     label: "Pixelate",
     icon: (
@@ -202,6 +207,7 @@ export function ToolOptions({ compact = false }: { compact?: boolean }) {
   const values = targetValues(target, doc);
   const show = targetSections(target);
   const widthPicker = widthPickerFor(target.tool, config);
+  const strengthPicker = values.redact && strengthPickerFor(values.redact.mode, config);
   const text = values.text;
   const step = show.step ? values.step : null;
   // Rectangles, after the width, and rectangular spotlights, after the shape (PLAN 3D.17).
@@ -489,20 +495,22 @@ export function ToolOptions({ compact = false }: { compact?: boolean }) {
               </button>
             ))}
           </div>
-          <span className={styles.hintArea} {...hint("strength")}>
-            <NumberPickerControl
-              icon={values.redact.mode === "pixelate" ? BLOCK_SIZE_ICON : BLUR_RADIUS_ICON}
-              picker={strengthPickerFor(values.redact.mode, config)}
-              value={values.redact.strength}
-              unit="px"
-              label={values.redact.mode === "pixelate" ? "Block size" : "Blur radius"}
-              showKeys={hints && held.digit}
-              hints={hints}
-              onPick={(strength) => applyStyle({ strength })}
-              onDragStart={beginStyleDrag}
-              onDragEnd={endStyleDrag}
-            />
-          </span>
+          {strengthPicker && (
+            <span className={styles.hintArea} {...hint("strength")}>
+              <NumberPickerControl
+                icon={values.redact.mode === "pixelate" ? BLOCK_SIZE_ICON : BLUR_RADIUS_ICON}
+                picker={strengthPicker}
+                value={values.redact.strength}
+                unit="px"
+                label={values.redact.mode === "pixelate" ? "Block size" : "Blur radius"}
+                showKeys={hints && held.digit}
+                hints={hints}
+                onPick={(strength) => applyStyle({ strength })}
+                onDragStart={beginStyleDrag}
+                onDragEnd={endStyleDrag}
+              />
+            </span>
+          )}
         </div>
       )}
 

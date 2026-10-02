@@ -79,6 +79,8 @@ export interface NumberPickerItem extends BaseItem {
   noButtons?: boolean;
   /** Preview the values as lines of that thickness. */
   lines?: boolean;
+  /** A note under the editor while any value is below `value` (allowed, but weak). */
+  warnBelow?: { value: number; message: string };
 }
 
 /** A color palette (PLAN 2C.2): up to 10 colors in the user's order. */

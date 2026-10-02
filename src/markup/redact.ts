@@ -1,4 +1,4 @@
-// Redaction (PLAN 3D.3): the preview's pixelate and blur. Rust bakes the same
+// Redaction (PLAN 3D.3, 3I.2): the preview's solid, pixelate and blur. Rust bakes the same
 // thing into the export (`src-tauri/src/redact.rs`) with exactly this
 // arithmetic, so what you see is what you get. Change both together; the tests
 // share their cases.
@@ -7,9 +7,15 @@ import { create } from "zustand";
 import type { Redaction } from "../shared/ipc";
 import type { Doc, RedactAnnotation, RedactMode, Rect } from "./model/types";
 
-/** Smallest pixelate block and blur radius that still hide anything. */
+/**
+ * Smallest pixelate block and blur radius that still change anything. Text
+ * can often be read back well above these (Depix), so Solid is the default and
+ * Settings warns about weak presets, but they stay allowed for a light effect.
+ */
 const MIN_BLOCK = 2;
 const MIN_RADIUS = 1;
+/** What Solid covers with. */
+const SOLID = [0, 0, 0, 255];
 /** Box blur passes (three approximate a Gaussian). */
 const PASSES = 3;
 
@@ -45,8 +51,9 @@ export function redactRect(rect: Rect): PixelRect {
   };
 }
 
-/** The strength Rust gets: a whole number, at least the minimum. */
+/** The strength Rust gets: a whole number, at least the minimum. Solid has none. */
 export function redactStrength(mode: RedactMode, strength: number): number {
+  if (mode === "solid") return 0;
   return Math.max(mode === "pixelate" ? MIN_BLOCK : MIN_RADIUS, Math.round(strength));
 }
 
@@ -82,7 +89,7 @@ export function redactReads(
   const bounds = { x: 0, y: 0, width: image.width, height: image.height };
   const region = intersect(rect, bounds);
   if (!region) return null;
-  if (mode === "pixelate") return { region, reads: region };
+  if (mode !== "blur") return { region, reads: region };
   const m = redactStrength(mode, strength) * PASSES;
   const grown = {
     x: region.x - m,
@@ -105,15 +112,29 @@ export function redactPixels(
   reads: PixelRect,
 ): Uint8ClampedArray<ArrayBuffer> {
   const s = redactStrength(mode, strength);
+  if (mode === "solid") return solid(region);
   return mode === "pixelate" ? pixelate(src, region, s) : blur(src, region, s, reads);
+}
+
+function solid(region: PixelRect): Uint8ClampedArray<ArrayBuffer> {
+  const out = new Uint8ClampedArray(region.width * region.height * 4);
+  for (let i = 0; i < out.length; i += 4) out.set(SOLID, i);
+  return out;
 }
 
 function at(src: Pixels, x: number, y: number): number {
   return ((y - src.y) * src.width + (x - src.x)) * 4;
 }
 
-/** Blocks from the region's top-left, each the rounded mean of its pixels. */
-function pixelate(src: Pixels, region: PixelRect, block: number): Uint8ClampedArray<ArrayBuffer> {
+/**
+ * Blocks from the region's top-left, each the rounded mean of its pixels.
+ * Exported for the tests, which check the arithmetic below the minimum.
+ */
+export function pixelate(
+  src: Pixels,
+  region: PixelRect,
+  block: number,
+): Uint8ClampedArray<ArrayBuffer> {
   const { width: w, height: h } = region;
   const out = new Uint8ClampedArray(w * h * 4);
   const sum = [0, 0, 0, 0];
@@ -139,7 +160,7 @@ function pixelate(src: Pixels, region: PixelRect, block: number): Uint8ClampedAr
 }
 
 /** Three box-blur passes (each horizontal, then vertical) over `reads`, edges repeated. */
-function blur(
+export function blur(
   src: Pixels,
   region: PixelRect,
   radius: number,

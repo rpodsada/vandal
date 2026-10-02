@@ -42,6 +42,7 @@ export function NumberPickerSetting({ item, id, disabled }: ControlProps<NumberP
       lines={item.lines}
       zero={item.zero}
       noButtons={item.noButtons}
+      warnBelow={item.warnBelow}
       disabled={disabled}
       onChange={(p) => void set(item.path as never, p as never)}
     />
@@ -60,6 +61,8 @@ interface EditorProps {
   zero?: boolean;
   /** Offer no "Buttons" control. */
   noButtons?: boolean;
+  /** A note while any value is below `value`. */
+  warnBelow?: { value: number; message: string };
   disabled?: boolean;
   onChange: (picker: NumberPicker) => void;
 }
@@ -77,6 +80,7 @@ export function NumberPickerEditor({
   lines,
   zero = false,
   noButtons = false,
+  warnBelow,
   disabled,
   onChange,
 }: EditorProps) {
@@ -85,6 +89,8 @@ export function NumberPickerEditor({
   const [previewValue, setPreviewValue] = useState(() => valuesOf(picker)[0]);
   // The preview shows units as the options bar would.
   const showUnits = useSettingsStore((s) => s.settings?.editor.showButtonUnits ?? false);
+  const lowest = picker.control === "slider" ? picker.min : Math.min(...picker.values);
+  const warning = warnBelow && lowest < warnBelow.value ? warnBelow.message : null;
 
   const setControl = (control: PickerControl) => {
     if (picker.control !== "slider") remembered.current = picker.values;
@@ -138,6 +144,11 @@ export function NumberPickerEditor({
           onDragEnd={() => {}}
         />
       </div>
+      {warning && (
+        <p className={styles.fieldWarning} role="status">
+          {warning}
+        </p>
+      )}
     </div>
   );
 }

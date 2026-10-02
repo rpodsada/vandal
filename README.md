@@ -96,6 +96,7 @@ where every screenshot should look the same.
 
    <img src="docs/images/smartscreen-more-info.png" width="380" alt="The Windows protected your PC dialog, with the More info link highlighted">
    <img src="docs/images/smartscreen-run-anyway.png" width="380" alt="The same dialog after More info, with the Run anyway button highlighted">
+
 4. Vandal starts in the tray (bottom-right, next to the clock; it may be under the **^**
    overflow arrow). You can drag its icon onto the taskbar to keep it visible.
 5. **Vandal starts with Windows from now on**, so your capture shortcut always works. To
@@ -190,8 +191,9 @@ open, drop, paste (Ctrl+V) or capture an image into it.
   **Settings › Keyboard shortcuts**.
   - **Callout:** a text box with a pointer. Drag from what to point at to where the text goes.
     The box can be filled, outlined or an underline, and the pointer can end in an arrow or a dot.
-  - **Redact:** pixelate or blur an area. The pixels in the copied or saved image are really
-    changed.
+  - **Redact:** black out, pixelate or blur an area. The pixels in the copied or saved image
+    are really changed. Use **Solid** (the default) for text such as passwords: pixelated or
+    blurred text can sometimes be read back with special tools.
   - **Spotlight:** darken everything outside a rectangle or ellipse.
   - **Step marker:** click to place numbered (or lettered) markers that count up and renumber
     themselves.
@@ -416,7 +418,7 @@ Vandal doesn't collect usage data and doesn't make network connections.
 **Markup**
 
 - Pen, highlighter, line, arrow, rectangle, ellipse and text
-- Callouts (a text box with a pointer), redaction (pixelate or blur), spotlight and numbered
+- Callouts (a text box with a pointer), redaction (solid, pixelate or blur), spotlight and numbered
   step markers
 - Curved lines and arrows, rounded corners, and two colors with a one-key swap
 - Quick edit: draw right on the frozen screen, without opening a window

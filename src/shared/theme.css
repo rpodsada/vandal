@@ -45,6 +45,9 @@
   --error-bg: light-dark(#fde7e9, #442726);
   --error-text: light-dark(#c42b1c, #ff99a4);
   --error-border: light-dark(rgb(196 43 28 / 0.25), rgb(255 153 164 / 0.25));
+  /* Allowed but worth knowing (Windows' caution InfoBar colors). */
+  --warning-bg: light-dark(#fff4ce, #433519);
+  --warning-border: light-dark(rgb(157 93 0 / 0.3), rgb(252 225 0 / 0.25));
   /* A delete button's hover (as Windows' close button), with white on it. */
   --danger: light-dark(#c42b1c, #b02719); /* dark: 10% darker, less glaring */
   --success-text: light-dark(#0f7b0f, #6ccb5f);

@@ -122,7 +122,7 @@ function perTool<T, K extends string = never>(
   ) as Partial<Record<ToolId | K, T>>;
 }
 
-const isRedactMode = oneOf<RedactMode>("pixelate", "blur");
+const isRedactMode = oneOf<RedactMode>("solid", "pixelate", "blur");
 
 /** Each redact mode's strength, where valid. */
 function redactStrengths(v: unknown): Partial<Record<RedactMode, number>> {

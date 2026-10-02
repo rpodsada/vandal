@@ -111,7 +111,8 @@ function pickWidth(slot: number): boolean {
   }
   if (sections.redact) {
     const mode = targetValues(target, docStore.getState().doc).redact?.mode;
-    const strength = mode ? pickByDigit(strengthPickerFor(mode), slot) : null;
+    const picker = mode ? strengthPickerFor(mode) : null;
+    const strength = picker ? pickByDigit(picker, slot) : null;
     if (strength !== null) applyStyle({ strength });
     return true;
   }

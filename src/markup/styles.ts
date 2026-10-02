@@ -272,21 +272,28 @@ function isCustom(c: string | null | undefined, palette: string[]): boolean {
   return !!c && !palette.some((p) => p.toLowerCase() === c.toLowerCase());
 }
 
-/** Each redact mode's strength picker (block size, blur radius). */
-export function strengthPickerFor(mode: RedactMode, cfg = useStyleConfig.getState()): NumberPicker {
+/** Each redact mode's strength picker (block size, blur radius). Solid has none. */
+export function strengthPickerFor(
+  mode: RedactMode,
+  cfg = useStyleConfig.getState(),
+): NumberPicker | null {
+  if (mode === "solid") return null;
   return mode === "pixelate" ? cfg.styles.pixelate : cfg.styles.blur;
 }
 
 /** The strength a redaction starts with before one is picked. */
-const PREFERRED_STRENGTH: Record<RedactMode, number> = { pixelate: 10, blur: 6 };
+const PREFERRED_STRENGTH: Record<RedactMode, number> = { solid: 0, pixelate: 10, blur: 6 };
 
 /** Redact's mode and that mode's strength now. */
 export function toolRedact(mode?: RedactMode): { mode: RedactMode; strength: number } {
   const t = useToolStore.getState();
   const m = mode ?? t.redactMode;
+  const picker = strengthPickerFor(m);
   return {
     mode: m,
-    strength: t.redactStrengths[m] ?? nearestValue(strengthPickerFor(m), PREFERRED_STRENGTH[m]),
+    strength:
+      t.redactStrengths[m] ??
+      (picker ? nearestValue(picker, PREFERRED_STRENGTH[m]) : PREFERRED_STRENGTH[m]),
   };
 }
 

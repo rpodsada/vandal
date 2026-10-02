@@ -454,6 +454,12 @@ export const sections: Section[] = [
               "The block sizes the redact tool offers for Pixelate, in pixels. Bigger blocks hide more. Keys 1–9 and 0 pick them.",
             unit: "px",
             keywords: ["redact", "pixelate", "mosaic", "block", "strength", "hide", "censor"],
+            // PLAN 3I.2: allowed for a light effect, but weak on text.
+            warnBelow: {
+              value: 6,
+              message:
+                "Blocks under 6 px may not hide text: some tools can read pixelated text back. Use Solid for passwords and other secrets.",
+            },
           },
           {
             id: "styles-blur",
@@ -464,6 +470,11 @@ export const sections: Section[] = [
               "The blur radii the redact tool offers for Blur, in pixels. A bigger radius hides more. Keys 1–9 and 0 pick them.",
             unit: "px",
             keywords: ["redact", "blur", "radius", "strength", "hide", "censor"],
+            warnBelow: {
+              value: 3,
+              message:
+                "A blur under 3 px may not hide text: some tools can read blurred text back. Use Solid for passwords and other secrets.",
+            },
           },
         ],
       },

@@ -130,10 +130,11 @@ export interface TextAnnotation extends Base, TextBody {
   backgroundColor: string;
 }
 
-export type RedactMode = "pixelate" | "blur";
+export type RedactMode = "solid" | "pixelate" | "blur";
 
 /**
- * Pixelates or blurs the image under it (PLAN 3D.3). Always sits under every
+ * Covers the image under it with black, or pixelates or blurs it (PLAN 3D.3,
+ * 3I.2). Always sits under every
  * other annotation, and Rust bakes it into the exported pixels.
  */
 export interface RedactAnnotation extends Base {
@@ -141,7 +142,7 @@ export interface RedactAnnotation extends Base {
   /** Axis-aligned, no rotation. */
   rect: Rect;
   mode: RedactMode;
-  /** Pixelate: block size. Blur: radius. Source px. */
+  /** Pixelate: block size. Blur: radius. Source px. Solid: unused. */
   strength: number;
 }
 

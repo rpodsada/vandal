@@ -24,7 +24,7 @@ export const CONTROL_HINTS = {
   "tool.rect": "{rect} Draw a rectangle · [Shift] square",
   "tool.ellipse": "{ellipse} Draw an ellipse · [Shift] circle",
   "tool.text": "{text} Click to type, or drag to set a width",
-  "tool.redact": "{redact} Pixelate or blur an area · always under the other markup",
+  "tool.redact": "{redact} Black out, pixelate or blur an area · always under the other markup",
   "tool.spotlight": "{spotlight} Darken everything outside a box or ellipse",
   "tool.step": "{step} Click to place numbered or lettered markers · they count up",
   "tool.callout": "{callout} Drag from what to point at to where the text goes, or click",
@@ -56,7 +56,8 @@ export const CONTROL_HINTS = {
   customColor:
     "Your custom color · Click it again, or right-click, to change it · [Esc] in the picker puts the old one back",
   width: "[1…0] Pick a width by number",
-  "redact.mode": "Pixelate or blur · the export's pixels are really changed",
+  "redact.mode":
+    "Solid is the safe choice for text: pixelate and blur can sometimes be undone · the export's pixels are really changed",
   strength: "[1…0] Pick a strength by number",
   "spotlight.shape": "The bright area's shape",
   corner: "[Alt+1…0] Round the corners · 0 is square",
@@ -153,7 +154,7 @@ function toolHint(tool: Exclude<ToolId, "select">, twoColors: boolean): string {
     case "text":
       return `Click to type, drag to set a width · [1…0] size · [Alt+1…0] font · ${colors}`;
     case "redact":
-      return "Drag over what to hide · [1…0] strength";
+      return "Drag over what to hide · [1…0] strength (pixelate and blur)";
     case "spotlight":
       return "Drag the area to keep bright · [Shift] square or circle · [1…0] darkness · [Alt+1…0] corners";
     case "step":

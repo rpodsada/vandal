@@ -370,6 +370,15 @@
   font-size: 12px;
 }
 
+.fieldWarning {
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--warning-bg);
+  box-shadow: 0 0 0 1px var(--warning-border);
+  font-size: 12px;
+}
+
 .pickerPreview {
   display: flex;
   align-items: center;

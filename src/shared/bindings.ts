@@ -572,13 +572,18 @@ export type QuickOutcome = {
 	path: string | null,
 };
 
-export type RedactMode = "pixelate" | "blur";
+export type RedactMode = 
+/**  Opaque black: nothing of the original survives. */
+"solid" | "pixelate" | "blur";
 
 /**  One redaction, in the base image's pixels. */
 export type Redaction = {
 	rect: PhysicalRect,
 	mode: RedactMode,
-	/**  Pixelate: block size. Blur: box radius (three passes). Source px. */
+	/**
+	 *  Pixelate: block size. Blur: box radius (three passes). Source px.
+	 *  Solid: unused.
+	 */
 	strength: number,
 };
 
