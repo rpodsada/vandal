@@ -72,6 +72,50 @@ pub fn crop_rgba(image: &RgbaImage, rect: PhysicalRect) -> Option<RgbaImage> {
     })
 }
 
+/// `image` shrunk to fit in `max` × `max`, aspect kept. Each pixel averages
+/// the source pixels it covers, weighted by alpha so transparent ones don't
+/// darken the edges of a cutout. `None` if it already fits.
+pub fn shrink_to_fit(image: &RgbaImage, max: u32) -> Option<RgbaImage> {
+    let (w, h) = (image.width as u64, image.height as u64);
+    let longest = w.max(h);
+    if longest <= max as u64 || max == 0 {
+        return None;
+    }
+    let nw = (w * max as u64 / longest).max(1);
+    let nh = (h * max as u64 / longest).max(1);
+    let mut rgba = Vec::with_capacity((nw * nh * 4) as usize);
+    for dy in 0..nh {
+        let (y0, y1) = (dy * h / nh, ((dy + 1) * h / nh).max(dy * h / nh + 1));
+        for dx in 0..nw {
+            let (x0, x1) = (dx * w / nw, ((dx + 1) * w / nw).max(dx * w / nw + 1));
+            let mut sum = [0u64; 4];
+            for y in y0..y1 {
+                let row = &image.rgba[((y * w + x0) * 4) as usize..((y * w + x1) * 4) as usize];
+                for p in row.chunks_exact(4) {
+                    let a = p[3] as u64;
+                    sum[0] += p[0] as u64 * a;
+                    sum[1] += p[1] as u64 * a;
+                    sum[2] += p[2] as u64 * a;
+                    sum[3] += a;
+                }
+            }
+            let n = (y1 - y0) * (x1 - x0);
+            if sum[3] == 0 {
+                rgba.extend_from_slice(&[0, 0, 0, 0]);
+            } else {
+                let c = |s: u64| ((s + sum[3] / 2) / sum[3]) as u8;
+                let a = ((sum[3] + n / 2) / n) as u8;
+                rgba.extend_from_slice(&[c(sum[0]), c(sum[1]), c(sum[2]), a]);
+            }
+        }
+    }
+    Some(RgbaImage {
+        width: nw as u32,
+        height: nh as u32,
+        rgba,
+    })
+}
+
 fn check_size(base: &RgbaImage, layer: &[u8]) -> Result<(), String> {
     if layer.len() != base.rgba.len() {
         return Err(format!(
@@ -159,6 +203,33 @@ mod tests {
         let c = crop_rgba(&img, PhysicalRect::new(2, 1, 2, 1)).unwrap();
         assert_eq!(c.rgba, vec![9, 0, 0, 255, 0, 0, 0, 0]);
         assert!(crop_rgba(&img, PhysicalRect::new(0, 0, 0, 1)).is_none());
+    }
+
+    #[test]
+    fn shrink_to_fit_averages_and_keeps_aspect() {
+        assert!(shrink_to_fit(&image(4, 2, [0, 0, 0, 255]), 4).is_none());
+
+        // Left half black, right half white, 4×2 → 2×1.
+        let mut img = image(4, 2, [0, 0, 0, 255]);
+        for y in 0..2 {
+            for x in 2..4 {
+                let i = (y * 4 + x) * 4;
+                img.rgba[i..i + 3].copy_from_slice(&[255, 255, 255]);
+            }
+        }
+        let s = shrink_to_fit(&img, 2).unwrap();
+        assert_eq!((s.width, s.height), (2, 1));
+        assert_eq!(s.rgba, vec![0, 0, 0, 255, 255, 255, 255, 255]);
+
+        // Transparent pixels don't darken: red + transparent black → red, half alpha.
+        let mut cut = image(2, 1, [0, 0, 0, 0]);
+        cut.rgba[0..4].copy_from_slice(&[255, 0, 0, 255]);
+        let s = shrink_to_fit(&cut, 1).unwrap();
+        assert_eq!(s.rgba, vec![255, 0, 0, 128]);
+
+        // Very thin images keep at least one pixel.
+        let s = shrink_to_fit(&image(1000, 1, [9, 9, 9, 255]), 10).unwrap();
+        assert_eq!((s.width, s.height), (10, 1));
     }
 
     #[test]

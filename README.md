@@ -98,6 +98,8 @@ where every screenshot should look the same.
    <img src="docs/images/smartscreen-run-anyway.png" width="380" alt="The same dialog after More info, with the Run anyway button highlighted">
 4. Vandal starts in the tray (bottom-right, next to the clock; it may be under the **^**
    overflow arrow). You can drag its icon onto the taskbar to keep it visible.
+5. **Vandal starts with Windows from now on**, so your capture shortcut always works. To
+   turn that off, untick **Launch on login** in the tray menu (or in **Settings › General**).
 
 Vandal needs Microsoft Edge WebView2, which is part of Windows 11 and up-to-date Windows 10.
 If it's missing, the installer downloads it for you.
@@ -385,6 +387,16 @@ Taskbar › Other system tray icons**.
 
 Vandal works entirely on your PC. Captures stay in memory until you copy or save them.
 Vandal doesn't collect usage data and doesn't make network connections.
+
+- **Notification thumbnail.** Windows only shows a notification's picture from a file, so for
+  a capture you haven't saved, Vandal writes a small copy to `%TEMP%andal\last-capture.png`.
+  Each capture replaces it, and Vandal deletes it when it quits (or next time it starts, if it
+  didn't quit normally).
+- **Settings** are kept in `%APPDATA%\com.vandal.desktop\settings.json`.
+- **WebView2**, the part of Windows that draws Vandal's windows, follows Windows' own
+  diagnostic data and SmartScreen settings, as it does for every app that uses it.
+- **Launch on login** adds Vandal to your user account's startup list (it's on by default; see
+  [Install](#install)).
 
 <!-- TODO(Phase 4): once the updater exists, note that Vandal checks for updates (and what that sends),
      and add a link to a privacy policy. -->

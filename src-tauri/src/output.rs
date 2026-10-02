@@ -484,13 +484,37 @@ pub fn write_png_to(image: &RgbaImage, out: impl std::io::Write) -> Result<(), S
     writer.finish().map_err(|e| e.to_string())
 }
 
-/// A temp copy for the toast thumbnail when the capture wasn't saved.
+/// The toast thumbnail's longest side: twice the toast's width (about 364
+/// logical px), so it stays sharp at 200%.
+const PREVIEW_MAX: u32 = 728;
+
+fn preview_path() -> PathBuf {
+    std::env::temp_dir().join("vandal").join("last-capture.png")
+}
+
+/// A temp thumbnail for the toast when the capture wasn't saved. Win32 toasts
+/// only take images from files, and Action Center keeps showing it after the
+/// toast closes, so it lives until [`delete_preview`] on exit (PLAN 3I.1).
 fn write_preview(image: &RgbaImage) -> Result<PathBuf, String> {
-    let dir = std::env::temp_dir().join("vandal");
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let path = dir.join("last-capture.png");
-    write_png(image, &path)?;
+    let path = preview_path();
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    match crate::compose::shrink_to_fit(image, PREVIEW_MAX) {
+        Some(small) => write_png(&small, &path)?,
+        None => write_png(image, &path)?,
+    }
     Ok(path)
+}
+
+/// Remove the toast thumbnail: on exit, and on startup after a crash.
+pub fn delete_preview() {
+    match std::fs::remove_file(preview_path()) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
+            eprintln!("[output] couldn't delete the preview: {e}");
+        }
+        _ => {}
+    }
 }
 
 pub fn reveal_in_explorer(path: &Path) {

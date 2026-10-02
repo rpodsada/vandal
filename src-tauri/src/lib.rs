@@ -222,6 +222,8 @@ pub fn run() {
                 return Ok(());
             }
 
+            // A crash or forced shutdown skips the cleanup on exit.
+            output::delete_preview();
             hotkeys::register(app.handle(), &settings.hotkeys);
             tray::create(app.handle(), &settings)?;
             // Dev builds leave the Run key alone unless toggled from the tray.
@@ -273,13 +275,13 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
-    app.run(|_app, event| {
+    app.run(|_app, event| match event {
         // Tray-resident: no windows visible is the normal state.
-        if let RunEvent::ExitRequested {
+        RunEvent::ExitRequested {
             code: None, api, ..
-        } = event
-        {
-            api.prevent_exit();
-        }
+        } => api.prevent_exit(),
+        // Unsaved captures don't stay on disk (PLAN 3I.1).
+        RunEvent::Exit => output::delete_preview(),
+        _ => {}
     });
 }

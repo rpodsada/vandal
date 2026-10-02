@@ -11,6 +11,11 @@ All notable changes to Vandal are listed here. The format follows
 - Settings › About links to Vandal's new website, [vandalscreenshot.com](https://vandalscreenshot.com),
   as well as the GitHub page.
 
+### Security
+
+- The notification's thumbnail of an unsaved capture is now a small copy, and Vandal deletes it
+  when it quits. It used to keep a full-size copy in the temp folder indefinitely.
+
 ## [0.3.0-beta.3] - 2026-10-01
 
 ### Added
