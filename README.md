@@ -194,6 +194,13 @@ open, drop, paste (Ctrl+V) or capture an image into it.
   - **Redact:** black out, pixelate or blur an area. The pixels in the copied or saved image
     are really changed. Use **Solid** (the default) for text such as passwords: pixelated or
     blurred text can sometimes be read back with special tools.
+  - **Detect text** (in Redact's options): Vandal finds the words in the image and outlines
+    them. Click a word to redact it, triple-click for its whole line, or drag across text, as
+    you would select it in a document. Each line becomes its own redaction, in the mode you've
+    picked. Click a redaction to remove it again; Ctrl+click selects it to move or resize it.
+    Words Vandal didn't find have no outline: drag from empty space to cover them with a box.
+    It uses the text recognition built into Windows, which needs a Windows language with text
+    recognition (most come with it).
   - **Spotlight:** darken everything outside a rectangle or ellipse.
   - **Step marker:** click to place numbered (or lettered) markers that count up and renumber
     themselves.
@@ -391,9 +398,11 @@ Vandal works entirely on your PC. Captures stay in memory until you copy or save
 Vandal doesn't collect usage data and doesn't make network connections.
 
 - **Notification thumbnail.** Windows only shows a notification's picture from a file, so for
-  a capture you haven't saved, Vandal writes a small copy to `%TEMP%andal\last-capture.png`.
+  a capture you haven't saved, Vandal writes a small copy to `%TEMP%\vandal\last-capture.png`.
   Each capture replaces it, and Vandal deletes it when it quits (or next time it starts, if it
   didn't quit normally).
+- **Detect text** reads the image with the text recognition built into Windows, on your PC.
+  Nothing is sent anywhere, and the words it finds are forgotten with the image.
 - **Settings** are kept in `%APPDATA%\com.vandal.desktop\settings.json`.
 - **WebView2**, the part of Windows that draws Vandal's windows, follows Windows' own
   diagnostic data and SmartScreen settings, as it does for every app that uses it.
@@ -420,6 +429,7 @@ Vandal doesn't collect usage data and doesn't make network connections.
 - Pen, highlighter, line, arrow, rectangle, ellipse and text
 - Callouts (a text box with a pointer), redaction (solid, pixelate or blur), spotlight and numbered
   step markers
+- Detect text: select words in the image to redact them, as in a document
 - Curved lines and arrows, rounded corners, and two colors with a one-key swap
 - Quick edit: draw right on the frozen screen, without opening a window
 - Full editor with zoom, pan, undo/redo and crop that never throws pixels away

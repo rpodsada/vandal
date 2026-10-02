@@ -8,6 +8,11 @@ All notable changes to Vandal are listed here. The format follows
 
 ### Added
 
+- **Detect text** in Redact (the editor and quick edit): Vandal finds the words in the image and
+  outlines them. Click a word to redact it, triple-click for its line, or drag across text as in a
+  document; each line becomes its own redaction in the current mode. Click a redaction to remove
+  it, or Ctrl+click to select it. Text it didn't find can still be covered with a box. It uses the
+  text recognition built into Windows, on your PC.
 - Settings › About links to Vandal's new website, [vandalscreenshot.com](https://vandalscreenshot.com),
   as well as the GitHub page.
 
