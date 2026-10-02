@@ -118,6 +118,27 @@ export function lineRects(layout: TextLayout, words: TextWord[]): Rect[] {
   });
 }
 
+/**
+ * The words already redacted (PLAN 3J.4): at least half of each word's box
+ * is under `redactions` (from Detect text or drawn as boxes). Their outlines
+ * go, as there's nothing left to do with them.
+ */
+export function coveredWords(layout: TextLayout, redactions: Rect[]): Set<TextWord> {
+  const covered = new Set<TextWord>();
+  if (!redactions.length) return covered;
+  for (const w of layout.words) {
+    const area = w.width * w.height;
+    let under = 0;
+    for (const r of redactions) {
+      const dx = Math.min(w.x + w.width, r.x + r.width) - Math.max(w.x, r.x);
+      const dy = Math.min(w.y + w.height, r.y + r.height) - Math.max(w.y, r.y);
+      if (dx > 0 && dy > 0) under += dx * dy;
+    }
+    if (under * 2 >= area) covered.add(w);
+  }
+  return covered;
+}
+
 // ---------- the current image's words ----------
 
 export type TextStatus =

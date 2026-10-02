@@ -59,6 +59,7 @@ import type {
 } from "./model/types";
 import { redactPixels, redactReads, redactRect, useRedactSource } from "./redact";
 import {
+  coveredWords,
   lineRects,
   nearestWord,
   textLayout,
@@ -300,6 +301,17 @@ export function MarkupLayer({
   const redactTextOn = useToolStore((s) => s.redactText);
   const textStatus = useTextRedact((s) => s.status);
   const words = tool === "redact" && redactTextOn ? textLayout(textStatus) : null;
+  // Words already redacted lose their outlines (PLAN 3J.4).
+  const covered = useMemo(
+    () =>
+      words
+        ? coveredWords(
+            words,
+            doc.annotations.filter((a) => a.kind === "redact").map((a) => a.rect),
+          )
+        : new Set<TextWord>(),
+    [words, doc.annotations],
+  );
   const [hoverWord, setHoverWord] = useState<TextWord | null>(null);
   const [textSelection, setTextSelection] = useState<TextWord[] | null>(null);
   const clicks = useRef<{ count: number; at: number; line: number; ids: AnnotationId[] }>({
@@ -1131,6 +1143,7 @@ export function MarkupLayer({
             <Group {...groupProps}>
               <TextMarks
                 layout={words}
+                covered={covered}
                 hover={textSelection ? null : hoverWord}
                 selection={textSelection}
                 scale={scale}
@@ -1352,11 +1365,14 @@ export function MarkupLayer({
  */
 function TextMarks({
   layout,
+  covered,
   hover,
   selection,
   scale,
 }: {
   layout: TextLayout;
+  /** Already redacted: no outline unless hovered (PLAN 3J.4). */
+  covered: Set<TextWord>;
   hover: TextWord | null;
   selection: TextWord[] | null;
   scale: number;
@@ -1371,7 +1387,7 @@ function TextMarks({
         const px = 1 / scale;
         c.lineWidth = px;
         c.strokeStyle = WORD_OUTLINE;
-        for (const w of layout.words) {
+        const outline = (w: TextWord) => {
           const line = layout.lines[w.line];
           c.strokeRect(
             w.x - 1 + px / 2,
@@ -1379,12 +1395,14 @@ function TextMarks({
             w.width + 2 - px,
             line.bottom - line.top - px,
           );
-        }
+        };
+        for (const w of layout.words) if (!covered.has(w)) outline(w);
         const fill = (words: TextWord[], color: string) => {
           c.fillStyle = color;
           for (const r of lineRects(layout, words)) c.fillRect(r.x, r.y, r.width, r.height);
         };
         if (selection?.length) fill(selection, WORD_SELECTED);
+        else if (hover && covered.has(hover)) outline(hover);
         else if (hover) fill([hover], WORD_HOVER);
       }}
     />

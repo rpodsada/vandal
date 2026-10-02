@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { OcrLine } from "../shared/ipc";
-import { LINE_PAD, layoutText, lineRects, nearestWord, wordAt, wordRange } from "./textRedact";
+import {
+  LINE_PAD,
+  coveredWords,
+  layoutText,
+  lineRects,
+  nearestWord,
+  wordAt,
+  wordRange,
+} from "./textRedact";
 
 const word = (text: string, x: number, y: number, width: number, height: number) => ({
   text,
@@ -51,6 +59,19 @@ describe("text redaction", () => {
       { x: 56 - LINE_PAD, y: 10 - LINE_PAD, width: 40 + 2 * LINE_PAD, height: 12 + 2 * LINE_PAD },
       { x: 10 - LINE_PAD, y: 30 - LINE_PAD, width: 40 + 2 * LINE_PAD, height: 14 + 2 * LINE_PAD },
     ]);
+  });
+
+  it("knows which words are already redacted", () => {
+    const names = (ws: Set<{ text: string }>) => [...ws].map((w) => w.text);
+    // A line's redaction covers both its words; half of "test" is too.
+    const line = lineRects(layout, layout.words.slice(0, 2));
+    expect(names(coveredWords(layout, line))).toEqual(["Hello", "world"]);
+    expect(names(coveredWords(layout, [{ x: 36, y: 28, width: 50, height: 22 }]))).toEqual([
+      "test",
+    ]);
+    // Less than half isn't.
+    expect(coveredWords(layout, [{ x: 40, y: 28, width: 50, height: 22 }]).size).toBe(0);
+    expect(coveredWords(layout, []).size).toBe(0);
   });
 
   it("skips empty lines", () => {
