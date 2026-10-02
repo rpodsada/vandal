@@ -117,7 +117,9 @@ before the release itself (`0.3.0`). Every release must have a new, higher numbe
    builds the installer and creates a **draft** release with the installer, `SHA256SUMS.txt`
    and that version's CHANGELOG section. Tags with a `-` are marked as prereleases.
 5. Download the installer from the draft, install it over the previous version and smoke-test
-   it. Then press **Publish release** on GitHub.
+   it. Check that its SHA-256 (`Get-FileHash`) matches the draft's `SHA256SUMS.txt`, and put
+   it on the website's download dialog, which is hosted apart from GitHub, so a swapped
+   installer can't come with a matching hash. Then press **Publish release** on GitHub.
 
 If the workflow fails, fix the problem on `main`, then move the tag and push it again:
 `git tag -f -a v… -m "…"` and `git push -f origin v…`. A re-run replaces the files on an
