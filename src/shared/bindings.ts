@@ -204,6 +204,16 @@ export const commands = {
 	getToolStyles: () => __TAURI_INVOKE<string | null>("get_tool_styles"),
 	/**  Remember the tools' current styles (JSON text) for the next window. */
 	setToolStyles: (styles: string) => __TAURI_INVOKE<void>("set_tool_styles", { styles }),
+	/**
+	 *  The text in the editor's image, for redacting it (PLAN 3J): lines of
+	 *  words, in image pixels.
+	 */
+	editorRecognizeText: () => typedError<OcrLine[], OcrError>(__TAURI_INVOKE("editor_recognize_text")),
+	/**
+	 *  The text in `rect` of a capture (quick edit's selection, PLAN 3J), in
+	 *  virtual-desktop physical pixels like `rect`.
+	 */
+	quickRecognizeText: (captureId: number, rect: PhysicalRect) => typedError<OcrLine[], OcrError>(__TAURI_INVOKE("quick_recognize_text", { captureId, rect })),
 };
 
 /** Events */
@@ -443,6 +453,27 @@ export type MonitorInfo = {
  *  slider, a dropdown or buttons. Lists are kept ascending.
  */
 export type NumberPicker = { control: "slider"; min: number | null; max: number | null } | { control: "stepped"; values: (number | null)[] } | { control: "dropdown"; values: (number | null)[] } | { control: "buttons"; values: (number | null)[] };
+
+export type OcrError = 
+/**  Windows has no OCR language installed that it can use. */
+{ kind: "noLanguage" } | { kind: "failed"; message: string };
+
+/**
+ *  Words in reading order. Lines come in the engine's order, which keeps
+ *  columns together.
+ */
+export type OcrLine = {
+	words: OcrWord[],
+};
+
+/**
+ *  One recognized word, its box in the image's pixels (rounded outward, so
+ *  it covers all of the word's ink).
+ */
+export type OcrWord = {
+	text: string,
+	rect: PhysicalRect,
+};
 
 /**  Rust → overlays: a selection started on `monitor_index`; clear yours. */
 export type OverlayClearSelection = {

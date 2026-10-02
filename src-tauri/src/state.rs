@@ -13,6 +13,8 @@ pub struct AppState {
     pub capturer: Box<dyn Capturer>,
     /// Picked windows (PLAN 3H.2).
     pub window_capturer: Box<dyn WindowCapturer>,
+    /// Text in images, for text redaction (PLAN 3J).
+    pub text_recognizer: Box<dyn crate::ocr::TextRecognizer>,
     pub frames: Mutex<FrameStore>,
     /// Monitors the overlay pool was built for.
     pub monitors: RwLock<Vec<MonitorInfo>>,

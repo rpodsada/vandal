@@ -17,6 +17,7 @@ mod frames;
 mod geometry;
 mod hotkeys;
 mod monitors;
+mod ocr;
 mod output;
 mod overlay;
 mod protocol;
@@ -91,6 +92,8 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::list_fonts,
             commands::get_tool_styles,
             commands::set_tool_styles,
+            commands::editor_recognize_text,
+            commands::quick_recognize_text,
         ])
         .events(collect_events![
             session::OverlayLoad,
@@ -198,6 +201,7 @@ pub fn run() {
             app.manage(AppState {
                 capturer: Box::new(GdiCapturer),
                 window_capturer: Box::new(capture::wgc::WgcCapturer::default()),
+                text_recognizer: Box::new(ocr::winrt::WindowsOcr),
                 frames: Mutex::new(FrameStore::new(
                     settings.history.keep_frames_in_memory as usize,
                 )),

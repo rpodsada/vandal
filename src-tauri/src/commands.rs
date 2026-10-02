@@ -11,6 +11,7 @@ use crate::editor::{
 };
 use crate::frames::CaptureId;
 use crate::geometry::PhysicalRect;
+use crate::ocr::{OcrError, OcrLine};
 use crate::output;
 use crate::session::{
     self, CaptureTarget, OverlayLoad, OverlayReport, QuickAction, QuickMarkup, QuickOutcome,
@@ -443,4 +444,76 @@ pub fn get_tool_styles(app: AppHandle) -> Option<String> {
 #[specta::specta]
 pub fn set_tool_styles(app: AppHandle, styles: String) {
     crate::tool_styles::save(&app, &styles);
+}
+
+/// The text in the editor's image, for redacting it (PLAN 3J): lines of
+/// words, in image pixels.
+#[tauri::command]
+#[specta::specta]
+pub async fn editor_recognize_text(
+    app: AppHandle,
+    window: WebviewWindow,
+) -> Result<Vec<OcrLine>, OcrError> {
+    let id = crate::editor::id_from_label(window.label())
+        .ok_or_else(|| OcrError::failed("Not an editor window."))?;
+    let image = app
+        .state::<AppState>()
+        .editors
+        .lock()
+        .unwrap()
+        .image(id)
+        .ok_or_else(|| OcrError::failed("The editor has no image."))?;
+    recognize_text(app, image).await
+}
+
+/// The text in `rect` of a capture (quick edit's selection, PLAN 3J), in
+/// virtual-desktop physical pixels like `rect`.
+#[tauri::command]
+#[specta::specta]
+pub async fn quick_recognize_text(
+    app: AppHandle,
+    capture_id: CaptureId,
+    rect: PhysicalRect,
+) -> Result<Vec<OcrLine>, OcrError> {
+    let capture = app
+        .state::<AppState>()
+        .frames
+        .lock()
+        .unwrap()
+        .get(capture_id)
+        .ok_or_else(|| OcrError::failed("The capture is no longer in memory."))?;
+    let frames: Vec<&crate::capture::MonitorFrame> =
+        capture.frames.iter().map(|f| f.as_ref()).collect();
+    let image = crate::compose::compose(&frames, rect)
+        .ok_or_else(|| OcrError::failed("The selection is empty."))?;
+    let mut lines = recognize_text(app, std::sync::Arc::new(image)).await?;
+    for word in lines.iter_mut().flat_map(|l| l.words.iter_mut()) {
+        word.rect = word.rect.translate(rect.x, rect.y);
+    }
+    Ok(lines)
+}
+
+async fn recognize_text(
+    app: AppHandle,
+    image: std::sync::Arc<crate::compose::RgbaImage>,
+) -> Result<Vec<OcrLine>, OcrError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let started = std::time::Instant::now();
+        let result = state.text_recognizer.recognize(&image);
+        let words: usize = result
+            .as_ref()
+            .map(|lines| lines.iter().map(|l| l.words.len()).sum())
+            .unwrap_or(0);
+        eprintln!(
+            "[perf] ocr ({}) {}×{}: {:.1}ms, {words} words",
+            state.text_recognizer.name(),
+            image.width,
+            image.height,
+            started.elapsed().as_secs_f64() * 1000.0
+        );
+        result
+    })
+    .await
+    .map_err(OcrError::failed)?
 }
