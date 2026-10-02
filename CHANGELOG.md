@@ -6,6 +6,8 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0-beta.4] - 2026-10-02
+
 ### Added
 
 - **Detect text** in Redact (the editor and quick edit): Vandal finds the words in the image and
@@ -213,7 +215,8 @@ The first build for beta testers.
 - Copy to clipboard, auto-save with a file-name pattern, and capture notifications.
 - Searchable Settings window where changes apply immediately.
 
-[Unreleased]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.3...HEAD
+[Unreleased]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.4...HEAD
+[0.3.0-beta.4]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.3...v0.3.0-beta.4
 [0.3.0-beta.3]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.2...v0.3.0-beta.3
 [0.3.0-beta.2]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.1...v0.3.0-beta.2
 [0.3.0-beta.1]: https://github.com/rpodsada/vandal/compare/v0.2.0...v0.3.0-beta.1

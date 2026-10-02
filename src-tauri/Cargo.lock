@@ -4460,7 +4460,7 @@ dependencies = [
 
 [[package]]
 name = "vandal"
-version = "0.3.0-beta.3"
+version = "0.3.0-beta.4"
 dependencies = [
  "arboard",
  "png 0.18.1",
