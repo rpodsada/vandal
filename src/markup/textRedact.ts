@@ -139,6 +139,18 @@ export function coveredWords(layout: TextLayout, redactions: Rect[]): Set<TextWo
   return covered;
 }
 
+/**
+ * The redactions a click on `word` removes (PLAN 3J.5): every one over any
+ * of it, whole (a line's redaction, or a box drawn over several words).
+ */
+export function redactionsUnder<T extends { rect: Rect }>(word: TextWord, redactions: T[]): T[] {
+  return redactions.filter(({ rect: r }) => {
+    const dx = Math.min(word.x + word.width, r.x + r.width) - Math.max(word.x, r.x);
+    const dy = Math.min(word.y + word.height, r.y + r.height) - Math.max(word.y, r.y);
+    return dx > 0 && dy > 0;
+  });
+}
+
 // ---------- the current image's words ----------
 
 export type TextStatus =

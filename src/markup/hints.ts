@@ -132,6 +132,10 @@ const DRAG_HINTS: Record<DragHint, string> = {
 const REDACT_TEXT =
   "Drag across text to redact it · Click a word · Triple-click a line · Drag from empty space for a box";
 
+/** Over a word that's already redacted (PLAN 3J.5). */
+const UNREDACT =
+  "Click to unredact: the whole redaction outlined goes · [Ctrl] select it instead · [Ctrl+Z] undo";
+
 const PAN_ZOOM = "[Space]+drag pan · [Ctrl]+wheel zoom";
 
 /** The color keys, naming both colors only when there are two. */
@@ -215,6 +219,8 @@ export interface HintState {
   drawingToolsSelect: boolean;
   /** Redact selects text (its Detect text toggle is on and words were found). */
   redactText: boolean;
+  /** The pointer is over a word that's already redacted. */
+  overRedactedWord: boolean;
 }
 
 /** The hint to show, in the table's bracket format. */
@@ -238,6 +244,7 @@ export function chooseHint(s: HintState): string {
     if (s.selected) return SELECTED;
     return IDLE;
   }
+  if (s.tool === "redact" && s.redactText && s.overRedactedWord) return UNREDACT;
   const tool = s.tool === "redact" && s.redactText ? REDACT_TEXT : toolHint(s.tool, s.twoColors);
   if (s.tool === "pen" || s.tool === "highlighter") return tool;
   // Over an object, say what a press does and how to get the other behavior.
@@ -306,6 +313,7 @@ interface HintSources {
   drag: DragHint | null;
   mode: HostMode | null;
   overObject: boolean;
+  overRedactedWord: boolean;
 }
 
 /** What the canvas and the pointer report; the rest comes from the stores. */
@@ -314,10 +322,16 @@ export const useHintSources = create<HintSources>(() => ({
   drag: null,
   mode: null,
   overObject: false,
+  overRedactedWord: false,
 }));
 
 export function setDragHint(drag: DragHint | null): void {
   if (useHintSources.getState().drag !== drag) useHintSources.setState({ drag });
+}
+
+export function setOverRedactedWord(overRedactedWord: boolean): void {
+  if (useHintSources.getState().overRedactedWord !== overRedactedWord)
+    useHintSources.setState({ overRedactedWord });
 }
 
 export function setOverObject(overObject: boolean): void {

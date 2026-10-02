@@ -1,4 +1,4 @@
-import { setDragHint, setOverObject } from "./hints";
+import { setDragHint, setOverObject, setOverRedactedWord } from "./hints";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
@@ -62,6 +62,7 @@ import {
   coveredWords,
   lineRects,
   nearestWord,
+  redactionsUnder,
   textLayout,
   useTextRedact,
   wordAt,
@@ -186,7 +187,9 @@ type Drag =
       focus: TextWord;
       client: Point;
       moved: boolean;
-    };
+    }
+  /** Detect text: a click on a redaction removes it (PLAN 3J.5). */
+  | { mode: "unredact"; ids: AnnotationId[]; client: Point; moved: boolean };
 
 /**
  * Text redaction's marks over the image (PLAN 3J), to tune in the editor:
@@ -195,6 +198,8 @@ type Drag =
 const WORD_OUTLINE = "rgba(128, 128, 128, 0.7)";
 const WORD_HOVER = "rgba(255, 196, 0, 0.35)";
 const WORD_SELECTED = "rgba(255, 166, 0, 0.45)";
+/** Round a redaction a click would remove (PLAN 3J.5). */
+const WORD_REMOVE = "rgb(229, 72, 77)";
 /** Around a word that still counts as on it, in CSS px. */
 const WORD_SLACK = 3;
 /** Clicks closer together than this make a double or triple click. */
@@ -313,6 +318,8 @@ export function MarkupLayer({
     [words, doc.annotations],
   );
   const [hoverWord, setHoverWord] = useState<TextWord | null>(null);
+  /** With Detect text on, a redaction under the pointer away from any word. */
+  const [hoverRedaction, setHoverRedaction] = useState<AnnotationId | null>(null);
   const [textSelection, setTextSelection] = useState<TextWord[] | null>(null);
   const clicks = useRef<{ count: number; at: number; line: number; ids: AnnotationId[] }>({
     count: 0,
@@ -456,7 +463,16 @@ export function MarkupLayer({
 
     const store = docStore.getState();
     const p = toSource(ev.clientX, ev.clientY);
-    const picks = picksObjects(ev.ctrlKey);
+    // With Detect text on, redactions are marked and unmarked by clicking
+    // (PLAN 3J.5), however they were made; Ctrl+press selects one to move or
+    // resize, whatever `editor.drawingToolsSelect` says.
+    const textMode = tool === "redact" && redactTextOn;
+    const pressedRedaction =
+      textMode && e.target.name() === "annotation"
+        ? (store.doc.annotations.find((a) => a.id === e.target.id() && a.kind === "redact")?.id ??
+          null)
+        : null;
+    const picks = pressedRedaction ? ev.ctrlKey : picksObjects(ev.ctrlKey);
     const hit = picks && e.target.name() === "annotation" ? e.target.id() : null;
     const hitCallout = store.doc.annotations.find(
       (a): a is CalloutAnnotation => a.id === hit && a.kind === "callout",
@@ -470,11 +486,20 @@ export function MarkupLayer({
     if (words && pressedWord) {
       store.select([]);
       setHoverWord(null);
+      setOverRedactedWord(false);
       drag = {
         mode: "redactText",
         layout: words,
         anchor: pressedWord,
         focus: pressedWord,
+        client: { x: ev.clientX, y: ev.clientY },
+        moved: false,
+      };
+    } else if (pressedRedaction && !ev.ctrlKey) {
+      store.select([]);
+      drag = {
+        mode: "unredact",
+        ids: [pressedRedaction],
         client: { x: ev.clientX, y: ev.clientY },
         moved: false,
       };
@@ -783,6 +808,11 @@ export function MarkupLayer({
           setTextSelection(wordRange(drag.layout, drag.anchor, drag.focus));
           break;
         }
+        case "unredact":
+          // Pressed, then dragged away: not a click, so nothing goes.
+          if (Math.hypot(m.clientX - drag.client.x, m.clientY - drag.client.y) >= DRAG_THRESHOLD)
+            drag.moved = true;
+          break;
       }
     };
 
@@ -793,6 +823,14 @@ export function MarkupLayer({
       setDragHint(null);
       const s = docStore.getState();
       switch (drag.mode) {
+        case "unredact":
+          if (!drag.moved) {
+            s.beginGesture();
+            s.remove(drag.ids);
+            s.endGesture();
+            setOverRedactedWord(false);
+          }
+          break;
         case "redactText": {
           setTextSelection(null);
           if (drag.moved) {
@@ -801,13 +839,27 @@ export function MarkupLayer({
             break;
           }
           // A click takes the word, as does a double click; a triple click
-          // takes the line, in place of what the first click made.
+          // takes the line, in place of what the first click made. A fresh
+          // click on a word already redacted removes what's over it (PLAN
+          // 3J.5); the later clicks of a double or triple click never do.
           const c = clicks.current;
           const now = performance.now();
           const again = now - c.at < MULTI_CLICK_MS && c.line === drag.anchor.line;
           const count = again ? c.count + 1 : 1;
           let ids = c.ids;
-          if (count === 1) ids = redactWords(drag.layout, [drag.anchor], []);
+          const redactions = s.doc.annotations.filter(
+            (a): a is RedactAnnotation => a.kind === "redact",
+          );
+          const redacted = coveredWords(
+            drag.layout,
+            redactions.map((a) => a.rect),
+          ).has(drag.anchor);
+          if (count === 1 && redacted) {
+            s.beginGesture();
+            s.remove(redactionsUnder(drag.anchor, redactions).map((a) => a.id));
+            s.endGesture();
+            ids = [];
+          } else if (count === 1) ids = redactWords(drag.layout, [drag.anchor], []);
           else if (count === 3)
             ids = redactWords(drag.layout, drag.layout.lines[drag.anchor.line].words, c.ids);
           clicks.current = { count, at: now, line: drag.anchor.line, ids };
@@ -820,7 +872,8 @@ export function MarkupLayer({
           const a = s.doc.annotations.find((x) => x.id === drag.id);
           if (a && drawnBigEnough(a, view.current.scale)) {
             s.endGesture();
-            s.select([drag.id]);
+            // With Detect text on, a box is marked like text: not selected (PLAN 3J.5).
+            if (!textMode) s.select([drag.id]);
           } else {
             s.cancelGesture();
           }
@@ -966,7 +1019,18 @@ export function MarkupLayer({
         ? wordAt(words, toSource(e.evt.clientX, e.evt.clientY), WORD_SLACK / view.current.scale)
         : null;
     if (word !== hoverWord) setHoverWord(word);
-    if (word) stageRef.current!.container().style.cursor = "text";
+    // With Detect text on, a click removes a redacted word's redactions, or
+    // the redaction under the pointer away from any word (PLAN 3J.5).
+    const target = e.target.name() === "annotation" ? e.target.id() : null;
+    const redaction =
+      tool === "redact" && redactTextOn && !word && target
+        ? (doc.annotations.find((a) => a.id === target && a.kind === "redact")?.id ?? null)
+        : null;
+    if (redaction !== hoverRedaction) setHoverRedaction(redaction);
+    const unredacts = word ? covered.has(word) : !!redaction;
+    setOverRedactedWord(unredacts);
+    if (unredacts) stageRef.current!.container().style.cursor = "pointer";
+    else if (word) stageRef.current!.container().style.cursor = "text";
   };
 
   const onDblClick = (e: KonvaEventObject<MouseEvent>) => {
@@ -1045,6 +1109,17 @@ export function MarkupLayer({
     }
   };
 
+  /** What a click would remove where the pointer is (PLAN 3J.5), or null. */
+  const unredactPreview = (): Rect[] | null => {
+    const redactions = doc.annotations.filter((a): a is RedactAnnotation => a.kind === "redact");
+    if (hoverWord)
+      return covered.has(hoverWord)
+        ? redactionsUnder(hoverWord, redactions).map((a) => a.rect)
+        : null;
+    const under = redactions.find((a) => a.id === hoverRedaction);
+    return under ? [under.rect] : null;
+  };
+
   const crop = clip ?? doc.crop;
   const textSelected = doc.annotations.some((a) => isTextual(a) && selection.includes(a.id));
   // Several objects with text among them don't resize: scaling the group
@@ -1099,6 +1174,8 @@ export function MarkupLayer({
         onMouseLeave={() => {
           setOverObject(false);
           setHoverWord(null);
+          setHoverRedaction(null);
+          setOverRedactedWord(false);
         }}
         onDblClick={onDblClick}
       >
@@ -1138,13 +1215,14 @@ export function MarkupLayer({
               ))}
           </Group>
         </Layer>
-        {words && (
+        {tool === "redact" && redactTextOn && (
           <Layer listening={false}>
             <Group {...groupProps}>
               <TextMarks
                 layout={words}
                 covered={covered}
                 hover={textSelection ? null : hoverWord}
+                removing={textSelection ? null : unredactPreview()}
                 selection={textSelection}
                 scale={scale}
               />
@@ -1367,13 +1445,17 @@ function TextMarks({
   layout,
   covered,
   hover,
+  removing,
   selection,
   scale,
 }: {
-  layout: TextLayout;
-  /** Already redacted: no outline unless hovered (PLAN 3J.4). */
+  /** The words found, if any. */
+  layout: TextLayout | null;
+  /** Already redacted: no outline (PLAN 3J.4). */
   covered: Set<TextWord>;
   hover: TextWord | null;
+  /** What a click would remove: the redactions under the pointer (PLAN 3J.5). */
+  removing: Rect[] | null;
   selection: TextWord[] | null;
   scale: number;
 }) {
@@ -1387,23 +1469,38 @@ function TextMarks({
         const px = 1 / scale;
         c.lineWidth = px;
         c.strokeStyle = WORD_OUTLINE;
-        const outline = (w: TextWord) => {
-          const line = layout.lines[w.line];
+        for (const w of layout?.words ?? []) {
+          if (covered.has(w)) continue;
+          const line = layout!.lines[w.line];
           c.strokeRect(
             w.x - 1 + px / 2,
             line.top + px / 2,
             w.width + 2 - px,
             line.bottom - line.top - px,
           );
-        };
-        for (const w of layout.words) if (!covered.has(w)) outline(w);
+        }
         const fill = (words: TextWord[], color: string) => {
+          if (!layout) return;
           c.fillStyle = color;
           for (const r of lineRects(layout, words)) c.fillRect(r.x, r.y, r.width, r.height);
         };
         if (selection?.length) fill(selection, WORD_SELECTED);
-        else if (hover && covered.has(hover)) outline(hover);
-        else if (hover) fill([hover], WORD_HOVER);
+        else if (removing?.length) {
+          // A dashed outline round each whole redaction a click takes away,
+          // and nothing else: the click acts on the whole redaction.
+          c.save();
+          c.setLineDash([4 * px, 3 * px]);
+          c.lineWidth = 2 * px;
+          for (const r of removing) {
+            c.strokeStyle = "rgba(255, 255, 255, 0.9)";
+            c.strokeRect(r.x - px, r.y - px, r.width + 2 * px, r.height + 2 * px);
+            c.lineDashOffset = 3.5 * px;
+            c.strokeStyle = WORD_REMOVE;
+            c.strokeRect(r.x - px, r.y - px, r.width + 2 * px, r.height + 2 * px);
+            c.lineDashOffset = 0;
+          }
+          c.restore();
+        } else if (hover && !covered.has(hover)) fill([hover], WORD_HOVER);
       }}
     />
   );

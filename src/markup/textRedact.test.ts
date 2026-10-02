@@ -6,6 +6,7 @@ import {
   layoutText,
   lineRects,
   nearestWord,
+  redactionsUnder,
   wordAt,
   wordRange,
 } from "./textRedact";
@@ -72,6 +73,17 @@ describe("text redaction", () => {
     // Less than half isn't.
     expect(coveredWords(layout, [{ x: 40, y: 28, width: 50, height: 22 }]).size).toBe(0);
     expect(coveredWords(layout, []).size).toBe(0);
+  });
+
+  it("finds the redactions over a word, whole", () => {
+    const [hello, , a] = layout.words;
+    const redactions = [
+      { id: "line", rect: lineRects(layout, layout.words.slice(0, 2))[0] },
+      { id: "box", rect: { x: 0, y: 25, width: 60, height: 30 } },
+      { id: "elsewhere", rect: { x: 200, y: 0, width: 10, height: 10 } },
+    ];
+    expect(redactionsUnder(hello, redactions).map((r) => r.id)).toEqual(["line"]);
+    expect(redactionsUnder(a, redactions).map((r) => r.id)).toEqual(["box"]);
   });
 
   it("skips empty lines", () => {
