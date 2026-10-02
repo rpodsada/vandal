@@ -2,13 +2,18 @@ import { create } from "zustand";
 import {
   clampView,
   fitView,
+  fitWidthView,
   panBy,
   stepZoom,
+  topRow,
   zoomAt,
   type Point,
   type Size,
   type View,
 } from "./view";
+
+/** How the view keeps fitting when the window resizes; null once the user zooms. */
+export type FitMode = "fit" | "width";
 
 interface ViewState {
   /** Visible image size in device px (the crop). */
@@ -17,12 +22,17 @@ interface ViewState {
   viewport: Size | null;
   dpr: number;
   view: View;
-  /** Refit whenever the viewport changes, until the user zooms or pans. */
-  fitted: boolean;
+  /**
+   * Refit whenever the viewport changes, until the user zooms (or, with Fit,
+   * pans). Fit width survives scrolling down the image.
+   */
+  fitted: FitMode | null;
 
-  setImage: (image: Size) => void;
+  /** A new image, shown with Fit unless `mode` says otherwise. */
+  setImage: (image: Size, mode?: FitMode) => void;
   setViewport: (viewport: Size, dpr: number) => void;
   fit: () => void;
+  fitWidth: () => void;
   /** Zoom to `zoom` around `anchor` (CSS px in the viewport; default: its centre). */
   zoomTo: (zoom: number, anchor?: Point) => void;
   zoomStep: (dir: 1 | -1, anchor?: Point) => void;
@@ -43,18 +53,22 @@ export const useViewStore = create<ViewState>((set, get) => {
     viewport: null,
     dpr: 1,
     view: { zoom: 1, x: 0, y: 0 },
-    fitted: true,
+    fitted: "fit",
 
-    setImage: (image) => {
-      set({ image, fitted: true });
-      get().fit();
+    setImage: (image, mode = "fit") => {
+      set({ image });
+      if (mode === "width") get().fitWidth();
+      else get().fit();
     },
 
     setViewport: (viewport, dpr) => {
-      const prev = get().viewport;
+      const { viewport: prev, dpr: prevDpr } = get();
       set({ viewport, dpr });
       withGeometry((s, image) => {
-        if (s.fitted) return { view: fitView(image, viewport, dpr) };
+        if (s.fitted === "fit") return { view: fitView(image, viewport, dpr) };
+        // Keep the row at the top at the top.
+        if (s.fitted === "width")
+          return { view: fitWidthView(image, viewport, dpr, topRow(s.view, prevDpr)) };
         // Keep what was in the middle in the middle.
         const dx = prev ? (viewport.width - prev.width) / 2 : 0;
         const dy = prev ? (viewport.height - prev.height) / 2 : 0;
@@ -66,13 +80,19 @@ export const useViewStore = create<ViewState>((set, get) => {
 
     fit: () =>
       withGeometry((s, image, viewport) => ({
-        fitted: true,
+        fitted: "fit",
         view: fitView(image, viewport, s.dpr),
+      })),
+
+    fitWidth: () =>
+      withGeometry((s, image, viewport) => ({
+        fitted: "width",
+        view: fitWidthView(image, viewport, s.dpr),
       })),
 
     zoomTo: (zoom, anchor) =>
       withGeometry((s, image, viewport) => ({
-        fitted: false,
+        fitted: null,
         view: zoomAt(s.view, zoom, anchor ?? centre(viewport), image, viewport, s.dpr),
       })),
 
@@ -83,9 +103,10 @@ export const useViewStore = create<ViewState>((set, get) => {
     pan: (dx, dy) =>
       withGeometry((s, image, viewport) => {
         const view = panBy(s.view, dx, dy, image, viewport, s.dpr);
-        // Panning an image that fits changes nothing; stay fitted.
+        // Panning an image that fits changes nothing; stay fitted. Fit width
+        // fits across, so panning only scrolls down and up: it stays.
         if (view.x === s.view.x && view.y === s.view.y) return {};
-        return { fitted: false, view };
+        return { fitted: s.fitted === "width" ? "width" : null, view };
       }),
   };
 });

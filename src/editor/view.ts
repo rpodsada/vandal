@@ -43,6 +43,13 @@ export function fitZoom(image: Size, viewport: Size, dpr: number): number {
   return Math.min(1, (w * dpr) / image.width, (h * dpr) / image.height);
 }
 
+/** Like {@link fitZoom}, for the width only (a tall image then scrolls). */
+export function fitWidthZoom(image: Size, viewport: Size, dpr: number): number {
+  if (image.width <= 0 || !(dpr > 0)) return 1;
+  const w = Math.max(1, viewport.width - 2 * FIT_MARGIN);
+  return Math.min(1, (w * dpr) / image.width);
+}
+
 /** CSS size of the image at `zoom`. */
 export function displaySize(image: Size, zoom: number, dpr: number): Size {
   return { width: (image.width / dpr) * zoom, height: (image.height / dpr) * zoom };
@@ -51,6 +58,22 @@ export function displaySize(image: Size, zoom: number, dpr: number): Size {
 /** The fitted view: {@link fitZoom}, centred. */
 export function fitView(image: Size, viewport: Size, dpr: number): View {
   return clampView({ zoom: fitZoom(image, viewport, dpr), x: 0, y: 0 }, image, viewport, dpr);
+}
+
+/**
+ * Fit width: {@link fitWidthZoom}, centred across. `row` (image px) is the row
+ * to put at the top: 0, the top of the image, by default; a refit after a
+ * resize passes the row that was there.
+ */
+export function fitWidthView(image: Size, viewport: Size, dpr: number, row = 0): View {
+  const zoom = fitWidthZoom(image, viewport, dpr);
+  const y = FIT_MARGIN - (row / dpr) * zoom;
+  return clampView({ zoom, x: 0, y }, image, viewport, dpr);
+}
+
+/** The image row (image px) at the top of the viewport's fit margin. */
+export function topRow(view: View, dpr: number): number {
+  return Math.max(0, ((FIT_MARGIN - view.y) / view.zoom) * dpr);
 }
 
 /**
