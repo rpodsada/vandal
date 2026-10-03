@@ -283,7 +283,7 @@ Capture notifications have buttons to **Edit**, **Save**, or **Open folder** (af
 ## Browser extension
 
 **Vandal Screen Capture** captures web pages from inside the browser: the visible area, a
-region, or the whole page from top to bottom. Copy or save the capture right there, or 
+region, or the whole page from top to bottom. Copy or save the capture right there, or
 open it in Vandal's editor to mark it up.
 
 <!-- TODO(PLAN 3N.10): the store link, once the listing is approved. -->
