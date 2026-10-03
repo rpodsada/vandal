@@ -12,6 +12,13 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
+/** Decode a data: URL without fetch, which a page's CSP can block. */
+export function dataUrlToBlob(url: string): Blob {
+  const [head, data] = url.split(",", 2);
+  const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+  return new Blob([bytes], { type: head.slice(5).split(";")[0] });
+}
+
 /** A custom element in the top layer with a closed shadow root, so page
  *  styles and z-indexes can't reach it. `css` is its inline position. */
 export function topLayerHost(tag: string, css: string): { host: HTMLElement; root: ShadowRoot } {

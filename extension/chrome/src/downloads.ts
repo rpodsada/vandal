@@ -58,20 +58,52 @@ function finished(id: number): Promise<chrome.downloads.DownloadItem | undefined
   });
 }
 
-/** The result tab's URL for a capture, with an optional message to show. */
-export function resultUrl(id: string, message?: string): string {
-  const hash = message ? `${id}&msg=${encodeURIComponent(message)}` : id;
-  return chrome.runtime.getURL(`result.html#${hash}`);
+/** What the result tab shows besides the capture: an error (a copy or save
+ *  that failed) and a note (e.g. a full page cut at the size limit). */
+export interface ResultExtras {
+  error?: string;
+  note?: string;
+}
+
+/** The result tab's URL for a capture: `result.html#<id>&error=…&note=…`. */
+export function resultUrl(id: string, extras: ResultExtras = {}): string {
+  const params = new URLSearchParams();
+  if (extras.error) params.set("error", extras.error);
+  if (extras.note) params.set("note", extras.note);
+  const query = params.toString();
+  return chrome.runtime.getURL(`result.html#${id}${query ? `&${query}` : ""}`);
 }
 
 /** Open the result tab next to the captured tab. */
-export async function openResult(tab: chrome.tabs.Tab, id: string, message?: string) {
+export async function openResult(tab: chrome.tabs.Tab, id: string, extras?: ResultExtras) {
   await chrome.tabs.create({
-    url: resultUrl(id, message),
+    url: resultUrl(id, extras),
     index: tab.index + 1,
     openerTabId: tab.id,
     windowId: tab.windowId,
   });
+}
+
+/** Animated dots on the toolbar icon while a full page is captured, and a
+ *  tooltip saying how to stop. `stop()` puts the icon back. */
+export function showBusy(tabId: number): { stop: () => Promise<void> } {
+  let dots = 0;
+  const tick = () => {
+    dots = (dots % 3) + 1;
+    void chrome.action.setBadgeText({ text: "•".repeat(dots), tabId }).catch(() => {});
+  };
+  void chrome.action.setBadgeBackgroundColor({ color: "#4c8dff", tabId });
+  void chrome.action.setBadgeTextColor({ color: "#ffffff", tabId });
+  void chrome.action.setTitle({ title: "Capturing the full page… Press Esc to stop", tabId });
+  tick();
+  const timer = setInterval(tick, 400);
+  return {
+    async stop() {
+      clearInterval(timer);
+      await chrome.action.setBadgeText({ text: "", tabId }).catch(() => {});
+      await chrome.action.setTitle({ title: "Vandal", tabId }).catch(() => {});
+    },
+  };
 }
 
 /** A ✓ on the toolbar icon for a moment: the capture was copied or saved. */

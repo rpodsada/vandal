@@ -161,7 +161,7 @@ body.popup {
 /* Result tab */
 body.result {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
   height: 100vh;
 }
 .rt-bar {
@@ -211,8 +211,16 @@ body.result {
   flex-wrap: wrap;
   gap: 6px;
 }
+.notice {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--warning-border);
+  background: var(--warning-bg);
+  font-size: 13px;
+}
 .stage {
   overflow: auto;
+  /* The scrollbar coming and going would change the width the image fits. */
+  scrollbar-gutter: stable;
   padding: 24px 24px 72px;
   background: var(--canvas);
   text-align: center;

@@ -14,6 +14,7 @@ const msg = $<HTMLParagraphElement>("msg");
 const actions: [CaptureKind, HTMLButtonElement][] = [
   ["visible", $<HTMLButtonElement>("visible")],
   ["region", $<HTMLButtonElement>("region")],
+  ["full", $<HTMLButtonElement>("full")],
 ];
 const afterBtn = $<HTMLButtonElement>("afterBtn");
 const afterMenu = $<HTMLDivElement>("afterMenu");
@@ -104,7 +105,7 @@ async function capture(kind: CaptureKind) {
     } catch (e) {
       // Keep the capture: open it with the reason, so it can be copied there.
       const error = e instanceof Error ? e.message : String(e);
-      await openResult(tab, response.id, `Couldn't copy: ${error}`);
+      await openResult(tab, response.id, { error: `Couldn't copy: ${error}` });
     }
   }
   // The region overlay, the result tab or the page's toast take over.

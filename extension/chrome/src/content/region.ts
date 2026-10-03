@@ -4,7 +4,7 @@
 // page's CSP can block data: and blob: images.
 
 import type { RegionDone, RegionStart } from "../messages";
-import { el, showHost, topLayerHost } from "./dom";
+import { dataUrlToBlob, el, showHost, topLayerHost } from "./dom";
 import css from "./region.css?inline";
 import { type Handle, type Rect, fromPoints, growBy, moveBy, resizeBy, toImage } from "./rect";
 import { showToast } from "./toast";
@@ -12,12 +12,6 @@ import { showToast } from "./toast";
 /** A drag shorter than this (CSS px) is a click, not a selection. */
 const MIN_DRAG = 4;
 const HANDLES: Handle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
-
-function dataUrlToBlob(url: string): Blob {
-  const [head, data] = url.split(",", 2);
-  const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
-  return new Blob([bytes], { type: head.slice(5).split(";")[0] });
-}
 
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {

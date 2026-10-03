@@ -18,6 +18,7 @@ const SAMPLE = { title: "Example page title", url: "https://example.com/" };
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const after = $<HTMLSelectElement>("afterCapture");
 const saveAs = $<HTMLButtonElement>("saveAs");
+const hideFixed = $<HTMLButtonElement>("hideFixed");
 const template = $<HTMLInputElement>("template");
 const reset = $<HTMLButtonElement>("resetTemplate");
 
@@ -29,6 +30,7 @@ for (const { value, label } of AFTER_CAPTURE) after.add(new Option(label, value)
 function fill(s: Settings) {
   after.value = s.afterCapture;
   saveAs.setAttribute("aria-checked", String(s.saveAs));
+  hideFixed.setAttribute("aria-checked", String(s.hideFixed));
   template.value = s.template;
   preview();
 }
@@ -50,11 +52,16 @@ function saveSoon(changes: Partial<Settings>) {
 after.addEventListener("change", () => {
   void setSettings({ afterCapture: after.value as AfterCapture });
 });
-saveAs.addEventListener("click", () => {
-  const on = saveAs.getAttribute("aria-checked") !== "true";
-  saveAs.setAttribute("aria-checked", String(on));
-  void setSettings({ saveAs: on });
-});
+/** A switch saves its setting on every flip. */
+function bindSwitch(button: HTMLButtonElement, key: "saveAs" | "hideFixed") {
+  button.addEventListener("click", () => {
+    const on = button.getAttribute("aria-checked") !== "true";
+    button.setAttribute("aria-checked", String(on));
+    void setSettings({ [key]: on });
+  });
+}
+bindSwitch(saveAs, "saveAs");
+bindSwitch(hideFixed, "hideFixed");
 template.addEventListener("input", () => {
   preview();
   saveSoon({ template: template.value });

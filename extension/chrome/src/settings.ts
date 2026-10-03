@@ -18,12 +18,15 @@ export interface Settings {
    *  settings decide: its download folder, or asking for each file. */
   saveAs: boolean;
   template: string;
+  /** Full page: show sticky and fixed elements once, not on every screen. */
+  hideFixed: boolean;
 }
 
 export const DEFAULTS: Settings = {
   afterCapture: "result",
   saveAs: false,
   template: DEFAULT_TEMPLATE,
+  hideFixed: true,
 };
 
 export async function getSettings(): Promise<Settings> {

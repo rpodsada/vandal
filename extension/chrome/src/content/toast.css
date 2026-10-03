@@ -46,6 +46,14 @@ svg {
   stroke-linejoin: round;
 }
 
+.error span {
+  white-space: normal;
+}
+.error svg {
+  background: #ff6b6b;
+  stroke: #2a0b0b;
+}
+
 @keyframes in {
   from {
     opacity: 0;

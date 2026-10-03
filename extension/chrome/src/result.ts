@@ -1,6 +1,6 @@
 // The result tab (PLAN 3N): a preview of one capture with Copy, Save and
 // Save as. The URL hash is the capture's id (the image is in IndexedDB),
-// optionally with `&msg=` for an error to show (downloads.ts resultUrl).
+// optionally with `&error=` and `&note=` to show (downloads.ts resultUrl).
 
 import { captureName, saveImage } from "./downloads";
 import { usesNumber } from "./filename";
@@ -25,7 +25,9 @@ const buttons = [
 ];
 
 const [captureId, query] = location.hash.slice(1).split("&", 2);
-const message = new URLSearchParams(query).get("msg");
+const extras = new URLSearchParams(query);
+const errorText = extras.get("error");
+const note = extras.get("note");
 const capture = await getCapture(captureId);
 if (!capture) {
   $("gone").hidden = false;
@@ -37,7 +39,11 @@ if (!capture) {
   let number = await nextNumber();
   const name = () => captureName(capture, settings.template, number);
   nameInput.value = name();
-  if (message) toast(message, [], "error");
+  if (errorText) toast(errorText, [], "error");
+  if (note) {
+    $("note").textContent = note;
+    $("note").hidden = false;
+  }
   document.title = capture.title ? `Capture · ${capture.title}` : "Capture";
 
   const fmt = new Intl.NumberFormat();
@@ -50,7 +56,9 @@ if (!capture) {
   shot.hidden = false;
   const tall = capture.height / devicePixelRatio > 2 * stage.clientHeight;
   setZoom(tall ? "width" : "fit");
-  new ResizeObserver(layout).observe(stage);
+  // Next frame: resizing the image inside the callback can change the stage's
+  // scrollbar and so its size, which Chrome reports as a ResizeObserver loop.
+  new ResizeObserver(() => requestAnimationFrame(layout)).observe(stage);
   $("zoom").addEventListener("click", (e) => {
     const zoom = (e.target as HTMLElement).closest<HTMLElement>("[data-zoom]")?.dataset.zoom;
     if (zoom) setZoom(zoom as Zoom);
@@ -120,7 +128,8 @@ function layout() {
   if (zoom === "width") width = Math.min(actual, availW);
   else if (zoom === "fit")
     width = Math.min(actual, availW, (availH * capture.width) / capture.height);
-  shot.style.width = `${Math.max(1, Math.floor(width))}px`;
+  const px = `${Math.max(1, Math.floor(width))}px`;
+  if (shot.style.width !== px) shot.style.width = px;
 }
 
 interface ToastAction {
