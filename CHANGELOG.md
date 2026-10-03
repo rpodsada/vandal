@@ -27,6 +27,8 @@ All notable changes to Vandal are listed here. The format follows
   had no key until now.
 - **Alt+Up and Alt+Down step through the fonts**, wrapping around at the ends, for text,
   callouts and step markers, including while you type.
+- **Shift while selecting an area**: drawing makes a square, a corner keeps the area's
+  proportions, and moving goes only across or up and down, as in the editor.
 
 ### Fixed
 

@@ -1,6 +1,8 @@
 // Selection geometry for one overlay, in monitor-local *physical* pixels
 // (integers). Pure functions so the interaction logic is unit-testable.
 
+import { dragCrop, drawCrop, type Handle } from "../editor/cropGeometry";
+
 export interface Point {
   x: number;
   y: number;
@@ -84,6 +86,45 @@ export function resizeRect(rect: Rect, edges: Edges, dx: number, dy: number, bou
     else top = bottom - 1;
   }
   return fromEdges(left, top, right, bottom);
+}
+
+/** A square dragged from `anchor` toward `current` (Shift, PLAN 3O.2), as the editor's crop draws one. */
+export function squareFromDrag(anchor: Point, current: Point, bounds: Size): Rect {
+  // From the anchor pixel's far side to the current pixel's, so the square
+  // covers both, as `rectFromDrag` does.
+  const a = clampPoint(anchor, bounds);
+  const b = clampPoint(current, bounds);
+  const right = b.x >= a.x;
+  const down = b.y >= a.y;
+  return drawCrop(
+    { x: right ? a.x : a.x + 1, y: down ? a.y : a.y + 1 },
+    { x: right ? b.x + 1 : b.x, y: down ? b.y + 1 : b.y },
+    bounds,
+    1,
+  );
+}
+
+/**
+ * Drag a corner by (dx, dy) keeping the rect's proportions (Shift, PLAN
+ * 3O.2), as the editor's crop does: the opposite corner stays put, and it
+ * shrinks rather than leave the monitor. An edge resizes freely.
+ */
+export function resizeKeepingShape(
+  rect: Rect,
+  edges: Edges,
+  dx: number,
+  dy: number,
+  bounds: Size,
+): Rect {
+  const corner = cornerOf(edges);
+  if (!corner) return resizeRect(rect, edges, dx, dy, bounds);
+  return dragCrop(rect, corner, dx, dy, bounds, rect.width / rect.height);
+}
+
+function cornerOf(e: Edges): Handle | null {
+  if ((e.left || e.right) && (e.top || e.bottom))
+    return `${e.top ? "n" : "s"}${e.left ? "w" : "e"}` as Handle;
+  return null;
 }
 
 /**

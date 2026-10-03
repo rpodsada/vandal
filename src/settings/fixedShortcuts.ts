@@ -42,6 +42,10 @@ export const QUICK_EDIT_KEYS: KeyEntry[] = [
   { keys: ["A"], what: "Capture all screens (before selecting)" },
   { keys: ["←↑↓→"], what: "Move the area, with nothing selected (with Shift: 10 px)" },
   { keys: ["Ctrl+←↑↓→"], what: "Resize the area from its bottom-right corner" },
+  {
+    keys: ["Shift+drag"],
+    what: "A square area, its proportions from a corner, or straight moves",
+  },
   { keys: ["Enter"], what: "Done" },
   { keys: ["Ctrl+E"], what: "Open in the editor" },
   { keys: ["Esc"], what: "Exit" },

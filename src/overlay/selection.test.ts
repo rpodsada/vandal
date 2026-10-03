@@ -6,7 +6,9 @@ import {
   hitTest,
   moveRect,
   rectFromDrag,
+  resizeKeepingShape,
   resizeRect,
+  squareFromDrag,
   type Edges,
 } from "./selection";
 
@@ -93,6 +95,60 @@ describe("resizeRect", () => {
       y: 0,
       width: 90,
       height: 20,
+    });
+  });
+});
+
+describe("squareFromDrag", () => {
+  it("is a square toward the pointer, covering both pixels like a plain drag", () => {
+    expect(squareFromDrag({ x: 10, y: 10 }, { x: 29, y: 14 }, bounds)).toEqual({
+      x: 10,
+      y: 10,
+      width: 20,
+      height: 20,
+    });
+    expect(squareFromDrag({ x: 40, y: 30 }, { x: 31, y: 21 }, bounds)).toEqual({
+      x: 31,
+      y: 21,
+      width: 10,
+      height: 10,
+    });
+  });
+
+  it("shrinks rather than leave the monitor", () => {
+    // 60 wide toward the right, but only 40 px below the anchor.
+    expect(squareFromDrag({ x: 10, y: 10 }, { x: 69, y: 20 }, bounds)).toEqual({
+      x: 10,
+      y: 10,
+      width: 40,
+      height: 40,
+    });
+  });
+});
+
+describe("resizeKeepingShape", () => {
+  const r = { x: 10, y: 10, width: 40, height: 20 };
+
+  it("keeps a corner drag's proportions, the opposite corner still", () => {
+    expect(resizeKeepingShape(r, edges({ right: true, bottom: true }), 20, 0, bounds)).toEqual({
+      x: 10,
+      y: 10,
+      width: 60,
+      height: 30,
+    });
+    expect(resizeKeepingShape(r, edges({ left: true, top: true }), 0, -6, bounds)).toEqual({
+      // 52 × 26 wouldn't fit left of x 50, so 50 × 25.
+      x: 0,
+      y: 5,
+      width: 50,
+      height: 25,
+    });
+  });
+
+  it("resizes an edge freely", () => {
+    expect(resizeKeepingShape(r, edges({ right: true }), 10, 0, bounds)).toEqual({
+      ...r,
+      width: 50,
     });
   });
 });

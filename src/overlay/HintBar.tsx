@@ -37,6 +37,7 @@ export function HintBar({ picking, hasSelection, quick, atBottom, screens }: Pro
         <>
           <Hint keys={["Enter"]} label="capture" />
           <Hint keys={["Drag"]} label="adjust" />
+          <Hint keys={["Shift"]} label="keep shape" />
           <Hint keys={["←↑↓→"]} label="nudge" />
           <Hint keys={["Ctrl", "←↑↓→"]} label="resize" />
           <Hint keys={["Esc"]} label="cancel" />
@@ -44,6 +45,7 @@ export function HintBar({ picking, hasSelection, quick, atBottom, screens }: Pro
       ) : (
         <>
           <Hint keys={["Drag"]} label="select area" />
+          <Hint keys={["Shift"]} label="square" />
           <Hint keys={["W"]} label="window" />
           <Hint keys={["F"]} label="this screen" />
           {screens > 1 && <Hint keys={["A"]} label="all screens" />}

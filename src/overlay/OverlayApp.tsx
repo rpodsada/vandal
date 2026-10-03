@@ -38,7 +38,9 @@ import {
   hitTest,
   moveRect,
   rectFromDrag,
+  resizeKeepingShape,
   resizeRect,
+  squareFromDrag,
   type Edges,
   type Point,
   type Rect,
@@ -476,16 +478,35 @@ export function OverlayApp() {
           Math.abs(p.y - drag.anchor.y) >= threshold;
         if (moved) {
           if (!drag.moved) setDrag({ ...drag, moved: true });
-          setSelection(rectFromDrag(drag.anchor, p, size));
+          // Shift: a square (PLAN 3O.2).
+          setSelection(
+            e.shiftKey ? squareFromDrag(drag.anchor, p, size) : rectFromDrag(drag.anchor, p, size),
+          );
         }
         break;
       }
-      case "move":
-        setSelection(moveRect(drag.orig, p.x - drag.start.x, p.y - drag.start.y, size));
-        break;
-      case "resize":
+      case "move": {
+        // Shift: only across or up and down, as markup moves (PLAN 3O.2).
+        const dx = p.x - drag.start.x;
+        const dy = p.y - drag.start.y;
+        const across = Math.abs(dx) >= Math.abs(dy);
         setSelection(
-          resizeRect(drag.orig, drag.edges, p.x - drag.start.x, p.y - drag.start.y, size),
+          e.shiftKey
+            ? moveRect(drag.orig, across ? dx : 0, across ? 0 : dy, size)
+            : moveRect(drag.orig, dx, dy, size),
+        );
+        break;
+      }
+      case "resize":
+        // Shift keeps a corner drag's proportions (PLAN 3O.2).
+        setSelection(
+          (e.shiftKey ? resizeKeepingShape : resizeRect)(
+            drag.orig,
+            drag.edges,
+            p.x - drag.start.x,
+            p.y - drag.start.y,
+            size,
+          ),
         );
         break;
     }
