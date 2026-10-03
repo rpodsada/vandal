@@ -1,6 +1,7 @@
 # Builds the Windows installer (PLAN 3C.2).
 #
-# - Push a version tag (v0.3.0-beta.1): run the checks, build, and create a
+# - Push a version tag (v0.3.0-beta.1): run the dependency audit and the checks,
+#   build, and create a
 #   *draft* GitHub release with the installer, a checksum and the CHANGELOG
 #   notes. Richard installs it, then publishes it by hand.
 # - Run it by hand (Actions > Release > Run workflow): the same checks and
@@ -26,7 +27,14 @@ concurrency:
   group: release-${{ github.ref }}
 
 jobs:
+  # Known advisories in what we ship block the release (security.yml, PLAN 3I.4).
+  security:
+    uses: ./.github/workflows/security.yml
+    permissions:
+      contents: read
+
   build:
+    needs: security
     runs-on: windows-latest
     timeout-minutes: 60
     defaults:

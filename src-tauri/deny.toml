@@ -1,0 +1,18 @@
+# cargo-deny: known advisories and crate sources (PLAN 3I.4).
+# Run: npm run security (or cargo deny check advisories sources, from here).
+
+[graph]
+# Vandal only ships for Windows. Without this, Linux-only crates under Tauri's
+# gtk backend (glib, proc-macro-error) raise advisories for code we never build.
+targets = ["x86_64-pc-windows-msvc"]
+
+[advisories]
+# Every ignore needs a reason, and is re-checked when the crate that pulls it in updates.
+ignore = [
+  { id = "RUSTSEC-2024-0436", reason = "paste is unmaintained, not vulnerable: a compile-time macro used by specta, no runtime code (security.md I2)" },
+]
+# Yanked crates (default: warn) don't fail the check; update them once a fix is a week old.
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

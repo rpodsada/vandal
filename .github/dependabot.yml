@@ -1,0 +1,15 @@
+# Keeps the workflows' pinned action SHAs current (PLAN 3I.4). npm and cargo get
+# Dependabot security updates from the repo settings; version bumps there stay manual
+# (DEVELOPMENT.md › Dependencies).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # The same week-old rule as .npmrc's min-release-age.
+    cooldown:
+      default-days: 7
+    ignore:
+      # Pinned with the toolchain version (release.yml); bumped together, on purpose.
+      - dependency-name: dtolnay/rust-toolchain

@@ -31,7 +31,10 @@ installed app to take marketing screenshots or run end-to-end checks; its `CLAUD
   are generated into `src/shared/bindings.ts` on every debug run (commit it). Frontend calls go
   through `src/shared/ipc.ts`, never raw `invoke` strings.
 - Tauri capabilities are minimal and per-window. Overlays get no filesystem access.
-- New dependencies need a short justification in the commit message.
+- New dependencies follow `DEVELOPMENT.md` › Dependencies: check a package when the feature
+  is planned (advisories, maintenance, owner, a week old), not after it's built; the commit
+  message says why we need it and that it was checked. An `npm install` that hangs means the
+  version is under `.npmrc`'s 7-day minimum.
 - If the plan turns out to be wrong, update `internal/PLAN.md` at the same time (committed in
   `internal/`) and add to `internal/decisions.md`.
 - Small, focused commits that explain _why_.
@@ -42,6 +45,7 @@ installed app to take marketing screenshots or run end-to-end checks; its `CLAUD
 cd src-tauri && cargo fmt && cargo clippy --all-targets -- -D warnings && cargo test
 npm run lint && npm test && npx tsc --noEmit
 npm run ext:build   # if extension/ changed (browser extension, PLAN 3N)
+npm run security    # if dependencies or lockfiles changed (npm audit + cargo deny)
 npm run tauri:dev   # smoke run (dev identity; coexists with an installed copy)
 ```
 

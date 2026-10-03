@@ -1,0 +1,42 @@
+# Checks dependencies for known vulnerabilities and unexpected sources (PLAN 3I.4).
+#
+# Runs on pushes to main and pull requests (Dependabot's included), weekly so a new
+# advisory against something we already ship turns up without a push, by hand, and
+# from release.yml before it builds.
+#
+# Actions are pinned to full commit SHAs (the tag is in the comment); Dependabot bumps them.
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      # Only what ships in the app: dev tooling (ESLint, Vite...) never reaches users.
+      - name: npm audit
+        run: npm audit --omit=dev
+
+      # Advisories (RustSec) and sources (crates.io only); ignores and reasons in src-tauri/deny.toml.
+      - name: cargo deny
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          manifest-path: src-tauri/Cargo.toml
+          command: check advisories sources

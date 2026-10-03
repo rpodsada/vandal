@@ -12,8 +12,10 @@ editor and Settings windows.
   hotkeys need the real desktop.
 - Rust stable (`x86_64-pc-windows-msvc`) and Visual Studio Build Tools with the "Desktop
   development with C++" workload.
-- Node LTS and npm. Run Node tooling from PowerShell. On this machine, Git Bash puts an old
-  Node 16 first on PATH.
+- Node LTS and npm 11.12 or later (for `.npmrc`'s `min-release-age` and `allow-git`). Run Node
+  tooling from PowerShell. On this machine, Git Bash puts an old Node 16 first on PATH.
+- `cargo-deny`, for `npm run security`: `cargo install --locked cargo-deny` (a couple of
+  minutes, once).
 - Ideally two monitors with different scaling, one to the left of or above the primary, so
   negative coordinates get exercised.
 
@@ -36,7 +38,46 @@ Run all of these before calling a change done:
 cd src-tauri; cargo fmt; cargo clippy --all-targets -- -D warnings; cargo test; cd ..
 npm run lint; npm test; npx tsc --noEmit
 npm run ext:build   # if extension/ changed: type-checks and builds the browser extension
+npm run security    # known advisories (npm audit, cargo deny); a few seconds
 ```
+
+## Dependencies
+
+Every package we add can run code on our machines, in CI and in users' hands, so new ones get
+checked before they're used. `.npmrc` and `src-tauri/deny.toml` enforce part of this; the
+**Security** workflow (`.github/workflows/security.yml`) runs `npm run security`'s checks on every
+push to `main`, every pull request, weekly, and before every release build.
+
+**Before adding or upgrading a package** (npm or cargo):
+
+- **Check it while planning the feature, not after building it.** A package that fails here
+  means choosing another before any code depends on it.
+- **Advisories:** search the [GitHub Advisory Database](https://github.com/advisories) and, for
+  crates, [RustSec](https://rustsec.org/advisories/).
+- **Maintenance and owner:** recent releases, an active repository, and the same owner as before.
+  A package that changed hands recently is a reason to wait or look elsewhere.
+- **Prefer what we already have.** Many Windows features only need another feature flag on the
+  `windows` crate, not a new crate.
+- **Age:** don't take a version published in the last 7 days. npm enforces this
+  (`min-release-age`): ranges and `@latest` quietly pick the newest version that's a week old.
+  **If `npm install pkg@<exact version>` hangs, the version is probably too new**: npm 11.12 loops
+  instead of failing. Wait, or, if the fix is needed now, add `--min-release-age=0` to that one
+  command and say why in the commit.
+- **Review the lockfile diff** (`package-lock.json`, `src-tauri/Cargo.lock`): new transitive
+  packages, git or non-registry sources, install scripts (`"hasInstallScript": true`).
+- **Note the check in the commit message**, next to why we need the package.
+
+`.npmrc` also turns off install scripts (`ignore-scripts`; no dependency needs one) and git
+dependencies (`allow-git=none`). If a package ever needs its install script, that's a decision
+to record, not a reason to turn the setting off.
+
+**When the Security workflow fails** with nothing changed on our side, a new advisory has been
+published against something we use. Upgrade it (once the fix is a week old), or, if it doesn't
+apply to Vandal, add it to `ignore` in `src-tauri/deny.toml` with the reason. Yanked crates only
+warn: run `cargo update -p <crate>` once the replacement is a week old.
+
+Dependabot bumps the workflows' pinned action SHAs weekly and, with security updates on, opens
+PRs for vulnerable npm and cargo packages. Review them like any other dependency change.
 
 ## Browser extension
 
@@ -121,7 +162,12 @@ before the release itself (`0.3.0`). Every release must have a new, higher numbe
   `beta10` sorts as text, before `beta9`.
 
 1. As you work, add changes under `## [Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md).
-2. Bump the version:
+2. Before bumping, check security:
+   - `npm run security` passes (the release workflow runs it too and won't build if it fails).
+   - Tauri's [security advisories](https://github.com/tauri-apps/tauri/security/advisories)
+     have nothing new for Tauri or the plugins we use. Plugins we don't use (the updater, HTTP)
+     don't matter until we add them, and then they need a check.
+3. Bump the version:
 
    ```powershell
    npm run release:bump -- 0.3.0-beta.2
@@ -132,7 +178,7 @@ before the release itself (`0.3.0`). Every release must have a new, higher numbe
    higher than the current one (the updater only offers higher versions), and it refuses an
    empty `[Unreleased]`.
 
-3. Commit, tag and push. The bump prints the exact commands:
+4. Commit, tag and push. The bump prints the exact commands:
 
    ```powershell
    git commit -am "Release v0.3.0-beta.2"
@@ -140,13 +186,13 @@ before the release itself (`0.3.0`). Every release must have a new, higher numbe
    git push origin main v0.3.0-beta.2
    ```
 
-4. The tag starts the **Release** workflow (`.github/workflows/release.yml`). It checks that the
-   tag matches the version files and has CHANGELOG notes, and runs the full checks. Then it
-   builds the installer, attests its build provenance (signed by GitHub, checked with
+5. The tag starts the **Release** workflow (`.github/workflows/release.yml`). It runs the
+   Security checks first, then checks that the tag matches the version files and has
+   CHANGELOG notes, and runs the full checks. Then it builds the installer, attests its build provenance (signed by GitHub, checked with
    `gh attestation verify`), and creates a **draft** release with the installer,
    `SHA256SUMS.txt` and that version's CHANGELOG section. Tags with a `-` are marked as
    prereleases.
-5. Download the installer from the draft, install it over the previous version and smoke-test
+6. Download the installer from the draft, install it over the previous version and smoke-test
    it. Check `gh attestation verify <installer> --repo rpodsada/vandal` passes and that its
    SHA-256 (`Get-FileHash`) matches the draft's `SHA256SUMS.txt`, and put
    it on the website's download dialog, which is hosted apart from GitHub, so a swapped
