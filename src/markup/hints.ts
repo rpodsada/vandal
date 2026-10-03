@@ -91,8 +91,8 @@ export const CONTROL_HINTS = {
   copy: "[Ctrl+C] Copy the image with its markup",
   save: "[Ctrl+S] Save · [Ctrl+Shift+S] Save as",
   zoom: "[Ctrl]+wheel Zoom at the pointer · [Ctrl+=] [Ctrl+−] Zoom in and out",
-  fit: "[Ctrl+0] Fit to window",
-  fitWidth: "Fit the width to the window, then scroll down and up",
+  fit: "[Ctrl+0] Fit to window · press it again for Fit width, when the image is tall",
+  fitWidth: "[Ctrl+0] twice Fit the width to the window, then scroll down and up",
   actualSize: "[Ctrl+Shift+0] Actual size",
   settings: "Open Settings",
 } as const;

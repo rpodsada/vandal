@@ -12,6 +12,11 @@ All notable changes to Vandal are listed here. The format follows
   size, like in a browser. They no longer also pick the 10th color: Ctrl+1–9 pick colors, and
   the 10th is picked by clicking.
 
+### Added
+
+- **Ctrl+0 again switches to Fit width** when the image is tall: the first press fits the whole
+  image, the second fits its width, and a third goes back.
+
 ### Security
 
 - Installers now come with a signed build provenance record: `gh attestation verify` checks that

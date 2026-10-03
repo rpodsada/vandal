@@ -239,7 +239,7 @@ open, drop, paste (Ctrl+V) or capture an image into it.
   it. Double-click text (or press Enter) to edit it.
 - **Crop** never throws pixels away: undo it, or choose **Show full capture** in crop mode to
   get the rest back.
-- **Zoom and pan:** Ctrl+mouse wheel, Ctrl+= / Ctrl+−, Ctrl+0 to fit, Ctrl+Shift+0 for actual
+- **Zoom and pan:** Ctrl+mouse wheel, Ctrl+= / Ctrl+−, Ctrl+0 to fit (again for Fit width, on a tall image), Ctrl+Shift+0 for actual
   size. Pan with Space+drag or the middle mouse button.
 - **Capture** (Ctrl+N) takes a new screenshot without quick edit and brings it back to the
   editor: into the same window if it's empty, otherwise a new one.
@@ -375,7 +375,7 @@ printed on the pickers (you can hide them in Settings).
 | Ctrl+W                | Close                                                                    |
 | Ctrl+,                | Settings                                                                 |
 | Ctrl+= / Ctrl+−       | Zoom in / out                                                            |
-| Ctrl+0 / Ctrl+Shift+0 | Fit to window / actual size                                              |
+| Ctrl+0 / Ctrl+Shift+0 | Fit to window (again: Fit width) / actual size                           |
 
 **Quick edit**
 

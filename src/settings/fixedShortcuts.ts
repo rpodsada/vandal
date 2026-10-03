@@ -52,7 +52,7 @@ export const EDITOR_KEYS: KeyEntry[] = [
   { keys: ["Ctrl+W"], what: "Close" },
   { keys: ["Ctrl+=", "Ctrl+-"], what: "Zoom in, zoom out" },
   { keys: ["Ctrl+wheel"], what: "Zoom" },
-  { keys: ["Ctrl+0"], what: "Fit" },
+  { keys: ["Ctrl+0"], what: "Fit (again: Fit width, for a tall image)" },
   { keys: ["Ctrl+Shift+0"], what: "Actual size" },
   { keys: ["Space+drag", "wheel"], what: "Pan" },
   { keys: ["Enter", "Esc"], what: "While cropping: apply, cancel" },

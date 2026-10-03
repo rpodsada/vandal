@@ -4,6 +4,7 @@ import {
   displaySize,
   FIT_MARGIN,
   fitView,
+  fitWidthDiffers,
   fitWidthView,
   fitWidthZoom,
   fitZoom,
@@ -110,6 +111,17 @@ describe("fitWidthZoom", () => {
 
   it("works in device px", () => {
     expect(fitWidthZoom({ width: 2400, height: 9000 }, viewport(800, 600), 1.5)).toBe(0.5);
+  });
+});
+
+describe("fitWidthDiffers", () => {
+  it("is true when the height limits Fit", () => {
+    expect(fitWidthDiffers({ width: 1000, height: 5000 }, viewport(800, 600), 1)).toBe(true);
+  });
+
+  it("is false for a wide image, or one that fits at 100%", () => {
+    expect(fitWidthDiffers({ width: 1600, height: 900 }, viewport(800, 600), 1)).toBe(false);
+    expect(fitWidthDiffers({ width: 400, height: 300 }, viewport(800, 600), 1)).toBe(false);
   });
 });
 

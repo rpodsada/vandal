@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {
   clampView,
   fitView,
+  fitWidthDiffers,
   fitWidthView,
   panBy,
   stepZoom,
@@ -33,6 +34,8 @@ interface ViewState {
   setViewport: (viewport: Size, dpr: number) => void;
   fit: () => void;
   fitWidth: () => void;
+  /** Ctrl+0: Fit, or from Fit, Fit width when that shows more (PLAN 3M.2); and back. */
+  cycleFit: () => void;
   /** Zoom to `zoom` around `anchor` (CSS px in the viewport; default: its centre). */
   zoomTo: (zoom: number, anchor?: Point) => void;
   zoomStep: (dir: 1 | -1, anchor?: Point) => void;
@@ -89,6 +92,14 @@ export const useViewStore = create<ViewState>((set, get) => {
         fitted: "width",
         view: fitWidthView(image, viewport, s.dpr),
       })),
+
+    cycleFit: () => {
+      const s = get();
+      const toWidth =
+        s.fitted === "fit" && s.image && s.viewport && fitWidthDiffers(s.image, s.viewport, s.dpr);
+      if (toWidth) s.fitWidth();
+      else s.fit();
+    },
 
     zoomTo: (zoom, anchor) =>
       withGeometry((s, image, viewport) => ({

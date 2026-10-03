@@ -50,6 +50,11 @@ export function fitWidthZoom(image: Size, viewport: Size, dpr: number): number {
   return Math.min(1, (w * dpr) / image.width);
 }
 
+/** Whether Fit width shows more than Fit: only when the height is what limits Fit. */
+export function fitWidthDiffers(image: Size, viewport: Size, dpr: number): boolean {
+  return fitWidthZoom(image, viewport, dpr) - fitZoom(image, viewport, dpr) > 1e-9;
+}
+
 /** CSS size of the image at `zoom`. */
 export function displaySize(image: Size, zoom: number, dpr: number): Size {
   return { width: (image.width / dpr) * zoom, height: (image.height / dpr) * zoom };

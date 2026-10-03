@@ -118,7 +118,7 @@ export function StatusBar({
             type="button"
             className={styles.textButton}
             {...hint("fitWidth")}
-            title="Fit width"
+            title="Fit width (Ctrl+0 again, after Fit)"
             onClick={fitWidth}
           >
             Fit width

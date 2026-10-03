@@ -274,7 +274,7 @@ export function EditorApp() {
         case "Digit0":
         case "Numpad0":
           if (e.shiftKey) view.zoomTo(1);
-          else view.fit();
+          else view.cycleFit();
           break;
         default:
           return;
