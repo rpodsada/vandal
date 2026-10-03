@@ -32,8 +32,11 @@ export function CropOptions() {
   const resize = (w: number, h: number, changed: "width" | "height") =>
     set(inFrame(frame, (size, local) => resizeCrop(local.rect(draft), w, h, size, ratio, changed)));
   const resetTo = ratio ? fitRatio(start, ratio) : start;
-  // Portrait only means something for a ratio that isn't square or the image's own.
-  const canTurn = ratioId !== "free" && ratioId !== "original" && ratioId !== "1:1";
+  // Portrait turns the ratios that aren't square or the image's own, and
+  // their buttons say so (9:16), so it can be picked before a ratio too.
+  const turns = (id: string) => id !== "free" && id !== "original" && id !== "1:1";
+  const label = (r: (typeof CROP_RATIOS)[number]) =>
+    portrait && turns(r.id) ? r.label.split(":").reverse().join(":") : r.label;
   const same = (a: Rect, b: Rect) =>
     a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
   const full = frame.width === source.width && frame.height === source.height;
@@ -61,20 +64,19 @@ export function CropOptions() {
                 ? "Any shape"
                 : r.id === "original"
                   ? "The image's own proportions"
-                  : `Keep ${portrait && canTurn ? r.label.split(":").reverse().join(":") : r.label}`
+                  : `Keep ${label(r)}`
             }
             onClick={() => setCropRatio(r.id)}
           >
-            {r.label}
+            {label(r)}
           </button>
         ))}
         <button
           type="button"
           className={styles.toggle}
-          aria-pressed={portrait && canTurn}
-          disabled={!canTurn}
+          aria-pressed={portrait}
           aria-label="Portrait"
-          title={canTurn ? "Portrait (turns 16:9 into 9:16)" : "Portrait (pick a ratio first)"}
+          title="Portrait: taller than wide (9:16 instead of 16:9)"
           onClick={toggleCropPortrait}
         >
           <svg viewBox="0 0 24 24" aria-hidden>

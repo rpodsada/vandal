@@ -31,6 +31,8 @@ All notable changes to Vandal are listed here. The format follows
   proportions, and moving goes only across or up and down, as in the editor.
 - **Crop by drawing straight away**: while the crop box still covers the whole image, dragging
   inside it draws a new box. Ctrl+drag draws a new box anywhere, at any time.
+- **Crop's ratio buttons show portrait ratios** (9:16, 3:4) while Portrait is on, and Portrait
+  can be turned on before picking a ratio.
 
 ### Fixed
 
