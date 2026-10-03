@@ -16,6 +16,10 @@ All notable changes to Vandal are listed here. The format follows
 
 - **Ctrl+0 again switches to Fit width** when the image is tall: the first press fits the whole
   image, the second fits its width, and a third goes back.
+- **The \` key (left of 1) picks the lowest choice**: the thinnest line, smallest text, weakest
+  redaction and so on, with Shift for a callout's pointer and Alt for the first font or the
+  least rounded corners. On a slider, 1 is a tenth of the way along, so its minimum (say 1 px)
+  had no key until now.
 
 ### Security
 

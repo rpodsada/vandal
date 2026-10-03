@@ -21,6 +21,7 @@ describe("digitSlot, slotKey and colorKey", () => {
     expect(digitSlot("Numpad9")).toBe(9);
     expect(digitSlot("Digit0")).toBe(10);
     expect(digitSlot("KeyA")).toBeNull();
+    expect(digitSlot("Backquote")).toBe(0);
     expect(slotKey(0)).toBe("1");
     expect(slotKey(9)).toBe("0");
   });
@@ -53,6 +54,15 @@ describe("pickByDigit", () => {
     expect(slotIndex(101, 2)).toBe(20);
     expect(slotIndex(101, 10)).toBe(100);
     expect(slotIndex(0, 1)).toBeNull();
+  });
+
+  it("picks the lowest for slot 0 (the ` key)", () => {
+    expect(pickByDigit(buttons, 0)).toBe(2);
+    expect(pickByDigit(small, 0)).toBe(1);
+    expect(pickByDigit(wide, 0)).toBe(1);
+    expect(pickByDigit({ control: "slider", min: 0, max: 8 }, 0)).toBe(0);
+    expect(slotIndex(101, 0)).toBe(0);
+    expect(slotIndex(0, 0)).toBeNull();
   });
 });
 

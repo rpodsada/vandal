@@ -47,8 +47,9 @@ export function useMarkupKeys(active?: () => boolean): void {
     const onKey = (e: KeyboardEvent) => {
       if (activeRef.current && !activeRef.current()) return;
       const slot = digitSlot(e.code);
-      // Ctrl+0 and Ctrl+Shift+0 are zoom (the editor's), never a color (PLAN 3M.1).
-      if (slot === 10 && e.ctrlKey && !e.altKey) return;
+      // Ctrl+0 and Ctrl+Shift+0 are zoom (the editor's), never a color (PLAN 3M.1),
+      // and Ctrl+` is nothing: colors have no lowest (PLAN 3M.3).
+      if ((slot === 10 || slot === 0) && e.ctrlKey && !e.altKey) return;
       // Exactly one of Ctrl and Alt: Ctrl+Alt is AltGr, which types characters.
       const styleDigit = slot !== null && e.ctrlKey !== e.altKey;
       const boldItalic = e.ctrlKey && !e.altKey && (e.code === "KeyB" || e.code === "KeyI");

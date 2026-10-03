@@ -36,7 +36,7 @@ export function useHeldKeys(): HeldKeys {
         timer = window.setTimeout(() => set({ [key]: true }), HOLD_MS);
         return;
       }
-      if (digitSlot(e.code)) {
+      if (digitSlot(e.code) !== null) {
         // Modifier+digit keeps that modifier's badges up while picking.
         if (!e.ctrlKey && !e.altKey && !isTyping(e.target)) {
           digits.add(e.code);

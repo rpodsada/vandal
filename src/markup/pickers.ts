@@ -7,8 +7,12 @@ import type { NumberPicker } from "../shared/ipc";
 /** Most presets a picker or palette holds (`styles.rs` MAX_PRESETS). */
 export const MAX_PRESETS = 10;
 
-/** The slot (1–10) a digit key stands for: 1–9, and 0 = 10. Number row or numpad. */
+/**
+ * The slot (0–10) a digit key stands for: 1–9, and 0 = 10, on the number row
+ * or numpad; ` (the key left of 1, by position) is 0, the lowest (PLAN 3M.3).
+ */
 export function digitSlot(code: string): number | null {
+  if (code === "Backquote") return 0;
   const m = /^(?:Digit|Numpad)(\d)$/.exec(code);
   if (!m) return null;
   const d = Number(m[1]);
@@ -30,10 +34,12 @@ export function colorKey(i: number): string | null {
 
 /**
  * Index into a list of `length` for slot `n`: by position for 10 or fewer
- * items (null past the end), otherwise `n`/10 of the way along.
+ * items (null past the end), otherwise `n`/10 of the way along. Slot 0 is
+ * the first.
  */
 export function slotIndex(length: number, n: number): number | null {
   if (length <= 0) return null;
+  if (n === 0) return 0;
   if (length <= 10) return n <= length ? n - 1 : null;
   return Math.round((n / 10) * (length - 1));
 }
@@ -41,11 +47,12 @@ export function slotIndex(length: number, n: number): number | null {
 /**
  * The value digit slot `n` picks: a list slot by position; on a slider up to
  * 10 the value `n` itself (null if out of range); on a wider slider `n`/10 of
- * the way along.
+ * the way along. Slot 0 is the lowest: a slider's min, a list's first.
  */
 export function pickByDigit(picker: NumberPicker, n: number): number | null {
   if (picker.control === "slider") {
     const { min, max } = picker;
+    if (n === 0) return min;
     if (max <= 10) return n >= min && n <= max ? n : null;
     return Math.round(min + ((max - min) * n) / 10);
   }

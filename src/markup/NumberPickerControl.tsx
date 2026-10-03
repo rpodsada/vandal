@@ -110,7 +110,7 @@ function NumberDropdown(props: Props & { values: number[] }) {
   return (
     <Dropdown
       className={styles.dropdown}
-      title={`${props.label}${props.hints ? " (1…0)" : ""}`}
+      title={`${props.label}${props.hints ? " (1…0, ` for the lowest)" : ""}`}
       button={
         <>
           {props.lines && <Line width={current} length={18} />}
@@ -190,7 +190,7 @@ function Slider(props: Props) {
         role="slider"
         aria-label={props.label}
         aria-valuenow={shown}
-        title={`${props.label}${props.hints ? " (1…0)" : ""}`}
+        title={`${props.label}${props.hints ? " (1…0, ` for the lowest)" : ""}`}
         onPointerDown={onPointerDown}
       >
         <span className={styles.trackBg} />
