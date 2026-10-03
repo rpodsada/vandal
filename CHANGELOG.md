@@ -6,6 +6,15 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- Installers now come with a signed build provenance record: `gh attestation verify` checks that
+  an installer was built by Vandal's release workflow on GitHub and hasn't been changed since.
+  The README's new **Verify your download** section shows how, and how to compare the
+  installer's SHA-256 with the one on vandalscreenshot.com.
+- The release workflow runs its GitHub Actions pinned to exact commits, so a tampered action
+  release can't change how installers are built.
+
 ## [0.3.0-beta.5] - 2026-10-02
 
 ### Added

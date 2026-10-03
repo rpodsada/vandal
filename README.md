@@ -105,6 +105,27 @@ where every screenshot should look the same.
 Vandal needs Microsoft Edge WebView2, which is part of Windows 11 and up-to-date Windows 10.
 If it's missing, the installer downloads it for you.
 
+### Verify your download
+
+Optional, but worth it while the installer isn't code-signed. Either check works:
+
+- **Compare the SHA-256 with the website's.** The download dialog on
+  [vandalscreenshot.com](https://vandalscreenshot.com) shows the installer's SHA-256 under
+  **Check the download**. The website is hosted apart from GitHub, so a tampered installer
+  can't come with a matching hash. In PowerShell:
+
+  ```powershell
+  Get-FileHash .\Vandal_<version>_x64-setup.exe
+  ```
+
+- **Check its build provenance** with the [GitHub CLI](https://cli.github.com). Every
+  installer is built by this repository's release workflow, which signs a record of what it
+  built. This proves the file came from that workflow, unchanged:
+
+  ```powershell
+  gh attestation verify .\Vandal_<version>_x64-setup.exe --repo rpodsada/vandal
+  ```
+
 ## Getting started
 
 1. Press **Win+F12** (you can change it in **Settings › Keyboard shortcuts**).

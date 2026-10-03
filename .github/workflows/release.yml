@@ -5,6 +5,10 @@
 #   notes. Richard installs it, then publishes it by hand.
 # - Run it by hand (Actions > Release > Run workflow): the same checks and
 #   build, with the installer kept as a workflow artifact and no release.
+#
+# Actions are pinned to full commit SHAs (the tag is in the comment), so a
+# moved or hijacked tag can't change what runs with write access (PLAN 3I.3).
+# To bump one, resolve the new tag's SHA: gh api repos/<owner>/<repo>/commits/<tag> --jq .sha
 name: Release
 
 on:
@@ -14,6 +18,9 @@ on:
 
 permissions:
   contents: write
+  # Build provenance attestations: a signed record that this workflow built the installer.
+  id-token: write
+  attestations: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -29,19 +36,20 @@ jobs:
       IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
       TAG: ${{ github.ref_name }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
 
       # Pinned so a new stable clippy lint can't fail a release; bump it on purpose.
-      - uses: dtolnay/rust-toolchain@1.94.0
+      - uses: dtolnay/rust-toolchain@4be4450ce7d4f1b9d3d643f42e0fe4124db1d31d # 1.94.0 branch
         with:
+          toolchain: 1.94.0
           components: clippy, rustfmt
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: src-tauri
 
@@ -79,9 +87,17 @@ jobs:
           sha256sum *-setup.exe > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
+      # Lets anyone check a download came from this repo's workflow:
+      # gh attestation verify <installer> --repo rpodsada/vandal
+      # Manual runs attest too, so the step is tested before a release needs it.
+      - name: Attest the installer's build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: out/*-setup.exe
+
       - name: Keep the installer (manual runs)
         if: env.IS_TAG != 'true'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: vandal-installer
           path: out/

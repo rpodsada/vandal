@@ -114,10 +114,13 @@ before the release itself (`0.3.0`). Every release must have a new, higher numbe
 
 4. The tag starts the **Release** workflow (`.github/workflows/release.yml`). It checks that the
    tag matches the version files and has CHANGELOG notes, and runs the full checks. Then it
-   builds the installer and creates a **draft** release with the installer, `SHA256SUMS.txt`
-   and that version's CHANGELOG section. Tags with a `-` are marked as prereleases.
+   builds the installer, attests its build provenance (signed by GitHub, checked with
+   `gh attestation verify`), and creates a **draft** release with the installer,
+   `SHA256SUMS.txt` and that version's CHANGELOG section. Tags with a `-` are marked as
+   prereleases.
 5. Download the installer from the draft, install it over the previous version and smoke-test
-   it. Check that its SHA-256 (`Get-FileHash`) matches the draft's `SHA256SUMS.txt`, and put
+   it. Check `gh attestation verify <installer> --repo rpodsada/vandal` passes and that its
+   SHA-256 (`Get-FileHash`) matches the draft's `SHA256SUMS.txt`, and put
    it on the website's download dialog, which is hosted apart from GitHub, so a swapped
    installer can't come with a matching hash. Then press **Publish release** on GitHub.
 
