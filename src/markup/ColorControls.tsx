@@ -4,7 +4,7 @@ import { Dropdown } from "./Dropdown";
 import { hint } from "./HintLine";
 import type { ControlHint } from "./hints";
 import { PresetEditor } from "./PresetEditor";
-import { slotKey } from "./pickers";
+import { colorKey } from "./pickers";
 import {
   applyStyle,
   colorSlots,
@@ -68,7 +68,7 @@ export function ColorControls({ target, values, show, held }: Props) {
           position="first"
           face={<ColorDot slots={slots} position="first" />}
           label={second ? labels[0] : "Color"}
-          shortcut="Ctrl+1…0"
+          shortcut="Ctrl+1…9"
           hintId="colorMenu"
           hints={hints}
           badges={badges}
@@ -83,7 +83,7 @@ export function ColorControls({ target, values, show, held }: Props) {
               position="second"
               face={<ColorDot slots={slots} position="second" />}
               label={labels[1]}
-              shortcut="Ctrl+Shift+1…0"
+              shortcut="Ctrl+Shift+1…9"
               hintId="colorMenu.second"
               hints={hints}
               badges={badges}
@@ -121,7 +121,7 @@ export function ColorControls({ target, values, show, held }: Props) {
             data-hollow={isHollow(slots, "first") || undefined}
             aria-pressed={!editingSecond}
             aria-label={labels[0]}
-            title={`${labels[0]}${hints ? " (Ctrl+1…0)" : ""}`}
+            title={`${labels[0]}${hints ? " (Ctrl+1…9)" : ""}`}
             onClick={() => setSlot("first")}
           >
             <DotLetter slots={slots} position="first" />
@@ -133,7 +133,7 @@ export function ColorControls({ target, values, show, held }: Props) {
             data-hollow={isHollow(slots, "second") || undefined}
             aria-pressed={editingSecond}
             aria-label={labels[1]}
-            title={`${labels[1]}${hints ? " (Shift+click a color, Ctrl+Shift+1…0)" : ""}`}
+            title={`${labels[1]}${hints ? " (Shift+click a color, Ctrl+Shift+1…9)" : ""}`}
             onClick={() => setSlot("second")}
           />
           <SwapButton hints={hints} className={styles.chipSwap} />
@@ -301,6 +301,7 @@ function SwatchRow({
         // The preset being edited shows its draft, and is the only one ringed.
         const editingThis = edit?.index === i;
         const c = editingThis ? edit.color : preset;
+        const key = colorKey(i);
         return (
           <button
             key={i}
@@ -313,14 +314,14 @@ function SwatchRow({
             style={{ background: c }}
             aria-pressed={edit ? editingThis : c.toLowerCase() === current}
             aria-label={`Color ${i + 1}`}
-            title={`Color ${i + 1}${hints ? ` (Ctrl+${slotKey(i)})` : ""}`}
+            title={`Color ${i + 1}${hints && key ? ` (Ctrl+${key})` : ""}`}
             onClick={(e) => onPick(c, e.shiftKey, false)}
             onContextMenu={(e) => {
               e.preventDefault();
               setPresetEdit({ tool, index: i, color: preset, left: e.currentTarget.offsetLeft });
             }}
           >
-            {badges && <span className={styles.badge}>{slotKey(i)}</span>}
+            {badges && key && <span className={styles.badge}>{key}</span>}
           </button>
         );
       })}

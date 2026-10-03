@@ -3,7 +3,7 @@
 // the pointer, then the modifiers of a drag in progress, then the active tool
 // (or typing), then, with Select and nothing selected, the general shortcuts.
 //
-// Every hint is written here, in one table. Keys go in brackets: "[Ctrl+1…0]"
+// Every hint is written here, in one table. Keys go in brackets: "[Ctrl+1…9]"
 // shows as key caps; " · " separates the parts. Put the most useful part
 // first, since a narrow window cuts the end off. The customizable shortcuts
 // (PLAN 3F) go in braces, filled in by `withShortcuts`: "{pen}" is Pen's key
@@ -31,28 +31,28 @@ export const CONTROL_HINTS = {
   "tool.crop": "{crop} Crop the image · [Ctrl+Z] undoes a crop",
   undo: "[Ctrl+Z] Undo",
   redo: "[Ctrl+Y] or [Ctrl+Shift+Z] Redo",
-  swatch: "[Ctrl+1…0] Pick a color by number · Right-click to change or delete it",
+  swatch: "[Ctrl+1…9] Pick a color by number · Right-click to change or delete it",
   "swatch.fill":
-    "[Shift]+click sets the border · [Ctrl+1…0] fill color · [Ctrl+Shift+1…0] border color · Right-click to change or delete",
+    "[Shift]+click sets the border · [Ctrl+1…9] fill color · [Ctrl+Shift+1…9] border color · Right-click to change or delete",
   "swatch.box":
-    "[Shift]+click sets the background · [Ctrl+1…0] text color · [Ctrl+Shift+1…0] background color · Right-click to change or delete",
+    "[Shift]+click sets the background · [Ctrl+1…9] text color · [Ctrl+Shift+1…9] background color · Right-click to change or delete",
   "chip.fill":
     "Choose which color the swatches set · {swapColors?} swaps them · [Shift]+click a swatch sets the border",
   "chip.box":
     "Choose which color the swatches set · {swapColors?} swaps them · [Shift]+click a swatch sets the background",
   "swatch.label":
-    "[Shift]+click sets the marker · [Ctrl+1…0] label color · [Ctrl+Shift+1…0] marker color · Right-click to change or delete",
+    "[Shift]+click sets the marker · [Ctrl+1…9] label color · [Ctrl+Shift+1…9] marker color · Right-click to change or delete",
   "chip.label":
     "Choose which color the swatches set · {swapColors?} swaps them · [Shift]+click a swatch sets the marker",
   "swatch.callout":
-    "[Shift]+click sets the callout · [Ctrl+1…0] text color · [Ctrl+Shift+1…0] callout color · Right-click to change or delete",
+    "[Shift]+click sets the callout · [Ctrl+1…9] text color · [Ctrl+Shift+1…9] callout color · Right-click to change or delete",
   "chip.callout":
     "Choose which color the swatches set · {swapColors?} swaps them · [Shift]+click a swatch sets the callout",
   "chip.swap": "{swapColors} Swap the two colors",
   colorMenu:
-    "[Ctrl+1…0] Pick a color by number · Click for the palette · Right-click to edit the color in use",
+    "[Ctrl+1…9] Pick a color by number · Click for the palette · Right-click to edit the color in use",
   "colorMenu.second":
-    "[Ctrl+Shift+1…0] Pick this color by number · Click for the palette · Right-click to edit the color in use",
+    "[Ctrl+Shift+1…9] Pick this color by number · Click for the palette · Right-click to edit the color in use",
   customColor:
     "Your custom color · Click it again, or right-click, to change it · [Esc] in the picker puts the old one back",
   width: "[1…0] Pick a width by number",
@@ -81,7 +81,7 @@ export const CONTROL_HINTS = {
   fill: "Border only, filled, or border and fill",
   bold: "[Ctrl+B] Bold, also while typing",
   italic: "[Ctrl+I] Italic, also while typing",
-  box: "A background box behind the text · [Ctrl+Shift+1…0] background color",
+  box: "A background box behind the text · [Ctrl+Shift+1…9] background color",
   align: "Align the lines of the text",
   head: "The shape of the arrow heads",
   "ends.one": "Click again to flip the arrow",
@@ -141,14 +141,14 @@ const PAN_ZOOM = "[Space]+drag pan · [Ctrl]+wheel zoom";
 
 /** The color keys, naming both colors only when there are two. */
 function colorKeys(tool: ToolId, twoColors: boolean): string {
-  if (tool === "step") return "[Ctrl+1…0] label color · [Ctrl+Shift+1…0] marker color";
-  if (tool === "callout") return "[Ctrl+1…0] text color · [Ctrl+Shift+1…0] callout color";
+  if (tool === "step") return "[Ctrl+1…9] label color · [Ctrl+Shift+1…9] marker color";
+  if (tool === "callout") return "[Ctrl+1…9] text color · [Ctrl+Shift+1…9] callout color";
   if (tool === "text") {
     return twoColors
-      ? "[Ctrl+1…0] text color · [Ctrl+Shift+1…0] background color"
-      : "[Ctrl+1…0] text color";
+      ? "[Ctrl+1…9] text color · [Ctrl+Shift+1…9] background color"
+      : "[Ctrl+1…9] text color";
   }
-  return twoColors ? "[Ctrl+1…0] fill color · [Ctrl+Shift+1…0] border color" : "[Ctrl+1…0] color";
+  return twoColors ? "[Ctrl+1…9] fill color · [Ctrl+Shift+1…9] border color" : "[Ctrl+1…9] color";
 }
 
 function toolHint(tool: Exclude<ToolId, "select">, twoColors: boolean): string {
@@ -278,7 +278,7 @@ export function withShortcuts(hint: string, keys: ShortcutKeys): string {
     .join(" · ");
 }
 
-/** A hint split into text and key caps (each cap one key, e.g. ["Ctrl", "1…0"]). */
+/** A hint split into text and key caps (each cap one key, e.g. ["Ctrl", "1…9"]). */
 export type HintPart = { text: string } | { keys: string[] };
 
 export function parseHint(hint: string): HintPart[] {

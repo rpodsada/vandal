@@ -30,7 +30,7 @@ describe("chooseHint", () => {
 
   it("shows only how to get an image in an empty editor", () => {
     const hint = chooseHint({ ...base, mode: "empty" });
-    expect(hint).toMatch(/^\[Ctrl\+N\] capture/);
+    expect(hint).toMatch(/^\[Ctrl[Ctrl+1…9]N\] capture/);
     expect(hint).toContain("[Ctrl+O]");
     expect(hint).not.toContain("tools");
     // A hovered control still explains itself.
@@ -69,13 +69,13 @@ describe("color hints", () => {
     const rect = { ...base, tool: "rect" as const };
     expect(chooseHint(rect)).not.toContain("Ctrl+Shift");
     expect(chooseHint({ ...rect, twoColors: true })).toContain(
-      "[Ctrl+1…0] fill color · [Ctrl+Shift+1…0] border color",
+      "[Ctrl+1…9] fill color · [Ctrl+Shift+1…9] border color",
     );
   });
 
   it("names text and background colors, the background only with a box", () => {
     const text = { ...base, tool: "text" as const };
-    expect(chooseHint(text)).toMatch(/\[Ctrl\+1…0\] text color$/);
+    expect(chooseHint(text)).toMatch(/\[Ctrl\+1…9\] text color$/);
     expect(chooseHint({ ...text, twoColors: true })).toMatch(/background color$/);
     expect(chooseHint({ ...text, typing: true, twoColors: true })).toMatch(/background color$/);
   });
@@ -83,8 +83,8 @@ describe("color hints", () => {
 
 describe("parseHint", () => {
   it("splits text and key caps", () => {
-    expect(parseHint("[Ctrl+Shift+1…0] fill · [Space]+drag")).toEqual([
-      { keys: ["Ctrl", "Shift", "1…0"] },
+    expect(parseHint("[Ctrl+Shift+1…9] fill · [Space]+drag")).toEqual([
+      { keys: ["Ctrl", "Shift", "1…9"] },
       { text: " fill · " },
       { keys: ["Space"] },
       { text: "+drag" },

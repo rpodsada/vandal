@@ -20,6 +20,14 @@ export function slotKey(i: number): string {
   return String((i + 1) % 10);
 }
 
+/** Colors Ctrl+digit can pick: 1–9, since Ctrl+0 is the editor's Fit (PLAN 3M.1). */
+export const COLOR_KEYS = 9;
+
+/** The key label for color index `i` (0-based): "1"…"9", or null past them. */
+export function colorKey(i: number): string | null {
+  return i < COLOR_KEYS ? String(i + 1) : null;
+}
+
 /**
  * Index into a list of `length` for slot `n`: by position for 10 or fewer
  * items (null past the end), otherwise `n`/10 of the way along.

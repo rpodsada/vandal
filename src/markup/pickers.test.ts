@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { NumberPicker } from "../shared/ipc";
 import {
+  colorKey,
   digitSlot,
   nearestValue,
   pickByDigit,
@@ -14,7 +15,7 @@ const buttons: NumberPicker = { control: "buttons", values: [2, 4, 6, 10] };
 const small: NumberPicker = { control: "slider", min: 1, max: 8 };
 const wide: NumberPicker = { control: "slider", min: 1, max: 20 };
 
-describe("digitSlot and slotKey", () => {
+describe("digitSlot, slotKey and colorKey", () => {
   it("maps 1–9 and 0 to slots 1–10 on both key blocks", () => {
     expect(digitSlot("Digit1")).toBe(1);
     expect(digitSlot("Numpad9")).toBe(9);
@@ -22,6 +23,12 @@ describe("digitSlot and slotKey", () => {
     expect(digitSlot("KeyA")).toBeNull();
     expect(slotKey(0)).toBe("1");
     expect(slotKey(9)).toBe("0");
+  });
+
+  it("gives colors keys 1–9 only (Ctrl+0 is Fit)", () => {
+    expect(colorKey(0)).toBe("1");
+    expect(colorKey(8)).toBe("9");
+    expect(colorKey(9)).toBeNull();
   });
 });
 

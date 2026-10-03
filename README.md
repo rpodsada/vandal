@@ -334,14 +334,14 @@ Shift, in **Settings › Keyboard shortcuts**, which also lists every shortcut.
 
 **Styles**
 
-| Keys              | Action                                                                                 |
-| ----------------- | -------------------------------------------------------------------------------------- |
-| 1–9, 0            | Line width, text size, redact strength, darkness or marker size (0 is the 10th choice) |
-| Shift+1–9, 0      | A callout's pointer thickness                                                          |
-| Ctrl+1–9, 0       | Color (with two colors: the fill, text or label)                                       |
-| Ctrl+Shift+1–9, 0 | The second color (the border, text box, marker or callout)                             |
-| Alt+1–9, 0        | Font (text, callouts, step markers), or corner radius (rectangles, spotlight)          |
-| Ctrl+B / Ctrl+I   | Bold / italic (text)                                                                   |
+| Keys            | Action                                                                                 |
+| --------------- | -------------------------------------------------------------------------------------- |
+| 1–9, 0          | Line width, text size, redact strength, darkness or marker size (0 is the 10th choice) |
+| Shift+1–9, 0    | A callout's pointer thickness                                                          |
+| Ctrl+1–9        | Color (with two colors: the fill, text or label); the 10th is click-only               |
+| Ctrl+Shift+1–9  | The second color (the border, text box, marker or callout)                             |
+| Alt+1–9, 0      | Font (text, callouts, step markers), or corner radius (rectangles, spotlight)          |
+| Ctrl+B / Ctrl+I | Bold / italic (text)                                                                   |
 
 The number keys pick the choices in the order the pickers show them. Their shortcut numbers are
 printed on the pickers (you can hide them in Settings).

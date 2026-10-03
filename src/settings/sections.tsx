@@ -367,7 +367,7 @@ export const sections: Section[] = [
             path: "styles.palette",
             label: "Color presets",
             description:
-              "The colors the tools offer, in order. Ctrl+1–9 and Ctrl+0 pick them while you draw. Click a color to change or remove it; drag it to reorder.",
+              "The colors the tools offer, in order. Ctrl+1–9 pick the first nine while you draw. Click a color to change or remove it; drag it to reorder.",
             keywords: ["color", "colour", "palette", "preset", "swatch", "reorder"],
           },
           {
