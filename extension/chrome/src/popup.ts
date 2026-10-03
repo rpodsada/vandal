@@ -7,6 +7,7 @@ import { flashDone, openResult } from "./downloads";
 import { pageToast } from "./inpage";
 import { blockedReason } from "./pages";
 import { AFTER_CAPTURE, type AfterCapture, getSettings, setSettings } from "./settings";
+import { getShortcuts } from "./shortcuts";
 import { getCapture } from "./store";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -76,6 +77,13 @@ document.addEventListener("keydown", (e) => {
 });
 document.addEventListener("click", (e) => {
   if (!afterMenu.hidden && !(e.target as Element).closest(".after")) setMenu(false);
+});
+
+// Each action's shortcut, as the browser has it (the user may have changed it).
+const shortcuts = await getShortcuts();
+document.querySelectorAll<HTMLElement>("kbd[data-command]").forEach((kbd) => {
+  kbd.textContent = shortcuts[kbd.dataset.command!] ?? "";
+  kbd.hidden = !kbd.textContent;
 });
 
 const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });

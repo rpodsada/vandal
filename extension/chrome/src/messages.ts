@@ -84,9 +84,10 @@ export interface FullEnd {
   type: "full:end";
 }
 
-/** Worker → page: copy the stitched image here, where there's focus. */
-export interface FullCopy {
-  type: "full:copy";
+/** Worker → page: copy this image here, where there's focus (after a full
+ *  page, or a shortcut with no popup open). */
+export interface PageCopy {
+  type: "copy";
   image: string;
 }
 
@@ -101,4 +102,4 @@ export interface FullStop {
 }
 
 /** What the content script (content/page.ts) listens for. */
-export type PageMessage = RegionStart | PageToast | FullBegin | FullStep | FullEnd | FullCopy;
+export type PageMessage = RegionStart | PageToast | FullBegin | FullStep | FullEnd | PageCopy;

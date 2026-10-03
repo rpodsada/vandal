@@ -7,7 +7,7 @@ import type { RegionDone, RegionStart } from "../messages";
 import { dataUrlToBlob, el, showHost, topLayerHost } from "./dom";
 import css from "./region.css?inline";
 import { type Handle, type Rect, fromPoints, growBy, moveBy, resizeBy, toImage } from "./rect";
-import { showToast } from "./toast";
+import { copyImage } from "./copy";
 
 /** A drag shorter than this (CSS px) is a click, not a selection. */
 const MIN_DRAG = 4;
@@ -124,16 +124,7 @@ export async function startRegion(msg: RegionStart) {
     frame.close();
     const blob = await out.convertToBlob({ type: "image/png" });
     const done: RegionDone = { type: "region:done", image: await blobToDataUrl(blob) };
-    if (msg.copy) {
-      try {
-        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-        done.copied = true;
-        showToast("Screenshot copied");
-      } catch (e) {
-        done.copied = false;
-        done.copyError = e instanceof Error ? e.message : String(e);
-      }
-    }
+    if (msg.copy) Object.assign(done, await copyImage(blob));
     await chrome.runtime.sendMessage(done);
   }
 

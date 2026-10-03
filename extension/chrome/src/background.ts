@@ -1,10 +1,11 @@
-// The service worker: takes captures for the popup (and, later, shortcuts),
-// stores them, then runs the "After capture" action (PLAN 3N).
+// The service worker: takes captures for the popup and the keyboard
+// shortcuts, stores them, then runs the "After capture" action (PLAN 3N).
 
 import { usesNumber } from "./filename";
-import { captureName, flashDone, openResult, saveImage, showBusy } from "./downloads";
+import { captureName, flashBlocked, flashDone, openResult, saveImage, showBusy } from "./downloads";
 import { pageToast } from "./inpage";
 import type {
+  CaptureKind,
   CaptureRequest,
   CaptureResponse,
   CopyResult,
@@ -15,6 +16,7 @@ import type {
   RegionDone,
   RegionStart,
 } from "./messages";
+import { blockedReason } from "./pages";
 import { type Settings, countNumber, getSettings, nextNumber } from "./settings";
 import { maxHeight, stitchPlan } from "./stitch";
 import { type Capture, prune, putCapture } from "./store";
@@ -46,7 +48,7 @@ chrome.runtime.onMessage.addListener((msg: Message, sender, sendResponse) => {
   if (msg?.type === "capture") {
     if (msg.kind === "region") work = startRegion(msg.tabId);
     else if (msg.kind === "full") work = startFullPage(msg.tabId);
-    else work = captureVisible(msg.tabId);
+    else work = captureVisible(msg.tabId, true);
   } else if (msg?.type === "region:done" && sender.tab) {
     work = regionDone(sender.tab, msg);
   } else if (msg?.type === "full:stop" && sender.tab?.id !== undefined) {
@@ -60,6 +62,31 @@ chrome.runtime.onMessage.addListener((msg: Message, sender, sendResponse) => {
   );
   return true; // responds asynchronously
 });
+
+/** The manifest's commands (Alt+Shift+S, R, F by default). Like a click on
+ *  the toolbar icon, a shortcut grants activeTab for the tab it's pressed in. */
+const COMMANDS: Record<string, CaptureKind> = {
+  "capture-visible": "visible",
+  "capture-region": "region",
+  "capture-full": "full",
+};
+
+chrome.commands.onCommand.addListener((command, tab) => {
+  const kind = COMMANDS[command];
+  if (kind && tab?.id !== undefined) void shortcut(kind, tab.id, tab.url);
+});
+
+async function shortcut(kind: CaptureKind, tabId: number, url: string | undefined) {
+  // No page to show a message in: say it on the icon.
+  if (blockedReason(url)) return flashBlocked(tabId);
+  try {
+    if (kind === "region") await startRegion(tabId);
+    else if (kind === "full") await startFullPage(tabId);
+    else await captureVisible(tabId, false);
+  } catch (e) {
+    await pageToast(tabId, `Couldn't capture this page: ${errorText(e)}`, "error");
+  }
+}
 
 chrome.runtime.onStartup.addListener(() => void prune());
 chrome.runtime.onInstalled.addListener(() => void prune());
@@ -92,13 +119,23 @@ async function inject(tabId: number) {
   await chrome.scripting.executeScript({ target: { tabId }, files: ["page.js"] });
 }
 
-async function captureVisible(tabId: number): Promise<CaptureResponse> {
+/** Copy in the page, which has focus: the worker has no clipboard. */
+async function copyInPage(tabId: number, image: string | Blob): Promise<CopyResult> {
+  await inject(tabId);
+  const url = typeof image === "string" ? image : await toDataUrl(image);
+  const msg: PageMessage = { type: "copy", image: url };
+  return chrome.tabs.sendMessage(tabId, msg) as Promise<CopyResult>;
+}
+
+/** `fromPopup`: the popup copies (it has focus); after a shortcut, the page does. */
+async function captureVisible(tabId: number, fromPopup: boolean): Promise<CaptureResponse> {
   const tab = await chrome.tabs.get(tabId);
-  const blob = await toBlob(await grab(tab));
+  const image = await grab(tab);
   const settings = await getSettings();
-  const capture = await store(tab, blob);
-  if (settings.afterCapture === "copy") return { ok: true, done: "copy", id: capture.id };
-  return after(tab, capture, settings);
+  const capture = await store(tab, await toBlob(image));
+  if (settings.afterCapture !== "copy") return after(tab, capture, settings);
+  if (fromPopup) return { ok: true, done: "copy", id: capture.id };
+  return after(tab, capture, settings, await copyInPage(tabId, image));
 }
 
 /** Freeze the visible area first (nothing of ours is on screen yet), then
@@ -201,8 +238,7 @@ async function fullPage(tab: chrome.tabs.Tab, settings: Settings) {
     const image = await canvas.convertToBlob({ type: "image/png" });
     const capture = await store(tab, image, { width, height });
     let copy: CopyResult | undefined;
-    if (settings.afterCapture === "copy")
-      copy = await send<CopyResult>({ type: "full:copy", image: await toDataUrl(image) });
+    if (settings.afterCapture === "copy") copy = await copyInPage(tabId, image);
     await busy.stop();
     await after(tab, capture, settings, copy, note);
   } catch (e) {

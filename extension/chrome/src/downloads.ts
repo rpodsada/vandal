@@ -106,6 +106,15 @@ export function showBusy(tabId: number): { stop: () => Promise<void> } {
   };
 }
 
+/** A red ! on the toolbar icon for a moment: a shortcut was pressed on a page
+ *  the browser doesn't let extensions capture (its own pages, the store). */
+export async function flashBlocked(tabId: number) {
+  await chrome.action.setBadgeBackgroundColor({ color: "#c42b1c", tabId });
+  await chrome.action.setBadgeTextColor({ color: "#ffffff", tabId });
+  await chrome.action.setBadgeText({ text: "!", tabId });
+  setTimeout(() => void chrome.action.setBadgeText({ text: "", tabId }).catch(() => {}), 2500);
+}
+
 /** A ✓ on the toolbar icon for a moment: the capture was copied or saved. */
 export async function flashDone(tabId: number) {
   await chrome.action.setBadgeBackgroundColor({ color: "#0f7b0f", tabId });

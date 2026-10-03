@@ -1,11 +1,12 @@
 // The content script (PLAN 3N), injected into the page on demand: the region
-// overlay, full-page capture's page side, and the in-page toast.
+// overlay, full-page capture's page side, copying, and the in-page toast.
 //
 // Built on its own as a classic script (vite.content.config.ts): injected
 // files can't import.
 
 import type { PageMessage } from "../messages";
-import { fullBegin, fullCopy, fullEnd, fullStep } from "./fullpage";
+import { copyImage } from "./copy";
+import { fullBegin, fullEnd, fullStep } from "./fullpage";
 import { startRegion } from "./region";
 import { showToast } from "./toast";
 
@@ -42,8 +43,8 @@ const listener: Listener = (msg, _sender, sendResponse) => {
       return reply(fullStep(msg));
     case "full:end":
       return reply(fullEnd());
-    case "full:copy":
-      return reply(fullCopy(msg.image));
+    case "copy":
+      return reply(copyImage(msg.image));
     default:
       return false;
   }

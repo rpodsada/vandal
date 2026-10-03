@@ -11,6 +11,8 @@ import {
   setSettings,
 } from "./settings";
 
+import { COMMAND_LABELS, getShortcuts, openShortcutSettings } from "./shortcuts";
+
 const TOKENS = ["{title}", "{domain}", "{yyyy}", "{MM}", "{dd}", "{HH}", "{mm}", "{ss}", "{nnn}"];
 /** The page the preview pretends to have captured. */
 const SAMPLE = { title: "Example page title", url: "https://example.com/" };
@@ -91,6 +93,26 @@ for (const token of TOKENS) {
 chrome.storage.sync.onChanged.addListener((changes) => {
   if (changes.afterCapture) after.value = changes.afterCapture.newValue as AfterCapture;
 });
+
+// Keyboard shortcuts: refreshed when the page comes back into view, e.g.
+// after changing them on the browser's page.
+async function showShortcuts() {
+  const shortcuts = await getShortcuts();
+  const rows = Object.entries(COMMAND_LABELS).flatMap(([name, label]) => {
+    const key = document.createElement("kbd");
+    key.textContent = shortcuts[name] || "Not set";
+    key.classList.toggle("unset", !shortcuts[name]);
+    const text = document.createElement("span");
+    text.textContent = label;
+    return [text, key];
+  });
+  $("keys").replaceChildren(...rows);
+}
+void showShortcuts();
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") void showShortcuts();
+});
+$("changeKeys").addEventListener("click", openShortcutSettings);
 
 // Keep the clock in the preview current.
 setInterval(preview, 1000);

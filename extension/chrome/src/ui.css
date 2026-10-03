@@ -87,6 +87,28 @@ svg {
   text-decoration: underline;
 }
 
+kbd {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--control-border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--button-bg);
+  color: var(--text-2);
+  font:
+    11px/1 "Cascadia Mono",
+    Consolas,
+    ui-monospace,
+    monospace;
+  white-space: nowrap;
+}
+kbd.unset {
+  border-style: dashed;
+  font-family: inherit;
+}
+
 /* Popup */
 body.popup {
   width: 304px;
@@ -372,6 +394,14 @@ body.result {
 }
 
 /* Options */
+.keys {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px 24px;
+  padding: 12px 16px;
+  font-size: 13px;
+}
 .opt {
   display: grid;
   gap: 22px;

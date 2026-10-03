@@ -5,9 +5,7 @@
 // The worker hides the scrollbar and smooth scrolling with insertCSS, which
 // also holds the [data-vandal-hide] rule (a page's CSP can't block it).
 
-import type { CopyResult, FullBegin, FullInfo, FullShot, FullStep } from "../messages";
-import { dataUrlToBlob } from "./dom";
-import { showToast } from "./toast";
+import type { FullBegin, FullInfo, FullShot, FullStep } from "../messages";
 
 const HIDE = "data-vandal-hide";
 /** At most this long waiting for images in view to load. */
@@ -95,17 +93,6 @@ export function fullEnd() {
   window.scrollTo({ top: state.y, left: state.x, behavior: "instant" });
   window.removeEventListener("keydown", state.onKey, true);
   window.removeEventListener("wheel", state.onWheel, { capture: true });
-}
-
-export async function fullCopy(image: string): Promise<CopyResult> {
-  try {
-    const blob = dataUrlToBlob(image);
-    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-    showToast("Screenshot copied");
-    return { copied: true };
-  } catch (e) {
-    return { copied: false, copyError: e instanceof Error ? e.message : String(e) };
-  }
 }
 
 /** Sticky and fixed elements appear once, where they belong: the first screen
