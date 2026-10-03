@@ -35,7 +35,7 @@ export function StatusBar({
   const frame = useCropStore((s) => s.frame);
   const zoom = useViewStore((s) => s.view.zoom);
   const fitted = useViewStore((s) => s.fitted);
-  const { zoomStep, zoomTo, fit } = useViewStore.getState();
+  const { zoomStep, zoomTo, fit, fitWidth } = useViewStore.getState();
 
   return (
     <footer className={styles.status}>
@@ -82,9 +82,15 @@ export function StatusBar({
             </svg>
           </button>
           <ZoomMenu
-            label={fitted ? `${zoomLabel(zoom)} (fit)` : zoomLabel(zoom)}
+            label={
+              fitted === "fit"
+                ? `${zoomLabel(zoom)} (fit)`
+                : fitted === "width"
+                  ? `${zoomLabel(zoom)} (fit width)`
+                  : zoomLabel(zoom)
+            }
             zoom={zoom}
-            onPick={(z) => (z === "fit" ? fit() : zoomTo(z))}
+            onPick={(z) => (z === "fit" ? fit() : z === "width" ? fitWidth() : zoomTo(z))}
           />
           <button
             type="button"
@@ -107,6 +113,15 @@ export function StatusBar({
             onClick={fit}
           >
             Fit
+          </button>
+          <button
+            type="button"
+            className={styles.textButton}
+            {...hint("fitWidth")}
+            title="Fit width"
+            onClick={fitWidth}
+          >
+            Fit width
           </button>
           <button
             type="button"
@@ -141,7 +156,7 @@ function ZoomMenu({
 }: {
   label: string;
   zoom: number;
-  onPick: (zoom: number | "fit") => void;
+  onPick: (zoom: number | "fit" | "width") => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -165,7 +180,7 @@ function ZoomMenu({
     };
   }, [open]);
 
-  const pick = (z: number | "fit") => {
+  const pick = (z: number | "fit" | "width") => {
     setOpen(false);
     onPick(z);
   };
@@ -190,6 +205,9 @@ function ZoomMenu({
         <div className={styles.menu} role="menu">
           <button type="button" role="menuitem" onClick={() => pick("fit")}>
             Fit to window
+          </button>
+          <button type="button" role="menuitem" onClick={() => pick("width")}>
+            Fit width
           </button>
           {MENU_ZOOMS.map((z) => (
             <button

@@ -4,12 +4,15 @@ import {
   displaySize,
   FIT_MARGIN,
   fitView,
+  fitWidthView,
+  fitWidthZoom,
   fitZoom,
   MAX_ZOOM,
   MIN_ZOOM,
   panBy,
   snapToDevice,
   stepZoom,
+  topRow,
   wheelZoomFactor,
   zoomAt,
   zoomLabel,
@@ -92,6 +95,49 @@ describe("fitView", () => {
     expect(v.zoom).toBe(0.5);
     expect(v.x).toBe(FIT_MARGIN);
     expect(v.y).toBeCloseTo((800 + 2 * FIT_MARGIN - 250) / 2);
+  });
+});
+
+describe("fitWidthZoom", () => {
+  it("fits the width only", () => {
+    // A 1000 × 5000 capture in an 800-wide window: 80%, though it's far too tall to fit.
+    expect(fitWidthZoom({ width: 1000, height: 5000 }, viewport(800, 600), 1)).toBe(0.8);
+  });
+
+  it("never enlarges", () => {
+    expect(fitWidthZoom({ width: 400, height: 5000 }, viewport(800, 600), 1)).toBe(1);
+  });
+
+  it("works in device px", () => {
+    expect(fitWidthZoom({ width: 2400, height: 9000 }, viewport(800, 600), 1.5)).toBe(0.5);
+  });
+});
+
+describe("fitWidthView", () => {
+  const tall = { width: 1000, height: 5000 };
+
+  it("starts at the top of a tall image", () => {
+    const v = fitWidthView(tall, viewport(800, 600), 1);
+    expect(v).toEqual({ zoom: 0.8, x: FIT_MARGIN, y: FIT_MARGIN });
+  });
+
+  it("puts a given row at the top, and round-trips through topRow", () => {
+    const v = fitWidthView(tall, viewport(800, 600), 1, 2000);
+    expect(topRow(v, 1)).toBeCloseTo(2000);
+    // After a resize the same row stays at the top.
+    const w = fitWidthView(tall, viewport(500, 600), 1, topRow(v, 1));
+    expect(topRow(w, 1)).toBeCloseTo(2000);
+  });
+
+  it("stops at the bottom", () => {
+    const v = fitWidthView(tall, viewport(800, 600), 1, 4990);
+    const shown = v.y + 5000 * 0.8;
+    expect(shown).toBeCloseTo(600 + FIT_MARGIN);
+  });
+
+  it("centres a short image like Fit", () => {
+    const v = fitWidthView({ width: 1000, height: 100 }, viewport(800, 600), 1);
+    expect(v.y).toBeCloseTo((600 + 2 * FIT_MARGIN - 80) / 2);
   });
 });
 

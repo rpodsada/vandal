@@ -6,6 +6,12 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Fit width** in the editor's zoom (the status bar and the zoom menu): the image fills the
+  window's width, so a tall image scrolls instead of shrinking to a sliver. It keeps fitting
+  as you resize the window and scroll.
+
 ## [0.3.0-beta.4] - 2026-10-02
 
 ### Added
