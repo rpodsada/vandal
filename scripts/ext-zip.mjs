@@ -10,7 +10,7 @@
 // has the listing). The version comes from the manifest. Uses Windows' own
 // tar, which writes zip files (-a).
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import process from "node:process";
@@ -35,7 +35,11 @@ if (release) {
 
 try {
   rmSync(zip, { force: true });
-  execFileSync(tar, ["-a", "-c", "-f", zip, "-C", source, "."], { stdio: "inherit" });
+  // The folder's entries by name, not ".": that gives "./" names, which Windows' own zip
+  // support calls invalid.
+  execFileSync(tar, ["-a", "-c", "-f", zip, "-C", source, ...readdirSync(source)], {
+    stdio: "inherit",
+  });
   console.log(`Zipped ${zip}${release ? " (no key: for the Chrome Web Store)" : ""}`);
 } finally {
   if (staging) rmSync(staging, { recursive: true, force: true });
