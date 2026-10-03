@@ -36,6 +36,29 @@
   !insertmacro ${MACRO} avif
 !macroend
 
+; The browser extension's native messaging host (PLAN 3N.7c): vandal.exe
+; itself, launched by the browser (`native_host.rs`). A manifest beside the exe
+; (its `path` may be relative to it), named in each Chromium browser's per-user
+; key. The extension ID is also in `native_host.rs` and the extension's
+; manifest `key`; keep them in step.
+!define VANDAL_HOST "com.vandal.desktop"
+!define VANDAL_EXTENSION "chrome-extension://bmloooliddgohojbpadiljacckgdbngm/"
+
+!macro VANDAL_HOST_KEY BROWSER
+  WriteRegStr HKCU "Software\${BROWSER}\NativeMessagingHosts\${VANDAL_HOST}" "" "$INSTDIR\native-host.json"
+!macroend
+
+!macro VANDAL_NO_HOST_KEY BROWSER
+  DeleteRegKey HKCU "Software\${BROWSER}\NativeMessagingHosts\${VANDAL_HOST}"
+!macroend
+
+!macro VANDAL_EACH_BROWSER MACRO
+  !insertmacro ${MACRO} "Google\Chrome"
+  !insertmacro ${MACRO} "Microsoft\Edge"
+  !insertmacro ${MACRO} "BraveSoftware\Brave-Browser"
+  !insertmacro ${MACRO} "Chromium"
+!macroend
+
 !macro NSIS_HOOK_POSTINSTALL
   WriteRegStr SHCTX "Software\Classes\${CAPTURE_PROGID}" "" "Image"
   WriteRegStr SHCTX "Software\Classes\${CAPTURE_PROGID}\DefaultIcon" "" "$INSTDIR\${MAINBINARYNAME}.exe,0"
@@ -44,6 +67,10 @@
   WriteRegStr SHCTX "Software\Classes\Applications\${MAINBINARYNAME}.exe" "FriendlyAppName" "${PRODUCTNAME}"
   WriteRegStr SHCTX "Software\Classes\Applications\${MAINBINARYNAME}.exe\shell\open\command" "" '"$INSTDIR\${MAINBINARYNAME}.exe" --edit "%1"'
   !insertmacro CAPTURE_EACH_EXT CAPTURE_OPEN_WITH
+  FileOpen $0 "$INSTDIR\native-host.json" w
+  FileWrite $0 '{"name":"${VANDAL_HOST}","description":"${PRODUCTNAME}","path":"${MAINBINARYNAME}.exe","type":"stdio","allowed_origins":["${VANDAL_EXTENSION}"]}'
+  FileClose $0
+  !insertmacro VANDAL_EACH_BROWSER VANDAL_HOST_KEY
   ; SHCNE_ASSOCCHANGED: let Explorer pick up the change now.
   System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
 !macroend
@@ -52,5 +79,7 @@
   !insertmacro CAPTURE_EACH_EXT CAPTURE_NO_OPEN_WITH
   DeleteRegKey SHCTX "Software\Classes\${CAPTURE_PROGID}"
   DeleteRegKey SHCTX "Software\Classes\Applications\${MAINBINARYNAME}.exe"
+  !insertmacro VANDAL_EACH_BROWSER VANDAL_NO_HOST_KEY
+  Delete "$INSTDIR\native-host.json"
   System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
 !macroend

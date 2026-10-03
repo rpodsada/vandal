@@ -1,7 +1,7 @@
 // Registers the dev build (src-tauri/target/debug/vandal.exe) as the browser
-// extension's native messaging host `com.vandal.desktop.dev`, for Chrome and
-// Edge, per user (PLAN 3N.7). The installer registers `com.vandal.desktop` for
-// installed copies the same way.
+// extension's native messaging host `com.vandal.desktop.dev`, for Chrome, Edge,
+// Brave and Chromium, per user (PLAN 3N.7). The installer registers
+// `com.vandal.desktop` for installed copies the same way (windows/hooks.nsh).
 //
 //   npm run ext:host-dev            register
 //   npm run ext:host-dev -- --remove
@@ -12,7 +12,7 @@ import process from "node:process";
 
 const NAME = "com.vandal.desktop.dev";
 const EXTENSION_ID = "bmloooliddgohojbpadiljacckgdbngm";
-const BROWSERS = ["Google\\Chrome", "Microsoft\\Edge"];
+const BROWSERS = ["Google\\Chrome", "Microsoft\\Edge", "BraveSoftware\\Brave-Browser", "Chromium"];
 
 const dir = join(process.env.LOCALAPPDATA, NAME);
 const manifest = join(dir, "native-host.json");
@@ -42,6 +42,6 @@ if (process.argv.includes("--remove")) {
   writeFileSync(manifest, JSON.stringify(host, null, 2));
   for (const key of keys) reg("add", key, "/ve", "/t", "REG_SZ", "/d", manifest, "/f");
   console.log(
-    `Registered ${NAME} -> ${exe}\nfor Chrome and Edge. Restart the browser if it was open.`,
+    `Registered ${NAME} -> ${exe}\nfor Chrome, Edge, Brave and Chromium. Restart the browser if it was open.`,
   );
 }
