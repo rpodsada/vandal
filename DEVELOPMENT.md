@@ -40,7 +40,7 @@ npm run ext:build   # if extension/ changed: type-checks and builds the browser 
 
 ## Browser extension
 
-`extension/chrome/` is Vandal for Chrome, a Manifest V3 extension that also runs in Edge. It
+`extension/chrome/` is Vandal Screen Capture, a Manifest V3 extension that also runs in Edge and Brave. It
 shares the root's tooling: `npm run lint` and `npm test` cover it, and it uses Vandal's theme
 tokens from `src/shared/theme.css`.
 

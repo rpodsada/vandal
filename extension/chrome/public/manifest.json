@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Vandal for Chrome",
+  "name": "Vandal Screen Capture",
   "short_name": "Vandal",
   "version": "0.1.0",
   "description": "Capture the visible area, a region or a whole web page. Copy it, save it, or open it in Vandal's editor.",
