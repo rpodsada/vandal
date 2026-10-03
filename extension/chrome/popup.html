@@ -9,7 +9,29 @@
     <header class="popup-head">
       <img src="/icons/32.png" width="20" height="20" alt="" />
       <b>Vandal Screen Capture</b>
+      <button class="icon-btn" id="options" title="Options" aria-label="Options">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="3" />
+          <path
+            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+          />
+        </svg>
+      </button>
     </header>
+    <div class="after">
+      <span id="afterLabel">After capture</span>
+      <button
+        class="menu-btn"
+        id="afterBtn"
+        aria-haspopup="menu"
+        aria-expanded="false"
+        aria-labelledby="afterLabel afterValue"
+      >
+        <span id="afterValue"></span>
+        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" /></svg>
+      </button>
+      <div class="menu" id="afterMenu" role="menu" hidden></div>
+    </div>
     <div class="acts">
       <button class="act" id="visible">
         <span class="ic">
@@ -37,7 +59,7 @@
         <span>Full page<small>Coming in a later build</small></span>
       </button>
     </div>
-    <p class="popup-msg" id="msg" hidden></p>
+    <p class="popup-msg" id="msg" role="status" hidden></p>
     <script type="module" src="./src/popup.ts"></script>
   </body>
 </html>

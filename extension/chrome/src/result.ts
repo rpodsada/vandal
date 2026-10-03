@@ -1,7 +1,9 @@
 // The result tab (PLAN 3N): a preview of one capture with Copy, Save and
-// Save as. The capture's id is the URL hash; the image is in IndexedDB.
+// Save as. The URL hash is the capture's id (the image is in IndexedDB),
+// optionally with `&msg=` for an error to show (downloads.ts resultUrl).
 
-import { renderName, sanitizeFileName, sanitizeFolder, usesNumber } from "./filename";
+import { captureName, saveImage } from "./downloads";
+import { usesNumber } from "./filename";
 import { countNumber, getSettings, nextNumber } from "./settings";
 import { getCapture } from "./store";
 
@@ -22,7 +24,9 @@ const buttons = [
   $<HTMLButtonElement>("saveAs"),
 ];
 
-const capture = await getCapture(location.hash.slice(1));
+const [captureId, query] = location.hash.slice(1).split("&", 2);
+const message = new URLSearchParams(query).get("msg");
+const capture = await getCapture(captureId);
 if (!capture) {
   $("gone").hidden = false;
   $("zoom").hidden = true;
@@ -31,14 +35,9 @@ if (!capture) {
 } else {
   const settings = await getSettings();
   let number = await nextNumber();
-  const name = () =>
-    renderName(settings.template, {
-      date: new Date(capture.created),
-      title: capture.title,
-      url: capture.url,
-      n: number,
-    });
+  const name = () => captureName(capture, settings.template, number);
   nameInput.value = name();
+  if (message) toast(message, [], "error");
   document.title = capture.title ? `Capture · ${capture.title}` : "Capture";
 
   const fmt = new Intl.NumberFormat();
@@ -81,36 +80,21 @@ if (!capture) {
   $("saveAs").addEventListener("click", () => void save(true));
 
   async function save(saveAs: boolean) {
-    const folder = sanitizeFolder(settings.folder);
-    const stem = sanitizeFileName(nameInput.value);
     const url = URL.createObjectURL(capture!.blob);
-    let id: number;
-    try {
-      id = await chrome.downloads.download({
-        url,
-        filename: `${folder ? `${folder}/` : ""}${stem}.png`,
-        saveAs,
-        conflictAction: "uniquify",
-      });
-    } catch (e) {
-      URL.revokeObjectURL(url);
-      toast(`Couldn't save: ${e instanceof Error ? e.message : String(e)}`, [], "error");
-      return;
-    }
-    const item = await finished(id);
+    const saved = await saveImage(url, nameInput.value, saveAs);
     URL.revokeObjectURL(url);
-    if (item?.state !== "complete") {
-      // Cancelling Save as isn't an error worth a message.
-      if (item?.error && item.error !== "USER_CANCELED")
-        toast(`Couldn't save: ${item.error}`, [], "error");
+    if (!saved.ok) {
+      if (saved.error) toast(`Couldn't save: ${saved.error}`, [], "error");
       return;
     }
+    // The number counts up only when it was used as the template made it.
     if (usesNumber(settings.template) && nameInput.value === name()) {
       await countNumber(number);
       number += 1;
+      nameInput.value = name();
     }
-    toast(`Saved to ${item.filename}`, [
-      { label: "Show in folder", run: () => chrome.downloads.show(id) },
+    toast(`Saved to ${saved.path}`, [
+      { label: "Show in folder", run: () => chrome.downloads.show(saved.id) },
     ]);
   }
 }
@@ -137,24 +121,6 @@ function layout() {
   else if (zoom === "fit")
     width = Math.min(actual, availW, (availH * capture.width) / capture.height);
   shot.style.width = `${Math.max(1, Math.floor(width))}px`;
-}
-
-/** Resolves when the download completes or stops. */
-function finished(id: number): Promise<chrome.downloads.DownloadItem | undefined> {
-  return new Promise((resolve) => {
-    const check = async () => {
-      const [item] = await chrome.downloads.search({ id });
-      if (!item || item.state !== "in_progress") {
-        chrome.downloads.onChanged.removeListener(onChanged);
-        resolve(item);
-      }
-    };
-    const onChanged = (delta: chrome.downloads.DownloadDelta) => {
-      if (delta.id === id && delta.state) void check();
-    };
-    chrome.downloads.onChanged.addListener(onChanged);
-    void check();
-  });
 }
 
 interface ToastAction {

@@ -3,7 +3,6 @@
 // Vandal's rules for valid names are mirrored from src-tauri/src/output.rs.
 
 export const DEFAULT_TEMPLATE = "{title} {yyyy}-{MM}-{dd} {HH}-{mm}-{ss}";
-export const DEFAULT_FOLDER = "Vandal";
 
 /** Page titles are cut to this many characters in a name. */
 const TITLE_MAX = 80;
@@ -77,14 +76,4 @@ export function sanitizeFileName(name: string): string {
   const trimmed = cleaned.replace(/^[\s.]+/, "").replace(/[. ]+$/, "");
   if (!trimmed) return "Screenshot";
   return RESERVED.test(trimmed) ? `${trimmed}_` : trimmed;
-}
-
-/** A subfolder of the download folder as Chrome wants it ("a/b"), or "". */
-export function sanitizeFolder(folder: string): string {
-  return folder
-    .split(/[\\/]+/)
-    .map((part) => part.trim())
-    .filter((part) => part && !/^\.+$/.test(part))
-    .map(sanitizeFileName)
-    .join("/");
 }

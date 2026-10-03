@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vandal Screen Capture options</title>
+    <link rel="icon" href="/icons/32.png" />
+    <link rel="stylesheet" href="./src/ui.css" />
+  </head>
+  <body class="options">
+    <main class="opt">
+      <header class="opt-head">
+        <img src="/icons/48.png" width="28" height="28" alt="" />
+        <h1>Vandal Screen Capture options</h1>
+      </header>
+
+      <section class="group" aria-labelledby="after-h">
+        <h2 id="after-h">After capture</h2>
+        <div class="card">
+          <div class="row">
+            <label class="lbl" for="afterCapture">
+              What happens next
+              <small>The other actions are always in the result tab.</small>
+            </label>
+            <select class="ctl" id="afterCapture"></select>
+          </div>
+        </div>
+      </section>
+
+      <section class="group" aria-labelledby="save-h">
+        <h2 id="save-h">Saving</h2>
+        <div class="card">
+          <div class="row">
+            <span class="lbl" id="saveAs-l">
+              Ask where to save each time
+              <small>Even when the browser saves downloads without asking.</small>
+            </span>
+            <button class="toggle" id="saveAs" role="switch" aria-labelledby="saveAs-l"></button>
+          </div>
+          <div class="row stack">
+            <div class="lbl-line">
+              <label class="lbl" for="template">File name</label>
+              <button class="link" id="resetTemplate" hidden>Reset to default</button>
+            </div>
+            <input class="ctl mono" id="template" spellcheck="false" />
+            <div class="tokens" id="tokens" aria-label="Insert a token"></div>
+            <p class="note">Next file: <b id="preview"></b></p>
+            <p class="note">
+              Use {yyyy} {MM} {dd} for the date, {HH} {mm} {ss} for the time, {title} and {domain}
+              for the page, and {n} for a number that counts up ({nnn} gives 001, 002…).
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./src/options.ts"></script>
+  </body>
+</html>

@@ -1,12 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  DEFAULT_TEMPLATE,
-  domainOf,
-  renderName,
-  sanitizeFileName,
-  sanitizeFolder,
-  usesNumber,
-} from "./filename";
+import { DEFAULT_TEMPLATE, domainOf, renderName, sanitizeFileName, usesNumber } from "./filename";
 
 const ctx = {
   date: new Date(2026, 9, 2, 14, 31, 7),
@@ -66,17 +59,6 @@ describe("sanitizeFileName", () => {
     expect(sanitizeFileName("CON")).toBe("CON_");
     expect(sanitizeFileName("com1.txt")).toBe("com1.txt_");
     expect(sanitizeFileName("console")).toBe("console");
-  });
-});
-
-describe("sanitizeFolder", () => {
-  it("joins parts with forward slashes", () => {
-    expect(sanitizeFolder("Vandal\\Web /Shots")).toBe("Vandal/Web/Shots");
-  });
-
-  it("drops empty and dot parts", () => {
-    expect(sanitizeFolder("/../Vandal/./")).toBe("Vandal");
-    expect(sanitizeFolder("  ")).toBe("");
   });
 });
 

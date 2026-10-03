@@ -1,0 +1,89 @@
+// The options page (PLAN 3N). Every change is saved right away to
+// chrome.storage.sync; the popup and result tab read it from there.
+
+import { DEFAULT_TEMPLATE, renderName } from "./filename";
+import {
+  AFTER_CAPTURE,
+  type AfterCapture,
+  type Settings,
+  getSettings,
+  nextNumber,
+  setSettings,
+} from "./settings";
+
+const TOKENS = ["{title}", "{domain}", "{yyyy}", "{MM}", "{dd}", "{HH}", "{mm}", "{ss}", "{nnn}"];
+/** The page the preview pretends to have captured. */
+const SAMPLE = { title: "Example page title", url: "https://example.com/" };
+
+const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+const after = $<HTMLSelectElement>("afterCapture");
+const saveAs = $<HTMLButtonElement>("saveAs");
+const template = $<HTMLInputElement>("template");
+const reset = $<HTMLButtonElement>("resetTemplate");
+
+const settings = await getSettings();
+const number = await nextNumber();
+
+for (const { value, label } of AFTER_CAPTURE) after.add(new Option(label, value));
+
+function fill(s: Settings) {
+  after.value = s.afterCapture;
+  saveAs.setAttribute("aria-checked", String(s.saveAs));
+  template.value = s.template;
+  preview();
+}
+fill(settings);
+
+function preview() {
+  const name = renderName(template.value, { date: new Date(), ...SAMPLE, n: number });
+  $("preview").textContent = `${name}.png`;
+  reset.hidden = template.value === DEFAULT_TEMPLATE;
+}
+
+/** Text fields save shortly after typing stops, not on every key. */
+let saveTimer: number | undefined;
+function saveSoon(changes: Partial<Settings>) {
+  clearTimeout(saveTimer);
+  saveTimer = window.setTimeout(() => void setSettings(changes), 300);
+}
+
+after.addEventListener("change", () => {
+  void setSettings({ afterCapture: after.value as AfterCapture });
+});
+saveAs.addEventListener("click", () => {
+  const on = saveAs.getAttribute("aria-checked") !== "true";
+  saveAs.setAttribute("aria-checked", String(on));
+  void setSettings({ saveAs: on });
+});
+template.addEventListener("input", () => {
+  preview();
+  saveSoon({ template: template.value });
+});
+reset.addEventListener("click", () => {
+  template.value = DEFAULT_TEMPLATE;
+  preview();
+  void setSettings({ template: DEFAULT_TEMPLATE });
+  template.focus();
+});
+
+const tokens = $("tokens");
+for (const token of TOKENS) {
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.textContent = token;
+  chip.title = `Insert ${token}`;
+  chip.addEventListener("click", () => {
+    template.setRangeText(token, template.selectionStart ?? 0, template.selectionEnd ?? 0, "end");
+    template.focus();
+    template.dispatchEvent(new Event("input"));
+  });
+  tokens.append(chip);
+}
+
+// The popup can change After capture while this page is open.
+chrome.storage.sync.onChanged.addListener((changes) => {
+  if (changes.afterCapture) after.value = changes.afterCapture.newValue as AfterCapture;
+});
+
+// Keep the clock in the preview current.
+setInterval(preview, 1000);
