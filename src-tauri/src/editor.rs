@@ -308,6 +308,35 @@ pub fn open_file_in(app: &AppHandle, path: &Path, into: Option<EditorId>) {
     });
 }
 
+/// A capture from the browser extension (PLAN 3N.7): the native host wrote it
+/// to a temp file, with the page title beside it. It opens like a new
+/// capture, unsaved and titled with the page, not as that file (Save would
+/// write back into the temp folder), and the temp files go once it's decoded.
+pub fn open_browser_capture(app: &AppHandle, path: &Path) {
+    let app = app.clone();
+    let path = path.to_path_buf();
+    std::thread::spawn(move || {
+        let page_title = crate::native_host::take_title(&path);
+        let decoded = decode::decode_file(&path);
+        if let Err(e) = std::fs::remove_file(&path) {
+            eprintln!("[editor] couldn't delete {}: {e}", path.display());
+        }
+        match decoded {
+            Ok(image) => {
+                let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
+                let title = match page_title {
+                    Some(page) if !page.is_empty() => {
+                        format!("{page} — {}", crate::product_name(&app))
+                    }
+                    _ => capture_title(&app),
+                };
+                open_or_load(&app, None, Arc::new(image), crop, title, None);
+            }
+            Err(message) => output::notify_error(&app, "Couldn't open the capture", &message),
+        }
+    });
+}
+
 /// The tray click or launching Vandal, set to open the editor: bring back the
 /// editor last used, and open an empty one only if there's none (PLAN 3H.9:
 /// a click per window piled up empty editors).

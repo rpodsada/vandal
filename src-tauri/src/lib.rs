@@ -17,6 +17,7 @@ mod frames;
 mod geometry;
 mod hotkeys;
 mod monitors;
+mod native_host;
 mod ocr;
 mod output;
 mod overlay;
@@ -141,6 +142,14 @@ fn transfer_format_from_env() -> TransferFormat {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Launched by the browser extension as its native messaging host (PLAN
+    // 3N.7): serve it and exit, before any of the app starts.
+    let args: Vec<String> = std::env::args().collect();
+    if let Some(origin) = native_host::browser_origin(&args) {
+        native_host::run(origin);
+        return;
+    }
+
     #[cfg(debug_assertions)]
     export_bindings();
 
@@ -150,17 +159,26 @@ pub fn run() {
     let mut builder = tauri::Builder::default();
     if !bench {
         // Must be the first plugin. A second launch acts in the first instead:
-        // `--settings` opens Settings, `--edit <path>` opens an image; a
-        // plain one does the launch action (a capture or an editor, PLAN 3G).
+        // `--settings` opens Settings, `--edit <path>` opens an image,
+        // `--open-capture <path>` a browser capture (PLAN 3N.7); a plain one
+        // does the launch action (a capture or an editor, PLAN 3G).
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
-            let files = cli::edit_paths(&args, std::path::Path::new(&cwd));
+            let cwd = std::path::Path::new(&cwd);
+            let files = cli::edit_paths(&args, cwd);
+            let browser = native_host::open_capture_args(&args, cwd);
             if args.iter().any(|a| a == "--settings") {
                 settings_window::open(app);
-            } else if files.is_empty() && !args.iter().any(|a| a == AUTOSTART_ARG) {
+            } else if files.is_empty()
+                && browser.is_empty()
+                && !args.iter().any(|a| a == AUTOSTART_ARG)
+            {
                 tray::icon_action(app, |s| s.startup.launch_action);
             }
             for file in files {
                 editor::open_file(app, &file);
+            }
+            for file in browser {
+                editor::open_browser_capture(app, &file);
             }
         }));
     }
@@ -239,6 +257,7 @@ pub fn run() {
             let args: Vec<String> = std::env::args().collect();
             let cwd = std::env::current_dir().unwrap_or_default();
             let files = cli::edit_paths(&args, &cwd);
+            let browser = native_host::open_capture_args(&args, &cwd);
             // Launched by hand with nothing to open: the editor, if that's
             // the launch action; a capture right at startup would surprise.
             let plain = files.is_empty() && args.len() == 1;
@@ -247,6 +266,9 @@ pub fn run() {
             }
             for file in files {
                 editor::open_file(app.handle(), &file);
+            }
+            for file in browser {
+                editor::open_browser_capture(app.handle(), &file);
             }
             eprintln!("[startup] ready");
             Ok(())
