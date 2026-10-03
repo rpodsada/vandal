@@ -55,7 +55,7 @@ All notable changes to Vandal are listed here. The format follows
   release can't change how installers are built.
 - Every release is checked first against known vulnerabilities in the libraries Vandal is built
   from, and isn't built while one is open. To report a security problem privately, see
-  [SECURITY.md](SECURITY.md).
+  [SECURITY.md](https://github.com/rpodsada/vandal/blob/main/SECURITY.md).
 
 ## [0.3.0-beta.5] - 2026-10-02
 
