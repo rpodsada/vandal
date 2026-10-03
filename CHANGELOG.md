@@ -29,6 +29,8 @@ All notable changes to Vandal are listed here. The format follows
   callouts and step markers, including while you type.
 - **Shift while selecting an area**: drawing makes a square, a corner keeps the area's
   proportions, and moving goes only across or up and down, as in the editor.
+- **Crop by drawing straight away**: while the crop box still covers the whole image, dragging
+  inside it draws a new box. Ctrl+drag draws a new box anywhere, at any time.
 
 ### Fixed
 

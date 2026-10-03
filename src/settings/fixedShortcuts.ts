@@ -62,4 +62,5 @@ export const EDITOR_KEYS: KeyEntry[] = [
   { keys: ["Ctrl+Shift+0"], what: "Actual size" },
   { keys: ["Space+drag", "wheel"], what: "Pan" },
   { keys: ["Enter", "Esc"], what: "While cropping: apply, cancel" },
+  { keys: ["Ctrl+drag"], what: "While cropping: draw a new box anywhere" },
 ];

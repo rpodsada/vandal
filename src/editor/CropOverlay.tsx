@@ -39,11 +39,18 @@ const DRAW_THRESHOLD = 4;
  * Crop mode's box over the image (mockup "Editor", crop tool): the rest
  * dimmed, a rule-of-thirds grid, corner brackets. Drag an edge or corner to
  * resize (Shift keeps the proportions), inside to move, outside to draw a new
- * box (Shift: square). Double-click inside applies.
+ * box (Shift: square). While the box is still the whole image, which can't
+ * move, a drag inside draws a new one too; Ctrl+drag always does (PLAN 3O.3).
+ * Double-click inside applies.
  */
 export function CropOverlay({ draft, frame, scale, origin, interactive }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState<Handle | "new" | null>(null);
+  const whole =
+    draft.x === frame.x &&
+    draft.y === frame.y &&
+    draft.width === frame.width &&
+    draft.height === frame.height;
 
   const toSource = (clientX: number, clientY: number): Point => {
     const r = rootRef.current!.getBoundingClientRect();
@@ -54,9 +61,10 @@ export function CropOverlay({ draft, frame, scale, origin, interactive }: Props)
     // Middle button and Space+drag pan (the stage handles those).
     if (!interactive || e.button !== 0) return;
     e.preventDefault();
-    const handle = ((e.target as HTMLElement)
+    const pressed = ((e.target as HTMLElement)
       .closest("[data-handle]")
       ?.getAttribute("data-handle") ?? "new") as Handle | "new";
+    const handle = e.ctrlKey || (whole && pressed === "move") ? "new" : pressed;
     const start = toSource(e.clientX, e.clientY);
     const startRect = draft;
     const ratio = lockedRatio();
@@ -142,8 +150,8 @@ export function CropOverlay({ draft, frame, scale, origin, interactive }: Props)
       ))}
       <div
         className={styles.cropBox}
-        style={box}
         data-handle="move"
+        style={{ ...box, cursor: whole ? "crosshair" : undefined }}
         onDoubleClick={() => applyCrop()}
       >
         <span className={styles.cropThirds} />

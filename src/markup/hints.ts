@@ -187,7 +187,7 @@ const SEGMENT_SELECTED = `Drag the ◆ handle to bend it, double-click it to str
 const TYPING =
   "[Esc] done · [Ctrl+B] bold · [Ctrl+I] italic · [Alt+1…0] font · [Alt+↑↓] previous or next font";
 const CROP =
-  "Drag edges or corners, [Shift] keeps proportions · Drag outside for a new box · [Enter] apply · [Esc] cancel · [←↑↓→] nudge, [Ctrl] resize";
+  "Drag edges or corners, [Shift] keeps proportions · Drag outside, or [Ctrl]+drag anywhere, for a new box · [Enter] apply · [Esc] cancel · [←↑↓→] nudge, [Ctrl] resize";
 
 /** The editor with no image yet (PLAN 3G): only what gets one. */
 const EMPTY =
