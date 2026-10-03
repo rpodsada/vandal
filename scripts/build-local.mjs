@@ -44,8 +44,14 @@ if (modified) console.warn('build:local: uncommitted changes: About will say "mo
 if (untagged)
   console.warn(`build:local: v${version} isn't tagged yet; this is its release candidate`);
 
+// Release builds sign the installer for the updater (PLAN 3P.1), and Tauri fails
+// without the private key, which only CI has. Local installers skip the .sig.
+const signUpdates = Boolean(process.env.TAURI_SIGNING_PRIVATE_KEY);
+const overlay = signUpdates ? { version } : { version, bundle: { createUpdaterArtifacts: false } };
+if (!signUpdates) console.log("build:local: no TAURI_SIGNING_PRIVATE_KEY, so no updater .sig");
+
 mkdirSync(TARGET, { recursive: true });
-writeFileSync(OVERLAY, JSON.stringify({ version }, null, 2) + "\n");
+writeFileSync(OVERLAY, JSON.stringify(overlay, null, 2) + "\n");
 
 const extra = process.argv.slice(2);
 // One command string: npm is npm.cmd on Windows, which needs a shell, and Node

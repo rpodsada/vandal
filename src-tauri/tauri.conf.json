@@ -16,11 +16,17 @@
       "devCsp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdFRjNENTJFNzVGQzI1REIKUldUYkpmeDFMdFh6ZnNtbWRsa1FiNlJ6c01zU3ZvNnhQY3hRM1Q0SS9PQ2hJd0lDNVB0dC9UeE4K"
+    }
+  },
   "bundle": {
     "active": true,
     "targets": [
       "nsis"
     ],
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

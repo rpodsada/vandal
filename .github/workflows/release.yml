@@ -1,4 +1,4 @@
-# Builds the Windows installer (PLAN 3C.2).
+# Builds the Windows installer (PLAN 3C.2), signed for the updater (PLAN 3P.1).
 #
 # - Push a version tag (v0.3.0-beta.1): run the dependency audit and the checks,
 #   build, and create a
@@ -36,6 +36,8 @@ jobs:
   build:
     needs: security
     runs-on: windows-latest
+    # Holds the updater signing key (PLAN 3P.1); only v* tags and main can use it.
+    environment: release
     timeout-minutes: 60
     defaults:
       run:
@@ -83,16 +85,24 @@ jobs:
           cargo clippy --all-targets -- -D warnings
           cargo test
 
+      # Signs the installer for the updater (a .sig beside it). Only this step gets
+      # the key, and it reuses the dist/ built above instead of running Vite again,
+      # so no npm script or bundler ever has the key in its environment
+      # (CVE-2023-46115 was a key leaking into a Vite bundle).
       - name: Build the installer
-        run: npm run tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build --config '{"build":{"beforeBuildCommand":""}}'
 
       - name: Collect the installer
         id: installer
         run: |
           mkdir -p out
           cp src-tauri/target/release/bundle/nsis/*-setup.exe out/
+          cp src-tauri/target/release/bundle/nsis/*-setup.exe.sig out/
           cd out
-          sha256sum *-setup.exe > SHA256SUMS.txt
+          sha256sum *-setup.exe *-setup.exe.sig > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
       # Lets anyone check a download came from this repo's workflow:

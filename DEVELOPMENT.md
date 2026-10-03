@@ -130,16 +130,20 @@ How the build number works:
   warns. Commit first if you want the build to be traceable.
 - **Build after `release:bump` but before tagging** and you get the new version without a build
   number. That build is the release candidate.
-- **Semver ignores everything after `+`.** The updater treats `0.3.0-beta.3+5` as
-  `0.3.0-beta.3`, so it still offers `beta.4`, and it never "updates" you back to `beta.3`.
+- **The updater never offers a build its own release.** `0.3.0-beta.3+5` is still offered
+  `beta.4`, and never "updated" back to `beta.3` (the updater sorts `+5` above the plain version).
 - **The build number must be digits only.** Windows file versions are numeric, so NSIS writes
   the number into the exe's file version (`0.3.0.5`) and would replace anything else with `0`.
 
 Build-numbered installers are for your own machine. A build that goes to anyone else should be
 a release (below), so it has a tag and release notes.
 
-`npm run tauri build` still works. It builds the version in `package.json` with no build number,
-like CI does.
+Local installers have no updater signature (`.sig`): only CI has the updater's private key
+(see Releasing › The updater key), and `build:local` turns the signature off when
+`TAURI_SIGNING_PRIVATE_KEY` isn't set. A plain `npm run tauri build` builds the version in
+`package.json` with no build number, like CI does, but without the key it fails after bundling
+("A public key has been found, but no private key"). Use `build:local`, or add
+`--config '{"bundle":{"createUpdaterArtifacts":false}}'`. `--no-bundle` builds aren't affected.
 
 ## Releasing
 
@@ -189,8 +193,8 @@ before the release itself (`0.3.0`). Every release must have a new, higher numbe
 5. The tag starts the **Release** workflow (`.github/workflows/release.yml`). It runs the
    Security checks first, then checks that the tag matches the version files and has
    CHANGELOG notes, and runs the full checks. Then it builds the installer, attests its build provenance (signed by GitHub, checked with
-   `gh attestation verify`), and creates a **draft** release with the installer,
-   `SHA256SUMS.txt` and that version's CHANGELOG section. Tags with a `-` are marked as
+   `gh attestation verify`), and creates a **draft** release with the installer, its
+   updater signature (`…-setup.exe.sig`), `SHA256SUMS.txt` and that version's CHANGELOG section. Tags with a `-` are marked as
    prereleases.
 6. Download the installer from the draft, install it over the previous version and smoke-test
    it. Check `gh attestation verify <installer> --repo rpodsada/vandal` passes and that its
@@ -204,4 +208,22 @@ existing draft.
 
 To test the pipeline without releasing, run the workflow by hand (**Actions › Release › Run
 workflow**). It runs the same checks and build, and keeps the installer as a workflow artifact
-for 14 days.
+for 14 days. Manual runs sign for the updater too, so they prove the key still works.
+
+### The updater key
+
+Updates are signed with Tauri's updater key (minisign, not Windows code signing), and every
+installed copy only accepts updates signed with it. The public key is in `tauri.conf.json`
+(`plugins.updater.pubkey`, key ID `7EF3D52E75FC25DB`). The private key and its password are
+in Richard's password manager and in the `release` environment's secrets
+(`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`), which only `v*` tags and
+`main` can use. The workflow gives them to the installer build step only, and that step reuses
+the `dist/` built earlier instead of running Vite again, so no npm script or bundler has the key
+in its environment. Never put the key in the repo or a `VITE_` variable.
+
+- **If the key is lost,** installed copies can never update again: users must install a build
+  with a new key by hand.
+- **If the key leaks,** rotate it: generate a new one (`npx tauri signer generate`) and ship a
+  release that carries the new public key but is still signed with the old key, so installed
+  copies accept it; sign everything after that with the new key. A leaked key alone can't push
+  an update: the manifests and installers also come from this repo.
