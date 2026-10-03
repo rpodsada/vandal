@@ -77,7 +77,7 @@ export const CONTROL_HINTS = {
   "step.resetNumbering":
     "Drop the labels you typed, so every marker counts up again · [Ctrl+Z] undoes it",
   size: "[1…0] Pick a size by number · [`] the smallest",
-  font: "[Alt+1…0] Pick a font by number · [Alt+`] the first · Type to filter the list",
+  font: "[Alt+1…0] Pick a font by number · [Alt+`] the first · [Alt+↑↓] the previous or next · Type to filter the list",
   fill: "Border only, filled, or border and fill",
   bold: "[Ctrl+B] Bold, also while typing",
   italic: "[Ctrl+I] Italic, also while typing",
@@ -184,7 +184,8 @@ const STEP_SELECTED = `[Enter] or double-click to type its own label · ${SELECT
 const CALLOUT_SELECTED = `Drag the text to move it, the pointer line to move it all · Drag the ● handle to point it · [Shift]+drag 45° steps · [Enter] edit the text · ${SELECTED}`;
 const LABEL_TYPING = "[Enter] done · [Esc] cancel · Leave it empty to count up again";
 const SEGMENT_SELECTED = `Drag the ◆ handle to bend it, double-click it to straighten · ${SELECTED}`;
-const TYPING = "[Esc] done · [Ctrl+B] bold · [Ctrl+I] italic · [Alt+1…0] font";
+const TYPING =
+  "[Esc] done · [Ctrl+B] bold · [Ctrl+I] italic · [Alt+1…0] font · [Alt+↑↓] previous or next font";
 const CROP =
   "Drag edges or corners, [Shift] keeps proportions · Drag outside for a new box · [Enter] apply · [Esc] cancel · [←↑↓→] nudge, [Ctrl] resize";
 

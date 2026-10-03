@@ -8,6 +8,7 @@ import {
   pickerFraction,
   slotIndex,
   slotKey,
+  stepIndex,
   valueAtFraction,
 } from "./pickers";
 
@@ -77,5 +78,20 @@ describe("positions on a picker", () => {
     expect(valueAtFraction(buttons, 0.7)).toBe(6);
     expect(pickerFraction(wide, 1)).toBe(0);
     expect(valueAtFraction(wide, 0.5)).toBe(11);
+  });
+});
+
+describe("stepIndex", () => {
+  it("steps up and down, wrapping at both ends", () => {
+    expect(stepIndex(4, 1, 1)).toBe(2);
+    expect(stepIndex(4, 1, -1)).toBe(0);
+    expect(stepIndex(4, 3, 1)).toBe(0);
+    expect(stepIndex(4, 0, -1)).toBe(3);
+  });
+
+  it("starts at the first going down, or the last going up, from outside the list", () => {
+    expect(stepIndex(4, -1, 1)).toBe(0);
+    expect(stepIndex(4, -1, -1)).toBe(3);
+    expect(stepIndex(0, -1, 1)).toBeNull();
   });
 });

@@ -16,6 +16,7 @@ export const MARKUP_KEYS: KeyEntry[] = [
   { keys: ["Shift+1…0"], what: "A callout's pointer thickness" },
   { keys: ["Alt+1…0"], what: "Font, or corner radius for rectangles and spotlights" },
   { keys: ["`", "Shift+`", "Alt+`"], what: "The lowest of those (` is the key left of 1)" },
+  { keys: ["Alt+↑", "Alt+↓"], what: "The previous or next font" },
   { keys: ["Ctrl+1…9"], what: "Color (the first, with two)" },
   { keys: ["Ctrl+Shift+1…9"], what: "The second color" },
   { keys: ["Ctrl+Z"], what: "Undo" },

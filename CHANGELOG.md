@@ -25,6 +25,8 @@ All notable changes to Vandal are listed here. The format follows
   redaction and so on, with Shift for a callout's pointer and Alt for the first font or the
   least rounded corners. On a slider, 1 is a tenth of the way along, so its minimum (say 1 px)
   had no key until now.
+- **Alt+Up and Alt+Down step through the fonts**, wrapping around at the ends, for text,
+  callouts and step markers, including while you type.
 
 ### Fixed
 

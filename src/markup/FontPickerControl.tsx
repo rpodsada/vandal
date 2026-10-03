@@ -35,7 +35,7 @@ function FontDropdown({ fonts, value, hints, onPick }: Props) {
     <Dropdown
       className={`${styles.dropdown} ${styles.fontButton}`}
       menuClassName={styles.fontMenu}
-      title={`Font${hints ? " (Alt+1…0)" : ""}`}
+      title={`Font${hints ? " (Alt+1…0, Alt+↑↓)" : ""}`}
       onClose={refocusTextEditor}
       button={
         <span className={styles.fontName} style={{ fontFamily: `"${value}"` }}>
@@ -203,7 +203,7 @@ function FontSlider({ fonts, value, showKeys, hints, onPick }: Props) {
         role="slider"
         aria-label="Font"
         aria-valuetext={value}
-        title={`Font${hints ? " (Alt+1…0)" : ""}`}
+        title={`Font${hints ? " (Alt+1…0, Alt+↑↓)" : ""}`}
         onPointerDown={onPointerDown}
       >
         <span className={styles.trackBg} />

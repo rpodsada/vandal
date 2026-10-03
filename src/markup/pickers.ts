@@ -45,6 +45,17 @@ export function slotIndex(length: number, n: number): number | null {
 }
 
 /**
+ * The index one step (`dir` 1 or -1) from `current` in a list of `length`,
+ * wrapping around at both ends (PLAN 3O.1). From -1 (not in the list), down
+ * goes to the first and up to the last. Null for an empty list.
+ */
+export function stepIndex(length: number, current: number, dir: 1 | -1): number | null {
+  if (length <= 0) return null;
+  if (current < 0) return dir > 0 ? 0 : length - 1;
+  return (current + dir + length) % length;
+}
+
+/**
  * The value digit slot `n` picks: a list slot by position; on a slider up to
  * 10 the value `n` itself (null if out of range); on a wider slider `n`/10 of
  * the way along. Slot 0 is the lowest: a slider's min, a list's first.

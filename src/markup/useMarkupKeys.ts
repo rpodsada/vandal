@@ -7,7 +7,7 @@ import { useEffect, useRef } from "react";
 import { isTyping } from "../shared/dom";
 import { translateAnnotation } from "./geometry";
 import { docStore } from "./model/store";
-import { digitSlot, pickByDigit, slotIndex } from "./pickers";
+import { digitSlot, pickByDigit, slotIndex, stepIndex } from "./pickers";
 import {
   applyStyle,
   colorSlots,
@@ -53,8 +53,10 @@ export function useMarkupKeys(active?: () => boolean): void {
       // Exactly one of Ctrl and Alt: Ctrl+Alt is AltGr, which types characters.
       const styleDigit = slot !== null && e.ctrlKey !== e.altKey;
       const boldItalic = e.ctrlKey && !e.altKey && (e.code === "KeyB" || e.code === "KeyI");
-      // Ctrl/Alt+digit and Ctrl+B/I still restyle text while typing into it (PLAN Phase 2).
-      if (isTyping(e.target) && !styleDigit && !boldItalic) return;
+      const fontStep =
+        e.altKey && !e.ctrlKey && !e.shiftKey && (e.code === "ArrowUp" || e.code === "ArrowDown");
+      // Ctrl/Alt+digit, Alt+Up/Down and Ctrl+B/I still restyle text while typing into it (PLAN Phase 2).
+      if (isTyping(e.target) && !styleDigit && !boldItalic && !fontStep) return;
       // The customizable ones (PLAN 3F), which may have modifiers. Settings
       // keep them off the fixed ones below. Crop is the editor's.
       if (!isTyping(e.target)) {
@@ -70,6 +72,7 @@ export function useMarkupKeys(active?: () => boolean): void {
         }
       }
       if (e.altKey) {
+        if (fontStep && stepFont(e.code === "ArrowDown" ? 1 : -1)) e.preventDefault();
         if (styleDigit && !e.shiftKey && pickAlt(slot)) e.preventDefault();
         return;
       }
@@ -143,6 +146,28 @@ function pickAlt(slot: number): boolean {
   if (!sections.text && !sections.step) return false;
   const fonts = sections.step ? stepFontChoices() : fontChoices();
   const i = slotIndex(fonts.length, slot);
+  if (i !== null) applyStyle({ fontFamily: fonts[i] });
+  return true;
+}
+
+/**
+ * Alt+Down / Alt+Up: the next or previous font for text, callouts or step
+ * markers, wrapping around (PLAN 3O.1).
+ */
+function stepFont(dir: 1 | -1): boolean {
+  const target = styleTarget();
+  if (!target) return false;
+  const sections = targetSections(target);
+  if (!sections.text && !sections.step) return false;
+  const values = targetValues(target, docStore.getState().doc);
+  const current = (sections.step ? values.step?.fontFamily : values.text?.fontFamily) ?? "";
+  const fonts = sections.step ? stepFontChoices() : fontChoices();
+  const lower = current.toLowerCase();
+  const i = stepIndex(
+    fonts.length,
+    fonts.findIndex((f) => f.toLowerCase() === lower),
+    dir,
+  );
   if (i !== null) applyStyle({ fontFamily: fonts[i] });
   return true;
 }
