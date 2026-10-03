@@ -248,7 +248,7 @@ function isUnrotatable(a: Annotation, inGroup: boolean): boolean {
  * pointer? The text wins where they overlap, as on a very short pointer.
  */
 function onCalloutText(a: CalloutAnnotation, p: Point, node: Konva.Node | undefined): boolean {
-  const box = calloutBox(a.x, a.y, node?.width() ?? a.width, node?.height() ?? 0, a.fontSize);
+  const box = calloutBox(a.x, a.y, node?.width() ?? a.width, node?.height() ?? 0, a);
   return p.x >= box.x && p.x <= box.x + box.width && p.y >= box.y && p.y <= box.y + box.height;
 }
 
@@ -1663,9 +1663,9 @@ function CalloutShape({
   const layout = (t: Konva.Text) => {
     const w = t.width();
     const h = t.height();
-    const box = calloutBox(0, 0, w, h, a.fontSize);
+    const box = calloutBox(0, 0, w, h, a);
     const tip = { x: a.tip.x - a.x, y: a.tip.y - a.y };
-    const under = a.shape === "underline" ? underlineLayout(0, 0, w, h, a.fontSize, tip) : null;
+    const under = a.shape === "underline" ? underlineLayout(0, 0, w, h, a, tip) : null;
     const start = under ? under.start : pointerStart(box, a.cornerRadius, tip);
     return {
       box,
@@ -1697,7 +1697,11 @@ function CalloutShape({
         const c = (ctx as unknown as { _context: CanvasRenderingContext2D })._context;
         c.save();
         if (pointer) {
-          const [from, to] = pointer.shaft;
+          // Under a filled box the line starts at its centre: from the edge,
+          // a slanting line's round end poked out beside it.
+          const [edge, to] = pointer.shaft;
+          const from =
+            a.shape === "box" ? { x: box.x + box.width / 2, y: box.y + box.height / 2 } : edge;
           c.beginPath();
           c.moveTo(from.x, from.y);
           c.lineTo(to.x, to.y);

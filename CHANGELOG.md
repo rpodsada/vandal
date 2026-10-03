@@ -30,6 +30,8 @@ All notable changes to Vandal are listed here. The format follows
 
 - **A callout's text is centred in its box in every font.** Most fonts, Arial and Helvetica
   among them, sat a little high.
+- **A filled callout's pointer meets its box cleanly.** On a slant, the end of the line poked
+  out beside the box.
 
 ### Security
 
