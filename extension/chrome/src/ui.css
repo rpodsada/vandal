@@ -1,0 +1,261 @@
+/* The extension's pages (PLAN 3N, mockup 3N.1). Vandal's tokens; with no
+   data-theme set they follow the system's light or dark mode. */
+@import "../../../src/shared/theme.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 6px;
+  background: var(--button-bg);
+  color: var(--text);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.btn:hover {
+  background: var(--button-bg-hover);
+}
+.btn:active {
+  background: var(--button-bg-active);
+}
+.btn.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: transparent;
+  font-weight: 600;
+}
+.btn.primary:hover {
+  filter: brightness(1.08);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.btn svg {
+  width: 15px;
+  height: 15px;
+}
+.btn[aria-pressed="true"] {
+  background: var(--selected);
+  font-weight: 600;
+}
+
+.link {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font-size: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.link:hover {
+  text-decoration: underline;
+}
+
+/* Popup */
+body.popup {
+  width: 304px;
+  background: var(--surface);
+}
+.popup-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 8px;
+}
+.popup-head b {
+  font:
+    600 14px/20px "Segoe UI Variable Display",
+    "Segoe UI",
+    system-ui,
+    sans-serif;
+}
+.acts {
+  display: grid;
+  gap: 2px;
+  padding: 0 6px 6px;
+}
+.act {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.act:hover:not(:disabled) {
+  background: var(--hover);
+}
+.act:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.act .ic {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--selected);
+  color: var(--accent);
+}
+.act .ic svg {
+  width: 18px;
+  height: 18px;
+}
+.act small {
+  display: block;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 16px;
+}
+.popup-msg {
+  margin: 0;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* Result tab */
+body.result {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+}
+.rt-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.fname {
+  display: flex;
+  flex: 1 1 280px;
+  align-items: center;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--control-border);
+  border-radius: 6px;
+  background: var(--control-bg);
+  font-size: 13px;
+}
+.fname:focus-within {
+  background: var(--control-bg-focus);
+  border-bottom: 2px solid var(--accent);
+}
+.fname input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  outline: none;
+}
+.fname span {
+  color: var(--text-2);
+}
+.dims {
+  color: var(--text-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.stage {
+  overflow: auto;
+  padding: 24px 24px 72px;
+  background: var(--canvas);
+  text-align: center;
+}
+/* Its width comes from the zoom (result.ts). */
+.stage img {
+  max-width: none;
+  box-shadow: 0 4px 18px rgb(0 0 0 / 0.18);
+  vertical-align: top;
+}
+.gone {
+  margin: 48px auto;
+  color: var(--text-2);
+}
+.zoom {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 4px;
+}
+.zoom .btn {
+  height: 28px;
+  font-size: 12px;
+  background: var(--surface);
+}
+.toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 10px 14px;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.toast[data-kind="error"] {
+  background: var(--error-bg);
+  border-color: var(--error-border);
+  color: var(--error-text);
+}
+.toast .btn {
+  height: 28px;
+}

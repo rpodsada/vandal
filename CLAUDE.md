@@ -41,6 +41,7 @@ installed app to take marketing screenshots or run end-to-end checks; its `CLAUD
 ```
 cd src-tauri && cargo fmt && cargo clippy --all-targets -- -D warnings && cargo test
 npm run lint && npm test && npx tsc --noEmit
+npm run ext:build   # if extension/ changed (browser extension, PLAN 3N)
 npm run tauri:dev   # smoke run (dev identity; coexists with an installed copy)
 ```
 

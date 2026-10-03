@@ -6,7 +6,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const ROOTS = ["src", "src-tauri/src"];
+const ROOTS = ["src", "src-tauri/src", "extension/chrome/src"];
 const EXTENSIONS = /\.(ts|tsx|css|html|rs)$/;
 // Lead bytes of common UTF-8 sequences, misread as Windows-1252. Built from
 // char codes so this file stays ASCII and does not match itself.

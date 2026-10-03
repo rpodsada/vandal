@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Capture</title>
+    <link rel="icon" href="/icons/32.png" />
+    <link rel="stylesheet" href="./src/ui.css" />
+  </head>
+  <body class="result">
+    <header class="rt-bar">
+      <img src="/icons/32.png" width="22" height="22" alt="" />
+      <label class="fname">
+        <input id="name" aria-label="File name" spellcheck="false" />
+        <span>.png</span>
+      </label>
+      <span class="dims" id="dims"></span>
+      <div class="btns">
+        <button class="btn" id="copy">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <rect x="7" y="7" width="10" height="10" rx="2" />
+            <path
+              d="M13 4.5V4a1.5 1.5 0 0 0-1.5-1.5h-7A1.5 1.5 0 0 0 3 4v7a1.5 1.5 0 0 0 1.5 1.5H5"
+            />
+          </svg>
+          Copy
+        </button>
+        <button class="btn primary" id="save">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M10 3v9m-3.5-3.5L10 12l3.5-3.5M4 15.5h12" />
+          </svg>
+          Save
+        </button>
+        <button class="btn" id="saveAs">Save as…</button>
+      </div>
+    </header>
+    <main class="stage" id="stage">
+      <img id="shot" alt="The capture" hidden />
+      <p class="gone" id="gone" hidden>
+        This capture is no longer available. Captures are kept for a day after they're taken.
+      </p>
+    </main>
+    <div class="zoom" id="zoom" role="group" aria-label="Zoom">
+      <button class="btn" data-zoom="fit">Fit</button>
+      <button class="btn" data-zoom="width">Fit width</button>
+      <button class="btn" data-zoom="actual">100%</button>
+    </div>
+    <div class="toast" id="toast" role="status" hidden></div>
+    <script type="module" src="./src/result.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vandal Screen Capture</title>
+    <link rel="stylesheet" href="./src/ui.css" />
+  </head>
+  <body class="popup">
+    <header class="popup-head">
+      <img src="/icons/32.png" width="20" height="20" alt="" />
+      <b>Vandal Screen Capture</b>
+    </header>
+    <div class="acts">
+      <button class="act" id="visible">
+        <span class="ic">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <rect x="2.5" y="4" width="15" height="12" rx="2" />
+          </svg>
+        </span>
+        <span>Visible area<small>What you see in this tab</small></span>
+      </button>
+      <button class="act" disabled>
+        <span class="ic">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M3 7V4h3M14 4h3v3M17 13v3h-3M6 16H3v-3" />
+          </svg>
+        </span>
+        <span>Region<small>Coming in a later build</small></span>
+      </button>
+      <button class="act" disabled>
+        <span class="ic">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <rect x="5" y="1.5" width="10" height="17" rx="2" />
+            <path d="M10 6v7m-2.5-2.5L10 13l2.5-2.5" />
+          </svg>
+        </span>
+        <span>Full page<small>Coming in a later build</small></span>
+      </button>
+    </div>
+    <p class="popup-msg" id="msg" hidden></p>
+    <script type="module" src="./src/popup.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,186 @@
+// The result tab (PLAN 3N): a preview of one capture with Copy, Save and
+// Save as. The capture's id is the URL hash; the image is in IndexedDB.
+
+import { renderName, sanitizeFileName, sanitizeFolder, usesNumber } from "./filename";
+import { countNumber, getSettings, nextNumber } from "./settings";
+import { getCapture } from "./store";
+
+/** Above this height Copy warns first: huge images paste slowly, if at all. */
+const COPY_WARN_HEIGHT = 20_000;
+
+type Zoom = "fit" | "width" | "actual";
+let zoom: Zoom = "fit";
+
+const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+const nameInput = $<HTMLInputElement>("name");
+const shot = $<HTMLImageElement>("shot");
+const stage = $<HTMLElement>("stage");
+const toastEl = $<HTMLDivElement>("toast");
+const buttons = [
+  $<HTMLButtonElement>("copy"),
+  $<HTMLButtonElement>("save"),
+  $<HTMLButtonElement>("saveAs"),
+];
+
+const capture = await getCapture(location.hash.slice(1));
+if (!capture) {
+  $("gone").hidden = false;
+  $("zoom").hidden = true;
+  nameInput.disabled = true;
+  buttons.forEach((b) => (b.disabled = true));
+} else {
+  const settings = await getSettings();
+  let number = await nextNumber();
+  const name = () =>
+    renderName(settings.template, {
+      date: new Date(capture.created),
+      title: capture.title,
+      url: capture.url,
+      n: number,
+    });
+  nameInput.value = name();
+  document.title = capture.title ? `Capture · ${capture.title}` : "Capture";
+
+  const fmt = new Intl.NumberFormat();
+  const mb = capture.blob.size / (1024 * 1024);
+  $("dims").textContent =
+    `${fmt.format(capture.width)} × ${fmt.format(capture.height)} px · ` +
+    (mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(mb * 1024))} KB`);
+
+  shot.src = URL.createObjectURL(capture.blob);
+  shot.hidden = false;
+  const tall = capture.height / devicePixelRatio > 2 * stage.clientHeight;
+  setZoom(tall ? "width" : "fit");
+  new ResizeObserver(layout).observe(stage);
+  $("zoom").addEventListener("click", (e) => {
+    const zoom = (e.target as HTMLElement).closest<HTMLElement>("[data-zoom]")?.dataset.zoom;
+    if (zoom) setZoom(zoom as Zoom);
+  });
+
+  $("copy").addEventListener("click", () => {
+    if (capture.height <= COPY_WARN_HEIGHT) return void copy();
+    toast(
+      `This image is ${fmt.format(capture.height)} px tall, so pasting it may be slow or fail in some apps.`,
+      [
+        { label: "Copy anyway", primary: true, run: copy },
+        { label: "Cancel", run: () => (toastEl.hidden = true) },
+      ],
+    );
+  });
+
+  async function copy() {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": capture!.blob })]);
+      toast("Copied to the clipboard.");
+    } catch (e) {
+      toast(`Couldn't copy: ${e instanceof Error ? e.message : String(e)}`, [], "error");
+    }
+  }
+
+  $("save").addEventListener("click", () => void save(settings.saveAs));
+  $("saveAs").addEventListener("click", () => void save(true));
+
+  async function save(saveAs: boolean) {
+    const folder = sanitizeFolder(settings.folder);
+    const stem = sanitizeFileName(nameInput.value);
+    const url = URL.createObjectURL(capture!.blob);
+    let id: number;
+    try {
+      id = await chrome.downloads.download({
+        url,
+        filename: `${folder ? `${folder}/` : ""}${stem}.png`,
+        saveAs,
+        conflictAction: "uniquify",
+      });
+    } catch (e) {
+      URL.revokeObjectURL(url);
+      toast(`Couldn't save: ${e instanceof Error ? e.message : String(e)}`, [], "error");
+      return;
+    }
+    const item = await finished(id);
+    URL.revokeObjectURL(url);
+    if (item?.state !== "complete") {
+      // Cancelling Save as isn't an error worth a message.
+      if (item?.error && item.error !== "USER_CANCELED")
+        toast(`Couldn't save: ${item.error}`, [], "error");
+      return;
+    }
+    if (usesNumber(settings.template) && nameInput.value === name()) {
+      await countNumber(number);
+      number += 1;
+    }
+    toast(`Saved to ${item.filename}`, [
+      { label: "Show in folder", run: () => chrome.downloads.show(id) },
+    ]);
+  }
+}
+
+function setZoom(next: Zoom) {
+  zoom = next;
+  document.querySelectorAll<HTMLButtonElement>("[data-zoom]").forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.zoom === zoom));
+  });
+  layout();
+}
+
+/** Size the image for the zoom. 100% is 1 image pixel per screen pixel, as in
+ *  Vandal; neither fit mode enlarges past it. */
+function layout() {
+  if (!capture) return;
+  const style = getComputedStyle(stage);
+  const availW = stage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  const availH =
+    stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+  const actual = capture.width / devicePixelRatio;
+  let width = actual;
+  if (zoom === "width") width = Math.min(actual, availW);
+  else if (zoom === "fit")
+    width = Math.min(actual, availW, (availH * capture.width) / capture.height);
+  shot.style.width = `${Math.max(1, Math.floor(width))}px`;
+}
+
+/** Resolves when the download completes or stops. */
+function finished(id: number): Promise<chrome.downloads.DownloadItem | undefined> {
+  return new Promise((resolve) => {
+    const check = async () => {
+      const [item] = await chrome.downloads.search({ id });
+      if (!item || item.state !== "in_progress") {
+        chrome.downloads.onChanged.removeListener(onChanged);
+        resolve(item);
+      }
+    };
+    const onChanged = (delta: chrome.downloads.DownloadDelta) => {
+      if (delta.id === id && delta.state) void check();
+    };
+    chrome.downloads.onChanged.addListener(onChanged);
+    void check();
+  });
+}
+
+interface ToastAction {
+  label: string;
+  primary?: boolean;
+  run: () => unknown;
+}
+
+let toastTimer: number | undefined;
+
+function toast(text: string, actions: ToastAction[] = [], kind: "ok" | "error" = "ok") {
+  clearTimeout(toastTimer);
+  toastEl.replaceChildren();
+  toastEl.dataset.kind = kind;
+  const message = document.createElement("span");
+  message.textContent = text;
+  toastEl.append(message);
+  for (const action of actions) {
+    const button = document.createElement("button");
+    button.className = action.primary ? "btn primary" : "link";
+    button.textContent = action.label;
+    button.addEventListener("click", () => void action.run());
+    toastEl.append(button);
+  }
+  toastEl.hidden = false;
+  // Toasts with a choice stay until it's made; the rest fade after a while.
+  if (!actions.some((a) => a.primary))
+    toastTimer = window.setTimeout(() => (toastEl.hidden = true), 8000);
+}

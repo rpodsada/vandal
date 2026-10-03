@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Vandal for Chrome",
+  "short_name": "Vandal",
+  "version": "0.1.0",
+  "description": "Capture the visible area, a region or a whole web page. Copy it, save it, or open it in Vandal's editor.",
+  "homepage_url": "https://vandalscreenshot.com",
+  "minimum_chrome_version": "116",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAogOmjXxkFkymSdela4L3kVUiGyplqxqtNx1j9nqZCUMLJXtsOUTQ3SX2JL1SwDyS+Dq9TqmawL7dNP1XXBKTNSc0FvIanCUWmaaLGUpxpqoJDc7Nvx710OMZzSNIXmoFsWmUZwSK8y5p01Le0fA0BwYZNkCKqTLdbtYHCQ1Dz1OhPZaPlfgSGOSSDon9exfrD/e3vDSmZCtiRwBmSPvJlnwZumJDJIsXAyjzi9yE/bEO6Ro/8nhz/10l2865VAg4E9j8ri26Sc9OKkE004MGNGK5+mHXNvDpdhgGvaHWp/dMSVBKaLMVb3JARgE4Ft470pl0ROv/7DwQ/SJSKWEBOwIDAQAB",
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "action": {
+    "default_title": "Vandal",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png",
+      "48": "icons/48.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["activeTab", "downloads", "storage"]
+}

@@ -17,7 +17,9 @@
     "test": "vitest run",
     "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "release:bump": "node scripts/release.mjs bump",
-    "build:local": "node scripts/build-local.mjs"
+    "build:local": "node scripts/build-local.mjs",
+    "ext:build": "tsc -p extension/chrome && vite build -c extension/chrome/vite.config.ts",
+    "ext:dev": "vite build -c extension/chrome/vite.config.ts --watch"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -30,6 +32,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tauri-apps/cli": "^2",
+    "@types/chrome": "^0.3.4",
     "@types/node": "^26.6.3",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",

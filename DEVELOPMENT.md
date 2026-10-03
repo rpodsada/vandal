@@ -35,7 +35,25 @@ Run all of these before calling a change done:
 ```powershell
 cd src-tauri; cargo fmt; cargo clippy --all-targets -- -D warnings; cargo test; cd ..
 npm run lint; npm test; npx tsc --noEmit
+npm run ext:build   # if extension/ changed: type-checks and builds the browser extension
 ```
+
+## Browser extension
+
+`extension/chrome/` is Vandal for Chrome, a Manifest V3 extension that also runs in Edge. It
+shares the root's tooling: `npm run lint` and `npm test` cover it, and it uses Vandal's theme
+tokens from `src/shared/theme.css`.
+
+```powershell
+npm run ext:build   # builds extension/chrome/dist
+npm run ext:dev     # rebuilds on every change
+```
+
+To load it, open `chrome://extensions` (or `edge://extensions`), turn on Developer mode, click
+**Load unpacked** and pick `extension/chrome/dist`. After a rebuild, click the extension's reload
+button there and reopen the popup. The manifest's `key` keeps the extension ID the same
+everywhere (`bmloooliddgohojbpadiljacckgdbngm`); Vandal's native messaging host will only accept
+that ID.
 
 ## Build an installer
 
