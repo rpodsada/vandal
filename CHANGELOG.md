@@ -26,6 +26,11 @@ All notable changes to Vandal are listed here. The format follows
   least rounded corners. On a slider, 1 is a tenth of the way along, so its minimum (say 1 px)
   had no key until now.
 
+### Fixed
+
+- **A callout's text is centred in its box in every font.** Most fonts, Arial and Helvetica
+  among them, sat a little high.
+
 ### Security
 
 - Installers now come with a signed build provenance record: `gh attestation verify` checks that

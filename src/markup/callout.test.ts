@@ -84,10 +84,11 @@ describe("pointerGeometry", () => {
 });
 
 describe("underlineLayout", () => {
-  // 20pt: 26.67px text, padding 8, so the line sits 4 px off the text,
-  // then a tenth of the text's size lower.
-  const drop = 0.1 * ((20 * 96) / 72);
-  const at = (tip: { x: number; y: number }) => underlineLayout(100, 100, 80, 30, 20, tip);
+  // 20pt: 26.67px text, padding 8, so the line sits 4 px off the text (and
+  // no lower: without a canvas, there's no font to measure).
+  const drop = 0;
+  const font = { fontSize: 20, fontFamily: "Arial", bold: false, italic: false };
+  const at = (tip: { x: number; y: number }) => underlineLayout(100, 100, 80, 30, font, tip);
 
   it("runs under the text, a little wider, when the tip is lower", () => {
     const u = at({ x: 400, y: 300 });
@@ -175,14 +176,14 @@ describe("pointerPivot", () => {
     const a: CalloutAnnotation = { ...base, shape: "box", tip: { x: 0, y: 0 } };
     const p = pointerPivot(a, 80, 30);
     expect(p.x).toBe(140);
-    expect(p.y).toBeCloseTo(115 + 0.1 * ((20 * 96) / 72));
+    expect(p.y).toBeCloseTo(115); // no font to measure without a canvas
   });
 
   it("is the underline's end on the tip's side", () => {
     const a: CalloutAnnotation = { ...base, shape: "underline", tip: { x: 400, y: 300 } };
     const p = pointerPivot(a, 80, 30);
     expect(p.x).toBe(184);
-    expect(p.y).toBeCloseTo(134 + 0.1 * ((20 * 96) / 72));
+    expect(p.y).toBeCloseTo(134); // no font to measure without a canvas
   });
 });
 

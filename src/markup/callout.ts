@@ -1,18 +1,23 @@
 // Callout geometry (PLAN 3E), in source px: the box around the text and where
 // the pointer leaves it.
 
-import type { CalloutAnnotation, CalloutEnd, Point, Rect } from "./model/types";
+import type { CalloutAnnotation, CalloutEnd, Point, Rect, TextBody } from "./model/types";
 import { drawnCornerRadius } from "./styles";
-import { textBoxPadding } from "./textMeasure";
+import { textBoxPadding, textDrop } from "./textMeasure";
 import { arrowGeometry, arrowHeadSize, textPx } from "./geometry";
 
+/** The font fields a callout's box depends on. */
+export type CalloutFont = Pick<TextBody, "fontSize" | "fontFamily" | "bold" | "italic">;
+
 /**
- * How far below the text's line boxes the box and underline sit, as a share
- * of the text's size: a line box has more room above the letters than below,
- * so centred on it they looked low (Richard). Moving the box, not the text,
- * keeps the text editor lined up.
+ * How far below the text's line boxes the box and underline sit, in px: a
+ * line box has more room above the letters than below, so centred on it they
+ * looked low (Richard), by an amount that depends on the font. Moving the
+ * box, not the text, keeps the text editor lined up.
  */
-const TEXT_DROP = 0.1;
+function boxDrop(font: CalloutFont, px: number): number {
+  return textDrop(px, font.fontFamily, font.bold, font.italic);
+}
 
 /** The box around a callout's text (`width` × `height` as laid out), with the text box padding. */
 export function calloutBox(
@@ -20,13 +25,13 @@ export function calloutBox(
   y: number,
   width: number,
   height: number,
-  fontSize: number,
+  font: CalloutFont,
 ): Rect {
-  const px = textPx(fontSize);
+  const px = textPx(font.fontSize);
   const pad = textBoxPadding(px);
   return {
     x: x - pad,
-    y: y - pad + TEXT_DROP * px,
+    y: y - pad + boxDrop(font, px),
     width: width + 2 * pad,
     height: height + 2 * pad,
   };
@@ -77,7 +82,7 @@ function insideRoundedBox(dx: number, dy: number, hw: number, hh: number, r: num
  * as laid out. A multi-selection's frame goes around this.
  */
 export function calloutExtent(a: CalloutAnnotation, width: number, height: number): Rect {
-  const box = calloutBox(a.x, a.y, width, height, a.fontSize);
+  const box = calloutBox(a.x, a.y, width, height, a);
   // An outline's stroke is centred on the box's edge.
   const out = a.shape === "outline" ? a.lineWidth / 2 : 0;
   const reach =
@@ -146,10 +151,10 @@ export function growCallout(a: CalloutAnnotation, width: number): CalloutAnnotat
  */
 export function pointerPivot(a: CalloutAnnotation, width: number, height: number): Point {
   if (a.shape === "underline") {
-    const [left, right] = underlineLayout(a.x, a.y, width, height, a.fontSize, a.tip).line;
+    const [left, right] = underlineLayout(a.x, a.y, width, height, a, a.tip).line;
     return a.tip.x < a.x + width / 2 ? left : right;
   }
-  const box = calloutBox(a.x, a.y, width, height, a.fontSize);
+  const box = calloutBox(a.x, a.y, width, height, a);
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
@@ -171,16 +176,16 @@ export function underlineLayout(
   y: number,
   width: number,
   height: number,
-  fontSize: number,
+  font: CalloutFont,
   tip: Point,
 ): UnderlineLayout {
-  const px = textPx(fontSize);
+  const px = textPx(font.fontSize);
   const pad = textBoxPadding(px);
   const above = tip.y < y + height / 2;
-  const lineY = (above ? y - pad / 2 : y + height + pad / 2) + TEXT_DROP * px;
+  const lineY = (above ? y - pad / 2 : y + height + pad / 2) + boxDrop(font, px);
   const left = { x: x - pad / 2, y: lineY };
   const right = { x: x + width + pad / 2, y: lineY };
-  const box = calloutBox(x, y, width, height, fontSize);
+  const box = calloutBox(x, y, width, height, font);
   const inside =
     tip.x >= box.x && tip.x <= box.x + box.width && tip.y >= box.y && tip.y <= box.y + box.height;
   return {
