@@ -48,5 +48,5 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["activeTab", "downloads", "scripting", "storage"]
+  "permissions": ["activeTab", "downloads", "nativeMessaging", "scripting", "storage"]
 }

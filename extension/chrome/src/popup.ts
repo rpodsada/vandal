@@ -8,6 +8,7 @@ import { pageToast } from "./inpage";
 import { blockedReason } from "./pages";
 import { AFTER_CAPTURE, type AfterCapture, getSettings, setSettings } from "./settings";
 import { getShortcuts } from "./shortcuts";
+import { vandalStatus } from "./vandal";
 import { getCapture } from "./store";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -31,7 +32,12 @@ $("options").addEventListener("click", () => {
 });
 
 // After capture: a menu of radio items, saved as soon as one is picked.
+// Open in Vandal is offered when Vandal answers (or is already the choice).
 const settings = await getSettings();
+const { target } = await vandalStatus();
+const choices = AFTER_CAPTURE.filter(
+  (a) => a.value !== "vandal" || target || settings.afterCapture === "vandal",
+);
 function renderAfter(value: AfterCapture) {
   settings.afterCapture = value;
   $("afterValue").textContent = AFTER_CAPTURE.find((a) => a.value === value)?.label ?? "";
@@ -39,7 +45,7 @@ function renderAfter(value: AfterCapture) {
     b.setAttribute("aria-checked", String(b.dataset.value === value));
   });
 }
-for (const { value, label } of AFTER_CAPTURE) {
+for (const { value, label } of choices) {
   const item = document.createElement("button");
   item.setAttribute("role", "menuitemradio");
   item.dataset.value = value;

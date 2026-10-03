@@ -31,9 +31,25 @@
           Save
         </button>
         <button class="btn" id="saveAs">Save as…</button>
+        <button class="btn" id="vandal" disabled>
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path
+              d="M11 3h6v6M17 3l-8 8M14 12v3.5A1.5 1.5 0 0 1 12.5 17h-8A1.5 1.5 0 0 1 3 15.5v-8A1.5 1.5 0 0 1 4.5 6H8"
+            />
+          </svg>
+          Open in Vandal
+        </button>
       </div>
     </header>
-    <div class="notice" id="note" role="note" hidden></div>
+    <div>
+      <div class="notice" id="note" role="note" hidden></div>
+      <div class="notice" id="noVandal" role="note" hidden>
+        <span id="noVandalText"></span>
+        <a id="getVandal" href="https://vandalscreenshot.com" target="_blank" rel="noopener"
+          >Get Vandal</a
+        >
+      </div>
+    </div>
     <main class="stage" id="stage">
       <img id="shot" alt="The capture" hidden />
       <p class="gone" id="gone" hidden>

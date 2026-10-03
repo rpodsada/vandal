@@ -20,6 +20,7 @@ import { blockedReason } from "./pages";
 import { type Settings, countNumber, getSettings, nextNumber } from "./settings";
 import { maxHeight, stitchPlan } from "./stitch";
 import { type Capture, prune, putCapture } from "./store";
+import { openInVandal, unavailableText, vandalStatus } from "./vandal";
 
 type Message = CaptureRequest | RegionDone | FullStop;
 
@@ -310,6 +311,21 @@ async function after(
     // Keep the capture: open it with the reason, so it can be saved by hand.
     await openResult(tab, capture.id, { error: `Couldn't save: ${saved.error}`, note });
     return { ok: true, done: "result" };
+  }
+  if (settings.afterCapture === "vandal") {
+    const status = await vandalStatus();
+    const { target } = status;
+    try {
+      if (!target) throw new Error(unavailableText(status));
+      await openInVandal(target, capture.blob, capture.title);
+      await Promise.all([flashDone(tabId), pageToast(tabId, `Opened in ${target.name}`)]);
+      return { ok: true, done: "result" };
+    } catch (e) {
+      // Keep the capture: open it with the reason, so it can be saved by hand.
+      const error = `Couldn't open it in Vandal: ${errorText(e)}`;
+      await openResult(tab, capture.id, { error, note });
+      return { ok: true, done: "result" };
+    }
   }
   await openResult(tab, capture.id, { note });
   return { ok: true, done: "result" };

@@ -394,6 +394,26 @@ body.result {
 }
 
 /* Options */
+.status {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--success-text);
+}
+.dot.off {
+  background: var(--text-2);
+  opacity: 0.5;
+}
+a.btn {
+  text-decoration: none;
+}
 .keys {
   display: grid;
   grid-template-columns: 1fr auto;

@@ -46,7 +46,11 @@ pub fn run(origin: &str) {
     let stdout = io::stdout();
     let mut input = stdin.lock();
     let mut output = stdout.lock();
-    let mut transfer = Transfer::default();
+    // A dev build loads its UI from the Vite dev server, so starting one
+    // outside `tauri dev` gives windows (full-screen overlays included) with no
+    // UI and no way to close them: a dev host only hands over to a running app.
+    let available = !cfg!(debug_assertions) || dev_app_running();
+    let mut transfer = Transfer::new(available);
     loop {
         let message = match read_message(&mut input) {
             Ok(Some(message)) => message,
@@ -133,16 +137,29 @@ pub enum Step {
 }
 
 /// The state of a capture coming in, between `begin` and `end`.
-#[derive(Default)]
 pub struct Transfer {
     current: Option<Received>,
+    /// Whether a capture can be handed over: false for a dev build that isn't
+    /// running (see [`run`]).
+    available: bool,
 }
 
+/// Why a dev host refuses: shown in the extension's result tab.
+const DEV_NOT_RUNNING: &str = "Vandal Dev isn't running. Start it with npm run tauri:dev.";
+
 impl Transfer {
+    pub fn new(available: bool) -> Self {
+        Self {
+            current: None,
+            available,
+        }
+    }
+
     pub fn handle(&mut self, message: &[u8]) -> Result<Step, String> {
         let incoming: Incoming =
             serde_json::from_slice(message).map_err(|e| format!("bad message: {e}"))?;
         match incoming {
+            Incoming::Hello if !self.available => Err(DEV_NOT_RUNNING.into()),
             Incoming::Hello => Ok(Step::Reply(json!({
                 "ok": true,
                 "name": product_name(),
@@ -170,6 +187,9 @@ impl Transfer {
                 if !received.png.starts_with(PNG_SIGNATURE) {
                     return Err("not a PNG image".into());
                 }
+                if !self.available {
+                    return Err(DEV_NOT_RUNNING.into());
+                }
                 Ok(Step::Done(received))
             }
         }
@@ -182,6 +202,30 @@ fn product_name() -> &'static str {
         "Vandal Dev"
     } else {
         "Vandal"
+    }
+}
+
+/// Whether Vandal Dev is running: its single-instance lock exists (the
+/// plugin's `<identifier>-sim` mutex). No window messages, so it works even
+/// where those can't reach the app.
+fn dev_app_running() -> bool {
+    use windows::core::w;
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Threading::{OpenMutexW, SYNCHRONIZATION_SYNCHRONIZE};
+    match unsafe {
+        OpenMutexW(
+            SYNCHRONIZATION_SYNCHRONIZE,
+            false,
+            w!("com.vandal.desktop.dev-sim"),
+        )
+    } {
+        Ok(handle) => {
+            unsafe {
+                let _ = CloseHandle(handle);
+            }
+            true
+        }
+        Err(_) => false,
     }
 }
 
@@ -372,7 +416,7 @@ mod tests {
     #[test]
     fn says_hello() {
         let hello = reply(
-            Transfer::default()
+            Transfer::new(true)
                 .handle(&message(json!({ "type": "hello" })))
                 .unwrap(),
         );
@@ -382,7 +426,7 @@ mod tests {
 
     #[test]
     fn receives_a_capture_in_chunks() {
-        let mut t = Transfer::default();
+        let mut t = Transfer::new(true);
         let png = [PNG_SIGNATURE, b"rest of it"].concat();
         let b64 = "iVBORw0KGgpyZXN0IG9mIGl0"; // the bytes above
         let (a, b) = b64.split_at(8);
@@ -408,8 +452,23 @@ mod tests {
     }
 
     #[test]
+    fn a_dev_host_without_its_app_refuses() {
+        let mut t = Transfer::new(false);
+        assert!(t.handle(&message(json!({ "type": "hello" }))).is_err());
+        t.handle(&message(json!({ "type": "begin" }))).unwrap();
+        t.handle(&message(json!({ "type": "chunk", "data": "iVBORw0KGgo=" })))
+            .unwrap();
+        assert_eq!(
+            t.handle(&message(json!({ "type": "end" })))
+                .err()
+                .as_deref(),
+            Some(DEV_NOT_RUNNING)
+        );
+    }
+
+    #[test]
     fn refuses_what_isnt_a_png() {
-        let mut t = Transfer::default();
+        let mut t = Transfer::new(true);
         t.handle(&message(json!({ "type": "begin" }))).unwrap();
         t.handle(&message(json!({ "type": "chunk", "data": "aGVsbG8=" })))
             .unwrap();
@@ -418,7 +477,7 @@ mod tests {
 
     #[test]
     fn refuses_out_of_order_and_bad_messages() {
-        let mut t = Transfer::default();
+        let mut t = Transfer::new(true);
         assert!(t
             .handle(&message(json!({ "type": "chunk", "data": "" })))
             .is_err());

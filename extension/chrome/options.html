@@ -23,6 +23,39 @@
             </label>
             <select class="ctl" id="afterCapture"></select>
           </div>
+          <div class="row" id="closeRow" hidden>
+            <span class="lbl" id="closeAfterVandal-l">
+              Close the result tab after Open in Vandal
+              <small>Off keeps it open for copying or saving too.</small>
+            </span>
+            <button
+              class="toggle"
+              id="closeAfterVandal"
+              role="switch"
+              aria-labelledby="closeAfterVandal-l"
+            ></button>
+          </div>
+          <div class="row" id="hostRow" hidden>
+            <label class="lbl" for="vandalHost">
+              Open captures in
+              <small>Both an installed Vandal and a dev build are set up.</small>
+            </label>
+            <select class="ctl" id="vandalHost"></select>
+          </div>
+          <div class="row">
+            <span class="lbl status" id="vandalStatus">
+              <i class="dot off"></i><span>Looking for Vandal…</span>
+            </span>
+            <a
+              class="btn"
+              id="getVandal"
+              href="https://vandalscreenshot.com"
+              target="_blank"
+              rel="noopener"
+              hidden
+              >Get Vandal</a
+            >
+          </div>
         </div>
       </section>
 

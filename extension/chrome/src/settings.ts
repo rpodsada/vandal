@@ -4,13 +4,18 @@
 import { DEFAULT_TEMPLATE } from "./filename";
 
 /** What happens after a capture. The result tab always offers all of them. */
-export type AfterCapture = "result" | "copy" | "save";
+export type AfterCapture = "result" | "copy" | "save" | "vandal";
 
+/** "vandal" is offered only when Vandal answers (vandal.ts). */
 export const AFTER_CAPTURE: { value: AfterCapture; label: string }[] = [
   { value: "result", label: "Show the result tab" },
   { value: "copy", label: "Copy to the clipboard" },
   { value: "save", label: "Save" },
+  { value: "vandal", label: "Open in Vandal" },
 ];
+
+/** Which Vandal captures go to, when both are registered (vandal.ts). */
+export type VandalHost = "installed" | "dev";
 
 export interface Settings {
   afterCapture: AfterCapture;
@@ -20,6 +25,9 @@ export interface Settings {
   template: string;
   /** Full page: show sticky and fixed elements once, not on every screen. */
   hideFixed: boolean;
+  /** Close the result tab once Open in Vandal worked. */
+  closeAfterVandal: boolean;
+  vandalHost: VandalHost;
 }
 
 export const DEFAULTS: Settings = {
@@ -27,6 +35,8 @@ export const DEFAULTS: Settings = {
   saveAs: false,
   template: DEFAULT_TEMPLATE,
   hideFixed: true,
+  closeAfterVandal: false,
+  vandalHost: "installed",
 };
 
 export async function getSettings(): Promise<Settings> {

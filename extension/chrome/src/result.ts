@@ -6,6 +6,7 @@ import { captureName, saveImage } from "./downloads";
 import { usesNumber } from "./filename";
 import { countNumber, getSettings, nextNumber } from "./settings";
 import { getCapture } from "./store";
+import { openInVandal, unavailableText, vandalStatus } from "./vandal";
 
 /** Above this height Copy warns first: huge images paste slowly, if at all. */
 const COPY_WARN_HEIGHT = 20_000;
@@ -22,6 +23,7 @@ const buttons = [
   $<HTMLButtonElement>("copy"),
   $<HTMLButtonElement>("save"),
   $<HTMLButtonElement>("saveAs"),
+  $<HTMLButtonElement>("vandal"),
 ];
 
 const [captureId, query] = location.hash.slice(1).split("&", 2);
@@ -83,6 +85,47 @@ if (!capture) {
       toast(`Couldn't copy: ${e instanceof Error ? e.message : String(e)}`, [], "error");
     }
   }
+
+  // Open in Vandal: the main action when Vandal answers; otherwise shown
+  // disabled with a notice, so people learn it exists.
+  const vandal = $<HTMLButtonElement>("vandal");
+  void vandalStatus().then((status) => {
+    const { target } = status;
+    if (!target) {
+      vandal.title = unavailableText(status);
+      $("noVandalText").textContent = unavailableText(status);
+      // Get Vandal only when it isn't installed (not when it's just not running).
+      $("getVandal").hidden = status.problem !== undefined;
+      $("noVandal").hidden = false;
+      return;
+    }
+    vandal.disabled = false;
+    vandal.title = `Open this capture in ${target.name}'s editor`;
+    vandal.classList.add("primary");
+    $("save").classList.remove("primary");
+    vandal.addEventListener("click", async () => {
+      vandal.disabled = true;
+      try {
+        await openInVandal(target, capture.blob, capture.title);
+      } catch (e) {
+        toast(
+          `Couldn't open it in Vandal: ${e instanceof Error ? e.message : String(e)}`,
+          [],
+          "error",
+        );
+        return;
+      } finally {
+        vandal.disabled = false;
+      }
+      if (settings.closeAfterVandal) {
+        const tab = await chrome.tabs.getCurrent();
+        if (tab?.id !== undefined) return void chrome.tabs.remove(tab.id);
+      }
+      toast(`Opened in ${target.name}'s editor.`, [
+        { label: "Close this tab", run: () => window.close() },
+      ]);
+    });
+  });
 
   $("save").addEventListener("click", () => void save(settings.saveAs));
   $("saveAs").addEventListener("click", () => void save(true));
