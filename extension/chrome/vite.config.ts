@@ -1,6 +1,7 @@
 // Builds the Chrome extension (PLAN 3N) into extension/chrome/dist, the folder
 // to load unpacked. public/ (manifest, icons) is copied as is.
 import { resolve } from "node:path";
+import process from "node:process";
 import { defineConfig } from "vite";
 
 const dir = import.meta.dirname;
@@ -10,7 +11,8 @@ export default defineConfig({
   base: "./",
   build: {
     outDir: "dist",
-    emptyOutDir: true,
+    // Not while watching: the content-script watcher writes here too (ext:dev).
+    emptyOutDir: !process.argv.includes("--watch"),
     target: "chrome116",
     // The preload polyfill would be inline script, which extension pages forbid.
     modulePreload: false,

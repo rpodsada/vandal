@@ -2,20 +2,21 @@
 // capture runs in the service worker, since the popup closes as soon as the
 // result tab opens; copying happens here, where there's a focused document.
 
-import type { CaptureRequest, CaptureResponse } from "./background";
+import type { CaptureKind, CaptureRequest, CaptureResponse } from "./messages";
 import { flashDone, openResult } from "./downloads";
+import { pageToast } from "./inpage";
 import { blockedReason } from "./pages";
 import { AFTER_CAPTURE, type AfterCapture, getSettings, setSettings } from "./settings";
 import { getCapture } from "./store";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const msg = $<HTMLParagraphElement>("msg");
-const visible = $<HTMLButtonElement>("visible");
+const actions: [CaptureKind, HTMLButtonElement][] = [
+  ["visible", $<HTMLButtonElement>("visible")],
+  ["region", $<HTMLButtonElement>("region")],
+];
 const afterBtn = $<HTMLButtonElement>("afterBtn");
 const afterMenu = $<HTMLDivElement>("afterMenu");
-
-/** How long "Copied" / "Saved" stays before the popup closes. */
-const DONE_MS = 1400;
 
 function show(text: string) {
   msg.textContent = text;
@@ -79,17 +80,19 @@ document.addEventListener("click", (e) => {
 const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 const reason = blockedReason(tab?.url);
 if (reason || tab?.id === undefined) {
-  visible.disabled = true;
+  for (const [, button] of actions) button.disabled = true;
   show(reason ?? "This page can't be captured.");
 }
 
-visible.addEventListener("click", async () => {
+for (const [kind, button] of actions) button.addEventListener("click", () => void capture(kind));
+
+async function capture(kind: CaptureKind) {
   if (tab?.id === undefined) return;
-  visible.disabled = true;
-  const request: CaptureRequest = { type: "capture", kind: "visible", tabId: tab.id };
+  for (const [, button] of actions) button.disabled = true;
+  const request: CaptureRequest = { type: "capture", kind, tabId: tab.id };
   const response = (await chrome.runtime.sendMessage(request)) as CaptureResponse;
   if (!response.ok) {
-    visible.disabled = false;
+    for (const [, button] of actions) button.disabled = false;
     show(`Couldn't capture this page: ${response.error}`);
     return;
   }
@@ -97,15 +100,13 @@ visible.addEventListener("click", async () => {
     const capture = await getCapture(response.id);
     try {
       await navigator.clipboard.write([new ClipboardItem({ "image/png": capture!.blob })]);
-      await flashDone(tab.id);
-      show("Copied to the clipboard.");
+      await Promise.all([flashDone(tab.id), pageToast(tab.id, "Screenshot copied")]);
     } catch (e) {
       // Keep the capture: open it with the reason, so it can be copied there.
       const error = e instanceof Error ? e.message : String(e);
       await openResult(tab, response.id, `Couldn't copy: ${error}`);
     }
-  } else if (response.done === "saved") {
-    show(`Saved to ${response.path}`);
   }
-  setTimeout(() => window.close(), response.done === "result" ? 0 : DONE_MS);
-});
+  // The region overlay, the result tab or the page's toast take over.
+  window.close();
+}

@@ -1,0 +1,60 @@
+/* The in-page toast (PLAN 3N): dark like the region overlay, whatever the page. */
+:host {
+  all: initial;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px 9px 12px;
+  border-radius: 18px;
+  background: rgb(24 26 31 / 0.94);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+  color: #fff;
+  font:
+    13px/18px "Segoe UI Variable Text",
+    "Segoe UI",
+    system-ui,
+    sans-serif;
+  max-width: min(640px, calc(100vw - 32px));
+  box-sizing: border-box;
+  animation: in 160ms ease-out;
+}
+.toast.out {
+  opacity: 0;
+  transition: opacity 200ms;
+}
+
+span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 2px;
+  border-radius: 50%;
+  background: #5fd38d;
+  fill: none;
+  stroke: #0b2a17;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@keyframes in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}

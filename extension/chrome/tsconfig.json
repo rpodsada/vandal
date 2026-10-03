@@ -3,7 +3,7 @@
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "types": ["chrome"],
+    "types": ["chrome", "vite/client"],
     "skipLibCheck": true,
 
     "moduleResolution": "bundler",

@@ -18,8 +18,8 @@
     "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "release:bump": "node scripts/release.mjs bump",
     "build:local": "node scripts/build-local.mjs",
-    "ext:build": "tsc -p extension/chrome && vite build -c extension/chrome/vite.config.ts",
-    "ext:dev": "vite build -c extension/chrome/vite.config.ts --watch"
+    "ext:build": "tsc -p extension/chrome && vite build -c extension/chrome/vite.config.ts && vite build -c extension/chrome/vite.content.config.ts",
+    "ext:dev": "node scripts/ext-dev.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
