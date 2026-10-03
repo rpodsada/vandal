@@ -14,6 +14,11 @@ All notable changes to Vandal are listed here. The format follows
 
 ### Added
 
+- **Vandal Screen Capture for Chrome**, a browser extension that captures the
+  visible area, a region or a whole page, then copies it, saves it or opens it in Vandal's
+  editor (starting Vandal if it isn't running). Full-page captures show sticky headers and
+  cookie banners only once. Vandal's installer sets up the connection, and uninstalling removes
+  it. Available soon in the Chrome Web Store.
 - **Ctrl+0 again switches to Fit width** when the image is tall: the first press fits the whole
   image, the second fits its width, and a third goes back.
 - **The \` key (left of 1) picks the lowest choice**: the thinnest line, smallest text, weakest

@@ -73,6 +73,7 @@ where every screenshot should look the same.
 - [The editor](#the-editor)
 - [Opening images](#opening-images)
 - [Copying and saving](#copying-and-saving)
+- [Browser extension](#browser-extension)
 - [Settings](#settings)
 - [Command line](#command-line)
 - [Keyboard reference](#keyboard-reference)
@@ -279,6 +280,41 @@ If a file already has that name, a number is added: `… (2).png`.
 
 Capture notifications have buttons to **Edit**, **Save**, or **Open folder** (after saving).
 
+## Browser extension
+
+**Vandal Screen Capture** captures web pages from inside the browser: the visible area, a
+region, or the whole page from top to bottom. Copy or save the capture right there, or 
+open it in Vandal's editor to mark it up.
+
+<!-- TODO(PLAN 3N.10): the store link, once the listing is approved. -->
+
+Available soon from the Chrome Web Store.
+
+Click the V icon for the popup, or use a shortcut:
+
+| Capture      | Shortcut    | What it does                                                         |
+| ------------ | ----------- | -------------------------------------------------------------------- |
+| (popup)      | Alt+Shift+V | Opens the popup                                                      |
+| Visible area | Alt+Shift+S | What you see in the tab                                              |
+| Region       | Alt+Shift+D | Drag an area on a frozen copy of the page, like Vandal's own overlay |
+| Full page    | Alt+Shift+F | Scrolls through the page and stitches it together. Esc stops         |
+
+Change the shortcuts at `chrome://extensions/shortcuts`. If one says "Not set", the browser or
+another extension already uses that key.
+
+**After capture**, set in the popup or the extension's Options: show the result tab (with Copy,
+Save, Save as and Open in Vandal), copy, save, or open in Vandal. Saves go to the browser's
+download folder, named by the extension's own pattern: Vandal's date and time codes plus
+`{title}` and `{domain}` for the page, and `{n}` for a number that counts up.
+
+**Full page** shows sticky headers once at the top and bottom bars, such as cookie banners,
+once at the bottom. Pages taller than 65,000 px stop there. Pages that scroll inside a panel
+instead of the page itself, such as web mail, get the visible area.
+
+**Open in Vandal** sends the capture to Vandal's editor, starting Vandal if it isn't running.
+Vandal's installer sets this up for Chrome, Edge, Brave and Chromium. If you install Vandal
+while the browser is open, restart the browser once.
+
 ## Settings
 
 Open Settings from the tray menu, with Ctrl+, in quick edit or the editor, or with
@@ -433,6 +469,9 @@ Vandal doesn't collect usage data and doesn't make network connections.
 - **Settings** are kept in `%APPDATA%\com.vandal.desktop\settings.json`.
 - **WebView2**, the part of Windows that draws Vandal's windows, follows Windows' own
   diagnostic data and SmartScreen settings, as it does for every app that uses it.
+- **The browser extension** only reads a tab when you capture it (Chrome's `activeTab`), keeps
+  its captures in the browser's own storage for a day, and sends nothing anywhere. Open in
+  Vandal hands the image to Vandal on your PC.
 - **Launch on login** adds Vandal to your user account's startup list (it's on by default; see
   [Install](#install)).
 
@@ -483,6 +522,8 @@ Vandal doesn't collect usage data and doesn't make network connections.
 - Explorer "Open with", drag and drop, or paste from the clipboard
 - Command line for launchers, mouse buttons and Stream Deck keys
 - Capture notifications with Edit, Save and Open folder buttons
+- Browser extension for Chrome: visible area, region or full page, then copy,
+  save or open in Vandal
 
 **Light and private**
 
