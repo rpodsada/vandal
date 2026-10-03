@@ -14,10 +14,6 @@ All notable changes to Vandal are listed here. The format follows
 
 ### Added
 
-- **Captures from the browser extension open in Vandal.** Vandal for Chrome (coming soon, also
-  for Edge and Brave) can send a page capture straight to Vandal's editor, starting Vandal if
-  it isn't running. The installer sets this up for Chrome, Edge, Brave and Chromium, and
-  uninstalling removes it.
 - **Ctrl+0 again switches to Fit width** when the image is tall: the first press fits the whole
   image, the second fits its width, and a third goes back.
 - **The \` key (left of 1) picks the lowest choice**: the thinnest line, smallest text, weakest

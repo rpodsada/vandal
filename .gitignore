@@ -25,3 +25,6 @@ dist-ssr
 
 # Internal docs (plan, test matrix, perf notes, mockups): a separate private repo
 /internal/
+
+# Browser extension zips for testers (npm run ext:zip)
+/extension/*/*.zip

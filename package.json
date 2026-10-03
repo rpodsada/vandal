@@ -20,6 +20,7 @@
     "build:local": "node scripts/build-local.mjs",
     "ext:build": "tsc -p extension/chrome && vite build -c extension/chrome/vite.config.ts && vite build -c extension/chrome/vite.content.config.ts",
     "ext:dev": "node scripts/ext-dev.mjs",
+    "ext:zip": "npm run ext:build && node scripts/ext-zip.mjs",
     "ext:host-dev": "node scripts/ext-host-dev.mjs"
   },
   "dependencies": {

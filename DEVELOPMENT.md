@@ -47,7 +47,17 @@ tokens from `src/shared/theme.css`.
 ```powershell
 npm run ext:build   # builds extension/chrome/dist
 npm run ext:dev     # rebuilds on every change
+npm run ext:zip     # builds, then zips it for loading unpacked (vandal-for-chrome-<version>.zip)
+npm run ext:zip -- --release    # the same without the manifest's key, for the Chrome Web Store
+npm run ext:host-dev            # lets the extension reach the dev build (Open in Vandal)
+npm run ext:host-dev -- --remove
 ```
+
+Open in Vandal uses native messaging: the browser starts `vandal.exe` as a host, which hands the
+capture to the running app. The installer registers `com.vandal.desktop`; `ext:host-dev`
+registers `com.vandal.desktop.dev`, which only hands over to a running `tauri:dev` (a dev build
+loads its UI from the Vite server). Start `tauri:dev` from a normal terminal: Windows drops the
+handoff to an elevated app.
 
 To load it, open `chrome://extensions` (or `edge://extensions`), turn on Developer mode, click
 **Load unpacked** and pick `extension/chrome/dist`. After a rebuild, click the extension's reload
