@@ -6,6 +6,8 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0-beta.5] - 2026-10-02
+
 ### Added
 
 - **Fit width** in the editor's zoom (the status bar and the zoom menu): the image fills the
@@ -231,7 +233,8 @@ The first build for beta testers.
 - Copy to clipboard, auto-save with a file-name pattern, and capture notifications.
 - Searchable Settings window where changes apply immediately.
 
-[Unreleased]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.4...HEAD
+[Unreleased]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.5...HEAD
+[0.3.0-beta.5]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.4...v0.3.0-beta.5
 [0.3.0-beta.4]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.3...v0.3.0-beta.4
 [0.3.0-beta.3]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.2...v0.3.0-beta.3
 [0.3.0-beta.2]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.1...v0.3.0-beta.2

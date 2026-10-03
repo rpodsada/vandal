@@ -1,6 +1,6 @@
 [package]
 name = "vandal"
-version = "0.3.0-beta.4"
+version = "0.3.0-beta.5"
 description = "Fast, free screen capture and markup for Windows"
 authors = ["Richard Podsada"]
 license = "GPL-3.0-or-later"
