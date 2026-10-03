@@ -90,6 +90,15 @@ pub struct OverlayWindowPick {
     pub hovered: Option<u32>,
 }
 
+/// Scrolling-capture mode (PLAN 3K.4, key S) turned on or off on one
+/// overlay; every overlay follows.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[serde(rename_all = "camelCase")]
+pub struct OverlayScrollPick {
+    pub capture_id: CaptureId,
+    pub picking: bool,
+}
+
 /// Overlay → Rust: frame drawn, with the overlay-side timing.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -633,6 +642,37 @@ pub fn window_pick_changed(
         hovered,
     }
     .emit(app);
+}
+
+pub fn scroll_pick_changed(app: &AppHandle, capture_id: CaptureId, picking: bool) {
+    let _ = OverlayScrollPick {
+        capture_id,
+        picking,
+    }
+    .emit(app);
+}
+
+/// The window under `point` at capture time (topmost first), for scrolling
+/// capture (PLAN 3K.4).
+pub fn window_at(app: &AppHandle, capture_id: CaptureId, point: (i32, i32)) -> Option<isize> {
+    let state = app.state::<AppState>();
+    let guard = state.session.lock().unwrap();
+    let s = guard.as_ref().filter(|s| s.capture_id == capture_id)?;
+    s.windows
+        .iter()
+        .find(|w| {
+            let r = w.rect;
+            point.0 >= r.x && point.0 < r.x + r.width && point.1 >= r.y && point.1 < r.y + r.height
+        })
+        .map(|w| w.hwnd)
+}
+
+/// A scrolling capture starts (PLAN 3K.4): end the session and hide the
+/// overlays, so the page can be seen scrolling. Then window under `point`.
+pub fn end_for_scroll(app: &AppHandle, capture_id: CaptureId, point: (i32, i32)) -> Option<isize> {
+    let hwnd = window_at(app, capture_id, point)?;
+    end(app, capture_id)?;
+    Some(hwnd)
 }
 
 /// End the session and hide the overlays. The frames stay in the FrameStore.

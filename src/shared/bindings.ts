@@ -49,6 +49,22 @@ export const commands = {
 	 *  changed, on one overlay; every overlay follows.
 	 */
 	windowPickChanged: (captureId: number, picking: boolean, hovered: number | null) => __TAURI_INVOKE<void>("window_pick_changed", { captureId, picking, hovered }),
+	/**
+	 *  Scrolling-capture mode (PLAN 3K.4) turned on or off on one overlay;
+	 *  every overlay follows.
+	 */
+	scrollPickChanged: (captureId: number, picking: boolean) => __TAURI_INVOKE<void>("scroll_pick_changed", { captureId, picking }),
+	/**
+	 *  The scrolling area under the overlay's pointer, if any (virtual-desktop
+	 *  physical px). Asks UI Automation, so it takes tens of milliseconds. Err:
+	 *  no answer in time, which says nothing about the area.
+	 */
+	scrollAreaAt: (captureId: number, x: number, y: number) => typedError<ScrollHover, string>(__TAURI_INVOKE("scroll_area_at", { captureId, x, y })),
+	/**
+	 *  Start a scrolling capture of the area at that point: the overlays close
+	 *  and the result opens in the editor.
+	 */
+	scrollCaptureStart: (captureId: number, x: number, y: number) => __TAURI_INVOKE<void>("scroll_capture_start", { captureId, x, y }),
 	/**  Confirm: crop and run the after-capture actions. */
 	commitSelection: (captureId: number, target: CaptureTarget) => __TAURI_INVOKE<void>("commit_selection", { captureId, target }),
 	/**  Esc / right-click on an overlay. */
@@ -221,6 +237,7 @@ export const events = {
 	overlayClearSelection: makeEvent<OverlayClearSelection>("overlay-clear-selection"),
 	overlayLoad: makeEvent<OverlayLoad>("overlay-load"),
 	overlayMarkupOwner: makeEvent<OverlayMarkupOwner>("overlay-markup-owner"),
+	overlayScrollPick: makeEvent<OverlayScrollPick>("overlay-scroll-pick"),
 	overlayShown: makeEvent<OverlayShown>("overlay-shown"),
 	overlayWindowPick: makeEvent<OverlayWindowPick>("overlay-window-pick"),
 	settingsChanged: makeEvent<SettingsChanged>("settings-changed"),
@@ -530,6 +547,15 @@ export type OverlayReport = {
 	bytes: number,
 };
 
+/**
+ *  Scrolling-capture mode (PLAN 3K.4, key S) turned on or off on one
+ *  overlay; every overlay follows.
+ */
+export type OverlayScrollPick = {
+	captureId: number,
+	picking: boolean,
+};
+
 export type OverlaySettings = {
 	dimOpacity?: number | null,
 	showLoupe?: boolean,
@@ -629,6 +655,23 @@ export type SaveSettings = {
 	format?: string,
 	/**  Offer a "Save" button on the capture notification when not auto-saved. */
 	notificationSaveButton?: boolean,
+};
+
+/**  A scrolling area under the overlay's pointer (PLAN 3K.4). */
+export type ScrollArea = {
+	/**  Virtual-desktop physical px. */
+	rect: PhysicalRect,
+	/**  How many screens tall the page is, when UI Automation says. */
+	screens: number | null,
+};
+
+/**  The answer for the overlay's pointer. */
+export type ScrollHover = {
+	area: ScrollArea | null,
+	/**  False: the window's app isn't one scrolling capture is offered in. */
+	supported: boolean,
+	/**  Where it is offered, for the overlay to say so. */
+	apps: string,
 };
 
 export type Settings = {

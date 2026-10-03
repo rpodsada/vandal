@@ -3,12 +3,13 @@
 
 use tauri::webview::Color;
 use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow};
-use windows::Win32::Foundation::{HWND, POINT};
+use windows::Win32::Foundation::{COLORREF, HWND, POINT};
 use windows::Win32::System::Threading::{AttachThreadInput, GetCurrentThreadId};
 use windows::Win32::UI::Input::KeyboardAndMouse::SetFocus;
 use windows::Win32::UI::WindowsAndMessaging::{
-    BringWindowToTop, GetCursorPos, GetForegroundWindow, GetWindowThreadProcessId,
-    SetForegroundWindow, SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER,
+    BringWindowToTop, GetCursorPos, GetForegroundWindow, GetWindowLongW, GetWindowThreadProcessId,
+    SetForegroundWindow, SetLayeredWindowAttributes, SetWindowLongW, SetWindowPos, GWL_EXSTYLE,
+    LWA_ALPHA, SWP_NOACTIVATE, SWP_NOZORDER, WS_EX_LAYERED,
 };
 
 use crate::geometry::{monitor_at, MonitorInfo, PhysicalPoint, PhysicalRect};
@@ -129,11 +130,31 @@ pub fn show_all(app: &AppHandle, monitors: &[MonitorInfo]) {
         ensure_placed(&window, m.physical_bounds);
         let _ = window.show();
         let _ = window.set_always_on_top(true);
+        if let Ok(hwnd) = window.hwnd() {
+            not_covering(HWND(hwnd.0));
+        }
         if m.index == focus_index {
             if let Ok(hwnd) = window.hwnd() {
                 force_foreground(HWND(hwnd.0));
             }
         }
+    }
+}
+
+/// Make the shown overlay 254/255 opaque (a layered window), which looks the
+/// same, so Chromium doesn't count the windows under it as covered.
+///
+/// Chromium hides a covered window's page, and a hidden page leaves the
+/// accessibility tree, so scrolling capture couldn't find it (PLAN 3K.4: a
+/// freshly loaded Edge page). It skips windows that aren't fully opaque when
+/// working out what's covered. Done after `show()`, which resets the style,
+/// and before the overlay takes the foreground, which makes Chromium look
+/// again.
+fn not_covering(hwnd: HWND) {
+    unsafe {
+        let ex = GetWindowLongW(hwnd, GWL_EXSTYLE);
+        SetWindowLongW(hwnd, GWL_EXSTYLE, ex | WS_EX_LAYERED.0 as i32);
+        let _ = SetLayeredWindowAttributes(hwnd, COLORREF(0), 254, LWA_ALPHA);
     }
 }
 

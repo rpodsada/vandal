@@ -40,7 +40,13 @@ pub fn compare(a: &MonitorFrame, b: &MonitorFrame) -> (usize, usize, Option<(u32
         .zip(b.bgra.chunks_exact(4))
         .enumerate()
     {
-        if pa[..3] != pb[..3] {
+        // ±1: the overlay is 254/255 opaque (`overlay::not_covering`), so
+        // a pixel can round one step either way; a misaligned one is far off.
+        if pa[..3]
+            .iter()
+            .zip(&pb[..3])
+            .any(|(x, y)| x.abs_diff(*y) > 1)
+        {
             mismatched += 1;
             first.get_or_insert(((i as u32) % a.width, (i as u32) / a.width));
         }

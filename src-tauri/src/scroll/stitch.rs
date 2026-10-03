@@ -290,6 +290,13 @@ struct Match {
 /// Step 3, on frames cut to the columns that follow. `hint` is the shift the
 /// scroller expected: among shifts that match (almost) perfectly, which happens
 /// with content that repeats exactly, the one closest to it wins.
+///
+/// A sticky header that isn't the same in every frame (one with a
+/// see-through blur, as on vandalscreenshot.com, or a shadow that appears
+/// once scrolled) sits at the top of the new frame, inside the overlap, and
+/// never matches; with few rows of overlap it outweighs the content. So a
+/// weak match is tried again ignoring a growing band at the top of `b`.
+/// (The overlap of `b` isn't drawn, so the band never reaches the image.)
 fn match_rows(a: &Rows, b: &Rows, p: &Params, hint: Option<u32>) -> Match {
     let h = a.hash.len();
     let (header, footer) = a.fixed(b);
@@ -301,11 +308,46 @@ fn match_rows(a: &Rows, b: &Rows, p: &Params, hint: Option<u32>) -> Match {
     }
     let (top, bottom) = (header, h - footer);
     let max_d = (bottom - top).saturating_sub(p.min_overlap as usize);
+    let mut first = None;
+    for band in [0, h / 16, h / 8, h / 6, h / 4] {
+        let skip = band.saturating_sub(top);
+        if band > 0 && skip == 0 {
+            continue;
+        }
+        match exact(a, b, top, bottom, max_d.saturating_sub(skip), skip, hint) {
+            Ok(d) => {
+                return Match {
+                    footer,
+                    shift: Ok(d),
+                }
+            }
+            Err(e) => {
+                first.get_or_insert(e);
+            }
+        }
+    }
+    let (m, c, d) = first.unwrap_or((0, 0, 0));
+    let shift = fuzzy(a, b, top, bottom, max_d, hint)
+        .map_err(|e| format!("weak match {m}/{c} at {d}; fuzzy: {e}"));
+    Match { footer, shift }
+}
+
+/// The shift where `b`'s rows from `top + skip` match `a`'s exactly, block
+/// by block. Err: the best try, (matches, compared, shift).
+fn exact(
+    a: &Rows,
+    b: &Rows,
+    top: usize,
+    bottom: usize,
+    max_d: usize,
+    skip: usize,
+    hint: Option<u32>,
+) -> Result<u32, (u32, u32, u32)> {
     let mut best = (i64::MIN, 0u32, 0u32, 0u32); // (score, matches, compared, d)
     let mut perfect: Vec<u32> = Vec::new();
     for d in 1..=max_d {
         let (mut m, mut c) = (0u32, 0u32);
-        for y in top..bottom - d {
+        for y in top + skip..bottom - d {
             let both_flat = b.flat[y] & a.flat[y + d];
             for k in 0..K {
                 if both_flat & (1 << k) != 0 {
@@ -328,20 +370,15 @@ fn match_rows(a: &Rows, b: &Rows, p: &Params, hint: Option<u32>) -> Match {
     }
     if let (Some(h), true) = (hint, perfect.len() > 1) {
         if let Some(&d) = perfect.iter().min_by_key(|&&d| d.abs_diff(h)) {
-            return Match {
-                footer,
-                shift: Ok(d),
-            };
+            return Ok(d);
         }
     }
     let (_, m, c, d) = best;
-    let shift = if m > 0 && m * 10 >= c * 7 {
+    if m > 0 && m * 10 >= c * 7 {
         Ok(d)
     } else {
-        fuzzy(a, b, top, bottom, max_d, hint)
-            .map_err(|e| format!("weak match {m}/{c} at {d}; fuzzy: {e}"))
-    };
-    Match { footer, shift }
+        Err((m, c, d))
+    }
 }
 
 /// The shift with the smallest mean difference in block brightness, if it's
@@ -602,6 +639,33 @@ mod tests {
         want.bgra.extend_from_slice(&p.crop(0, 30, 160, 900).bgra);
         want.height = 900;
         assert_eq!(out, want);
+    }
+
+    #[test]
+    fn a_sticky_header_that_changes_every_frame_is_ignored() {
+        // A see-through blurred bar shows what's under it, so it differs in
+        // every frame; it covers 40 of the 100 rows of overlap.
+        let p = page(160, 2000, 5);
+        let offsets = [0, 300, 600, 900, 1200, 1500, 1600];
+        let frames: Vec<Image> = offsets
+            .iter()
+            .enumerate()
+            .map(|(i, &o)| {
+                let mut f = view(&p, o, 400);
+                overlay_rows(&mut f, &page(160, 40, 1000 + i as u64), 0);
+                f
+            })
+            .collect();
+        let first = frames[0].clone();
+        let (steps, out) = stitch(frames);
+        let mut want: Vec<Step> = vec![Step::Moved(300); 5];
+        want.push(Step::Moved(100));
+        assert_eq!(steps, want);
+        // The first frame's bar once, then the page.
+        let mut image = first;
+        image.bgra.extend_from_slice(&p.crop(0, 400, 160, 2000).bgra);
+        image.height = 2000;
+        assert_eq!(out, image);
     }
 
     #[test]

@@ -34,6 +34,8 @@ pub trait Scroller {
     fn expected_shift(&self) -> Option<u32>;
     /// The share of the page seen so far (0..1), if known.
     fn progress(&self) -> Option<f64>;
+    /// The last step really moved the area `d` px (measured by stitching).
+    fn moved(&mut self, _d: u32) {}
 }
 
 /// Shows the area being captured.
@@ -147,6 +149,7 @@ pub fn run(
         match stitcher.push(frame, hint) {
             Step::Same => break if moved { End::Bottom } else { End::NoScroll },
             Step::Moved(d) => {
+                scroller.moved(d);
                 moved = true;
                 last_shift = Some(d);
                 count += 1;

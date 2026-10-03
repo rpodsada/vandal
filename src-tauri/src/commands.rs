@@ -60,6 +60,48 @@ pub fn window_pick_changed(
     session::window_pick_changed(&app, capture_id, picking, hovered);
 }
 
+/// Scrolling-capture mode (PLAN 3K.4) turned on or off on one overlay;
+/// every overlay follows.
+#[tauri::command]
+#[specta::specta]
+pub fn scroll_pick_changed(app: AppHandle, capture_id: CaptureId, picking: bool) {
+    session::scroll_pick_changed(&app, capture_id, picking);
+}
+
+/// The scrolling area under the overlay's pointer, if any (virtual-desktop
+/// physical px). Asks UI Automation, so it takes tens of milliseconds. Err:
+/// no answer in time, which says nothing about the area.
+#[tauri::command]
+#[specta::specta]
+pub async fn scroll_area_at(
+    app: AppHandle,
+    capture_id: CaptureId,
+    x: i32,
+    y: i32,
+) -> Result<crate::scroll::app::ScrollHover, String> {
+    let Some(root) = session::window_at(&app, capture_id, (x, y)) else {
+        // The desktop: nothing scrolls, but it's not an app to warn about.
+        return Ok(crate::scroll::app::ScrollHover {
+            area: None,
+            supported: true,
+            apps: String::new(),
+        });
+    };
+    tauri::async_runtime::spawn_blocking(move || crate::scroll::app::area_at(root, (x, y)))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Start a scrolling capture of the area at that point: the overlays close
+/// and the result opens in the editor.
+#[tauri::command]
+#[specta::specta]
+pub fn scroll_capture_start(app: AppHandle, capture_id: CaptureId, x: i32, y: i32) {
+    if let Some(root) = session::end_for_scroll(&app, capture_id, (x, y)) {
+        crate::scroll::app::start(&app, root, (x, y));
+    }
+}
+
 /// Confirm: crop and run the after-capture actions.
 #[tauri::command]
 #[specta::specta]

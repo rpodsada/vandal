@@ -3,6 +3,8 @@ import styles from "./OverlayApp.module.css";
 interface Props {
   /** Window mode (PLAN 3H): click a window. */
   picking: boolean;
+  /** Scrolling capture (PLAN 3K.4): click a scrolling area. */
+  scrolling: boolean;
   hasSelection: boolean;
   /** Quick edit: the selection has a toolbar and Enter means Done. */
   quick: boolean;
@@ -10,10 +12,17 @@ interface Props {
   atBottom: boolean;
 }
 
-export function HintBar({ picking, hasSelection, quick, atBottom }: Props) {
+export function HintBar({ picking, scrolling, hasSelection, quick, atBottom }: Props) {
   return (
     <div className={`${styles.hint} ${atBottom ? styles.hintBottom : ""}`}>
-      {picking ? (
+      {scrolling ? (
+        <>
+          <Hint keys={["Click"]} label="capture scrolling area" />
+          <Hint keys={["S"]} label="select area" />
+          <Hint keys={["W"]} label="window" />
+          <Hint keys={["Esc"]} label="back" />
+        </>
+      ) : picking ? (
         <>
           <Hint keys={["Click"]} label="capture window" />
           <Hint keys={["W"]} label="select area" />
@@ -43,6 +52,7 @@ export function HintBar({ picking, hasSelection, quick, atBottom }: Props) {
         <>
           <Hint keys={["Drag"]} label="select area" />
           <Hint keys={["W"]} label="window" />
+          <Hint keys={["S"]} label="scrolling" />
           <Hint keys={["F"]} label="this screen" />
           <Hint keys={["A"]} label="all screens" />
           <Hint keys={["Esc"]} label="cancel" />
