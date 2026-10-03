@@ -32,6 +32,8 @@ All notable changes to Vandal are listed here. The format follows
   among them, sat a little high.
 - **A filled callout's pointer meets its box cleanly.** On a slant, the end of the line poked
   out beside the box.
+- **Tooltips name the modifier for keys that need one**: Shift+1…0 for a callout's pointer,
+  Alt+1…0 for corners. A callout's corners have no key, so their tooltip no longer mentions one.
 
 ### Security
 

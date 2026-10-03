@@ -16,6 +16,11 @@ interface Props {
   showKeys: boolean;
   /** Mention the digit keys in tooltips. */
   hints: boolean;
+  /**
+   * The modifier held with the digit keys, as tooltips spell it ("Shift+",
+   * "Alt+"), or null when no keys pick this. Default: none ("").
+   */
+  keyModifier?: string | null;
   /** Draw each value as a line of that thickness (line width). */
   lines?: boolean;
   /**
@@ -61,7 +66,14 @@ export function NumberPickerControl(props: Props) {
 }
 
 function keyHint(props: Props, i: number): string {
-  return props.hints ? ` (${slotKey(i)})` : "";
+  const mod = props.keyModifier ?? "";
+  return props.hints && props.keyModifier !== null ? ` (${mod}${slotKey(i)})` : "";
+}
+
+/** " (1…0, ` for the lowest)", with the modifier, for a dropdown's or slider's tooltip. */
+function keysHint(props: Props): string {
+  const mod = props.keyModifier ?? "";
+  return props.hints && props.keyModifier !== null ? ` (${mod}1…0, ${mod}\` for the lowest)` : "";
 }
 
 function Line({ width, length }: { width: number; length: number }) {
@@ -110,7 +122,7 @@ function NumberDropdown(props: Props & { values: number[] }) {
   return (
     <Dropdown
       className={styles.dropdown}
-      title={`${props.label}${props.hints ? " (1…0, ` for the lowest)" : ""}`}
+      title={`${props.label}${keysHint(props)}`}
       button={
         <>
           {props.lines && <Line width={current} length={18} />}
@@ -190,7 +202,7 @@ function Slider(props: Props) {
         role="slider"
         aria-label={props.label}
         aria-valuenow={shown}
-        title={`${props.label}${props.hints ? " (1…0, ` for the lowest)" : ""}`}
+        title={`${props.label}${keysHint(props)}`}
         onPointerDown={onPointerDown}
       >
         <span className={styles.trackBg} />

@@ -226,6 +226,7 @@ export function ToolOptions({ compact = false }: { compact?: boolean }) {
         label="Corner radius"
         showKeys={hints && held.alt && !callout}
         hints={hints}
+        keyModifier={callout ? null : "Alt+"}
         onPick={(cornerRadius) => applyStyle({ cornerRadius })}
         onDragStart={beginStyleDrag}
         onDragEnd={endStyleDrag}
@@ -388,6 +389,7 @@ export function ToolOptions({ compact = false }: { compact?: boolean }) {
               lines
               showKeys={hints && held.digit && (callout ? held.shiftDigit : !held.shiftDigit)}
               hints={hints}
+              keyModifier={callout ? "Shift+" : ""}
               onPick={(width) => applyStyle({ width })}
               onDragStart={beginStyleDrag}
               onDragEnd={endStyleDrag}
