@@ -172,6 +172,21 @@ pub struct MonitorInfo {
 }
 
 impl MonitorInfo {
+    /// The number Windows shows for it (Settings › Display › Identify): the
+    /// digits ending the device name, `\.\DISPLAY2` → 2.
+    pub fn display_number(&self) -> Option<u32> {
+        let stem = self.name.trim_end_matches(|c: char| c.is_ascii_digit());
+        self.name[stem.len()..].parse().ok()
+    }
+
+    /// For the tray's full-screen submenu: "Screen 2 (main) · 2560 × 1440".
+    pub fn label(&self) -> String {
+        let n = self.display_number().unwrap_or(self.index + 1);
+        let main = if self.is_primary { " (main)" } else { "" };
+        let r = self.physical_bounds;
+        format!("Screen {n}{main} · {} × {}", r.width, r.height)
+    }
+
     /// CSS point on this monitor's overlay → virtual-desktop physical pixel.
     ///
     /// Physical pixel `p` covers CSS `[p/scale, (p+1)/scale)`, so we floor.
@@ -222,6 +237,19 @@ mod tests {
 
     fn pt(x: i32, y: i32) -> PhysicalPoint {
         PhysicalPoint::new(x, y)
+    }
+
+    #[test]
+    fn monitors_are_named_as_windows_numbers_them() {
+        let mut m = monitor(0, PhysicalRect::new(0, 0, 2560, 1440), 1.0);
+        m.name = r"\\.\DISPLAY12".into();
+        m.is_primary = true;
+        assert_eq!(m.display_number(), Some(12));
+        assert_eq!(m.label(), "Screen 12 (main) · 2560 × 1440");
+        m.name = "odd".into();
+        m.is_primary = false;
+        assert_eq!(m.display_number(), None);
+        assert_eq!(m.label(), "Screen 1 · 2560 × 1440");
     }
 
     fn monitor(index: u32, bounds: PhysicalRect, scale: f64) -> MonitorInfo {

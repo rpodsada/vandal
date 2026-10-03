@@ -14,8 +14,9 @@ export const useRecording = create<{ path: string | null }>(() => ({ path: null 
 /** The shortcuts, by settings key, as the conflict message names them. */
 const ACTIONS: Record<string, string> = {
   region: "Capture a region",
-  fullscreen: "Capture the full screen",
   window: "Capture a window",
+  fullscreen: "Capture the full screen",
+  allScreens: "Capture all screens",
 };
 
 /**

@@ -8,9 +8,11 @@ interface Props {
   quick: boolean;
   /** Move out of the way when the selection is near the top. */
   atBottom: boolean;
+  /** More than one monitor: otherwise A (all screens) is just F. */
+  screens: number;
 }
 
-export function HintBar({ picking, hasSelection, quick, atBottom }: Props) {
+export function HintBar({ picking, hasSelection, quick, atBottom, screens }: Props) {
   return (
     <div className={`${styles.hint} ${atBottom ? styles.hintBottom : ""}`}>
       {picking ? (
@@ -18,7 +20,7 @@ export function HintBar({ picking, hasSelection, quick, atBottom }: Props) {
           <Hint keys={["Click"]} label="capture window" />
           <Hint keys={["W"]} label="select area" />
           <Hint keys={["F"]} label="this screen" />
-          <Hint keys={["A"]} label="all screens" />
+          {screens > 1 && <Hint keys={["A"]} label="all screens" />}
           <Hint keys={["Esc"]} label="back" />
         </>
       ) : hasSelection && quick ? (
@@ -44,7 +46,7 @@ export function HintBar({ picking, hasSelection, quick, atBottom }: Props) {
           <Hint keys={["Drag"]} label="select area" />
           <Hint keys={["W"]} label="window" />
           <Hint keys={["F"]} label="this screen" />
-          <Hint keys={["A"]} label="all screens" />
+          {screens > 1 && <Hint keys={["A"]} label="all screens" />}
           <Hint keys={["Esc"]} label="cancel" />
         </>
       )}

@@ -3,17 +3,26 @@
 //! The menu is rebuilt from settings whenever they change, so its contents
 //! (optional items, check states, hotkey labels) always match.
 
-use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, Wry};
 use tauri_plugin_autostart::ManagerExt;
 
+use crate::session::Screens;
 use crate::settings::{self, IconAction, Settings};
 use crate::state::AppState;
 use crate::{editor, session, settings_window};
 
 const TRAY_ID: &str = "main";
 
+/// Menu ids of the full-screen submenu's items: this prefix, then the
+/// monitor's device name.
+const SCREEN_PREFIX: &str = "screen:";
+
+/// Capture items, smallest to largest (PLAN 3L): region, window, full
+/// screen, all screens. With several monitors, full screen is a submenu of
+/// them (from the tray the pointer is always on the taskbar's screen, so
+/// "the pointer's screen" means nothing there), and "all screens" follows.
 fn build_menu(app: &AppHandle, s: &Settings) -> tauri::Result<Menu<Wry>> {
     let hk = &s.hotkeys;
     let menu = Menu::new(app)?;
@@ -26,18 +35,41 @@ fn build_menu(app: &AppHandle, s: &Settings) -> tauri::Result<Menu<Wry>> {
     )?)?;
     menu.append(&MenuItem::with_id(
         app,
-        "fullscreen",
-        "Capture full screen",
-        true,
-        hk.fullscreen.as_deref(),
-    )?)?;
-    menu.append(&MenuItem::with_id(
-        app,
         "window",
         "Capture window",
         true,
         hk.window.as_deref(),
     )?)?;
+    let mut monitors = app.state::<AppState>().monitors.read().unwrap().clone();
+    if monitors.len() > 1 {
+        monitors.sort_by_key(|m| m.display_number().unwrap_or(u32::MAX - 1000 + m.index));
+        let screens = Submenu::with_id(app, "fullscreen-menu", "Capture full screen", true)?;
+        for m in &monitors {
+            screens.append(&MenuItem::with_id(
+                app,
+                format!("{SCREEN_PREFIX}{}", m.name),
+                m.label(),
+                true,
+                None::<&str>,
+            )?)?;
+        }
+        menu.append(&screens)?;
+        menu.append(&MenuItem::with_id(
+            app,
+            "all-screens",
+            "Capture all screens",
+            true,
+            hk.all_screens.as_deref(),
+        )?)?;
+    } else {
+        menu.append(&MenuItem::with_id(
+            app,
+            "fullscreen",
+            "Capture full screen",
+            true,
+            hk.fullscreen.as_deref(),
+        )?)?;
+    }
     // Captures | the two "New…" items | Open (PLAN 3H.10).
     menu.append(&PredefinedMenuItem::separator(app)?)?;
     menu.append(&MenuItem::with_id(
@@ -103,7 +135,12 @@ pub fn create(app: &AppHandle, s: &Settings) -> tauri::Result<()> {
                 other => {
                     match other {
                         "region" => session::start_region(app),
-                        "fullscreen" => session::capture_fullscreen(app),
+                        "fullscreen" => session::capture_fullscreen(app, Screens::Pointer),
+                        "all-screens" => session::capture_fullscreen(app, Screens::All),
+                        id if id.starts_with(SCREEN_PREFIX) => session::capture_fullscreen(
+                            app,
+                            Screens::Monitor(id[SCREEN_PREFIX.len()..].to_string()),
+                        ),
                         "window" => session::start_window(app),
                         "settings" => settings_window::open(app),
                         "open" => {
@@ -162,6 +199,13 @@ fn tray_icon() -> tauri::Result<tauri::image::Image<'static>> {
         .find(|(size, _)| *size >= want)
         .unwrap_or(&TRAY_ICONS[TRAY_ICONS.len() - 1]);
     tauri::image::Image::from_bytes(bytes)
+}
+
+/// Rebuild the menu from the current settings and monitors (after a display
+/// change).
+pub fn rebuild(app: &AppHandle) {
+    let s = app.state::<AppState>().settings.read().unwrap().clone();
+    refresh(app, &s);
 }
 
 /// Rebuild the menu and tooltip from `s`.

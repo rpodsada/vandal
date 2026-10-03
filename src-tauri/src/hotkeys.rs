@@ -4,8 +4,9 @@ use tauri::plugin::TauriPlugin;
 use tauri::{AppHandle, Wry};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
+use crate::output;
+use crate::session::{self, Screens};
 use crate::settings::Hotkeys;
-use crate::{output, session};
 
 pub fn plugin() -> TauriPlugin<Wry> {
     tauri_plugin_global_shortcut::Builder::new().build()
@@ -28,6 +29,7 @@ enum Action {
     Region,
     Fullscreen,
     Window,
+    AllScreens,
 }
 
 impl Action {
@@ -36,6 +38,7 @@ impl Action {
             Self::Region => "region capture",
             Self::Fullscreen => "full-screen capture",
             Self::Window => "window capture",
+            Self::AllScreens => "all-screens capture",
         }
     }
 }
@@ -135,6 +138,7 @@ pub fn register(app: &AppHandle, hotkeys: &Hotkeys) {
         (hotkeys.region.as_deref(), Action::Region),
         (hotkeys.fullscreen.as_deref(), Action::Fullscreen),
         (hotkeys.window.as_deref(), Action::Window),
+        (hotkeys.all_screens.as_deref(), Action::AllScreens),
     ];
     let mut failures = Vec::new();
     for (hotkey, action) in bindings {
@@ -145,8 +149,9 @@ pub fn register(app: &AppHandle, hotkeys: &Hotkeys) {
             if event.state == ShortcutState::Pressed {
                 match action {
                     Action::Region => session::start_region(app),
-                    Action::Fullscreen => session::capture_fullscreen(app),
+                    Action::Fullscreen => session::capture_fullscreen(app, Screens::Pointer),
                     Action::Window => session::start_window(app),
+                    Action::AllScreens => session::capture_fullscreen(app, Screens::All),
                 }
             }
         });

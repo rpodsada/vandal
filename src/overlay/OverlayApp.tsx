@@ -674,6 +674,7 @@ export function OverlayApp() {
           hasSelection={!!selection}
           quick={quickEdit}
           atBottom={!!selection && css(selection.y) < 72}
+          screens={load.monitorCount}
         />
       )}
     </div>

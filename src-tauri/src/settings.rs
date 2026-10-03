@@ -100,7 +100,10 @@ impl Default for Appearance {
 #[serde(default, rename_all = "camelCase")]
 pub struct Hotkeys {
     pub region: Option<String>,
+    /// The screen the pointer is on.
     pub fullscreen: Option<String>,
+    /// Every screen as one image (PLAN 3L). Unset by default.
+    pub all_screens: Option<String>,
     /// Window capture (PLAN 3H.4): the overlay opens in window mode.
     pub window: Option<String>,
     pub repeat_last: Option<String>,
@@ -123,6 +126,7 @@ impl Default for Hotkeys {
             region: key("Win+F12"),
             fullscreen: key("Win+Shift+F12"),
             window: key("Win+Alt+F12"),
+            all_screens: None,
             repeat_last: None,
         }
     }
@@ -364,6 +368,7 @@ pub fn validate(mut s: Settings) -> Result<Settings, String> {
         (&s.hotkeys.region, "a region"),
         (&s.hotkeys.fullscreen, "the full screen"),
         (&s.hotkeys.window, "a window"),
+        (&s.hotkeys.all_screens, "all screens"),
     ];
     for (i, (a, what_a)) in captures.iter().enumerate() {
         for (b, what_b) in &captures[i + 1..] {

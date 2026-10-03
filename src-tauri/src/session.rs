@@ -53,6 +53,8 @@ pub struct OverlayLoad {
     /// window under the cursor highlighted.
     pub picking: bool,
     pub hovered: Option<u32>,
+    /// How many monitors there are: with one, "all screens" is just this one.
+    pub monitor_count: u32,
 }
 
 /// Rust → overlays: you're now shown; reply with `overlay_visible` once painted.
@@ -409,6 +411,7 @@ fn start_region_for(app: &AppHandle, into: Option<editor::EditorId>, picking: bo
             windows: window_rects.clone(),
             picking,
             hovered,
+            monitor_count: monitors.len() as u32,
         })
         .collect();
     *session = Some(Session {
@@ -441,6 +444,7 @@ fn start_region_for(app: &AppHandle, into: Option<editor::EditorId>, picking: bo
     if layout_changed {
         eprintln!("[capture] display layout changed; rebuilding overlays");
         *state.monitors.write().unwrap() = monitors.clone();
+        crate::tray::rebuild(&app);
         // Window creation must not run on the main thread while it's busy here.
         std::thread::spawn(move || {
             if let Err(e) = overlay::reconcile_pool(&app, &monitors) {
@@ -471,9 +475,22 @@ fn emit_loads(app: &AppHandle, loads: &[OverlayLoad]) {
     }
 }
 
-/// Full-screen entry point: every monitor, straight to the output actions (or
-/// the editor, which then finishes the job).
-pub fn capture_fullscreen(app: &AppHandle) {
+/// Which screens a full-screen capture takes (PLAN 3L).
+#[derive(Debug, Clone, PartialEq)]
+pub enum Screens {
+    /// The one the pointer is on (the full-screen shortcut).
+    Pointer,
+    /// One monitor, by its Windows device name (`\.\DISPLAY2`): the tray's
+    /// submenu, where the pointer is always on the taskbar's screen.
+    Monitor(String),
+    /// Every monitor as one image.
+    All,
+}
+
+/// Full-screen entry point: straight to the output actions (or the editor,
+/// which then finishes the job). Every monitor is grabbed, then cropped to
+/// `screens`.
+pub fn capture_fullscreen(app: &AppHandle, screens: Screens) {
     let started = Instant::now();
     let state = app.state::<AppState>();
     if state.session.lock().unwrap().is_some() {
@@ -486,9 +503,25 @@ pub fn capture_fullscreen(app: &AppHandle) {
     let capture = state.frames.lock().unwrap().insert(frames);
     // With quick edit on, full-screen captures go to the editor (PLAN 2B).
     let to_editor = state.settings.read().unwrap().quick_edit.enabled;
-    finish(app, &capture, virtual_bounds(&monitors), started, to_editor);
+    let one = |m: Option<&MonitorInfo>| m.map(|m| m.physical_bounds);
+    let rect = match &screens {
+        Screens::All => None,
+        Screens::Monitor(name) => one(monitors.iter().find(|m| &m.name == name)),
+        Screens::Pointer => None,
+    }
+    .or_else(|| {
+        // The pointer's screen; also for a screen that's gone since the
+        // tray menu was built.
+        (screens != Screens::All)
+            .then(overlay::cursor_position)
+            .flatten()
+            .and_then(|p| one(monitor_at(&monitors, p)))
+    })
+    .unwrap_or_else(|| virtual_bounds(&monitors));
+    finish(app, &capture, rect, started, to_editor);
     if layout_changed {
         *state.monitors.write().unwrap() = monitors.clone();
+        crate::tray::rebuild(app);
         let app = app.clone();
         std::thread::spawn(move || {
             if let Err(e) = overlay::reconcile_pool(&app, &monitors) {

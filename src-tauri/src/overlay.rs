@@ -206,6 +206,7 @@ pub fn watch_displays(app: &AppHandle) {
         }
         eprintln!("[overlay] display layout changed; rebuilding pool");
         *state.monitors.write().unwrap() = current.clone();
+        crate::tray::rebuild(&app);
         if let Err(e) = reconcile_pool(&app, &current) {
             eprintln!("[overlay] rebuild failed: {e}");
         }

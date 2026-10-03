@@ -122,7 +122,9 @@ You can also left-click the tray icon to start a capture, or right-click it for 
 | Tray menu item        | What it does                                                               |
 | --------------------- | -------------------------------------------------------------------------- |
 | Capture region        | Same as Win+F12                                                            |
-| Capture full screen   | Same as Win+Shift+F12: every monitor, opened in the editor                 |
+| Capture window        | Same as Win+Alt+F12                                                        |
+| Capture full screen   | A whole screen, opened in the editor. With several, pick one from its list |
+| Capture all screens   | Every screen as one image (shown with more than one screen)                |
 | New editor window     | An empty editor: open, paste or capture an image into it                   |
 | Open image…           | Open an image file in the editor                                           |
 | New from clipboard    | Open the image on the clipboard in the editor                              |
@@ -136,12 +138,14 @@ empty editor instead of starting a capture: **Settings › General › Tray icon
 
 ## Capturing
 
-| Shortcut          | Capture                                |
-| ----------------- | -------------------------------------- |
-| **Win+F12**       | Select a region                        |
-| **Win+Shift+F12** | All monitors, straight into the editor |
+| Shortcut          | Capture                                                |
+| ----------------- | ------------------------------------------------------ |
+| **Win+F12**       | Select a region                                        |
+| **Win+Alt+F12**   | Click a window                                         |
+| **Win+Shift+F12** | The screen the pointer is on, straight into the editor |
 
-You can change both shortcuts in **Settings › Keyboard shortcuts**.
+You can change these in **Settings › Keyboard shortcuts**, and give **Capture all screens** a
+shortcut there too (it has none at first).
 
 While you're selecting a region:
 
@@ -150,7 +154,8 @@ While you're selecting a region:
 | Drag                     | Draw a selection. Drag the handles to resize it, or drag inside it to move it |
 | **Enter** / double-click | Finish                                                                        |
 | **F**                    | Capture the whole monitor under the pointer (opens the editor)                |
-| **A**                    | Capture all monitors (opens the editor)                                       |
+| **W**                    | Click a window to capture it                                                  |
+| **A**                    | Capture all monitors (opens the editor). Not shown with one monitor           |
 | Arrow keys               | Move the selection by 1 pixel (Shift: 10 pixels)                              |
 | Ctrl + arrow keys        | Resize from the bottom-right corner (Shift: 10 pixels)                        |
 | **Esc** / right-click    | Cancel                                                                        |

@@ -11,6 +11,16 @@ All notable changes to Vandal are listed here. The format follows
 - **Fit width** in the editor's zoom (the status bar and the zoom menu): the image fills the
   window's width, so a tall image scrolls instead of shrinking to a sliver. It keeps fitting
   as you resize the window and scroll.
+- **Capture all screens** in the tray menu, with more than one monitor: every screen as one
+  image. It can have its own shortcut (Settings › Keyboard shortcuts; none at first).
+
+### Changed
+
+- The tray's capture items go from smallest to largest: region, window, full screen, all screens.
+- **Capture full screen** now captures one screen. The shortcut (Win+Shift+F12) takes the one the
+  pointer is on; in the tray menu, with more than one monitor, you pick the screen from a list.
+  Use Capture all screens (or A while selecting) for every monitor at once.
+- The "A all screens" hint isn't shown while selecting when there's only one monitor.
 
 ## [0.3.0-beta.4] - 2026-10-02
 

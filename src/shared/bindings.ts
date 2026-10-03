@@ -37,6 +37,8 @@ export const commands = {
 	 */
 	picking: boolean,
 	hovered: number | null,
+	/**  How many monitors there are: with one, "all screens" is just this one. */
+	monitorCount: number,
 } | null>("overlay_pending_load", { monitorIndex }),
 	/**  Overlay finished drawing its frame. */
 	overlayReady: (captureId: number, report: OverlayReport) => __TAURI_INVOKE<void>("overlay_ready", { captureId, report }),
@@ -416,7 +418,10 @@ export type History = {
 /**  Human-readable accelerators, e.g. `"Win+Shift+F12"`. `None` = unassigned. */
 export type Hotkeys = {
 	region?: string | null,
+	/**  The screen the pointer is on. */
 	fullscreen?: string | null,
+	/**  Every screen as one image (PLAN 3L). Unset by default. */
+	allScreens?: string | null,
 	/**  Window capture (PLAN 3H.4): the overlay opens in window mode. */
 	window?: string | null,
 	repeatLast?: string | null,
@@ -510,6 +515,8 @@ export type OverlayLoad = {
 	 */
 	picking: boolean,
 	hovered: number | null,
+	/**  How many monitors there are: with one, "all screens" is just this one. */
+	monitorCount: number,
 };
 
 /**
