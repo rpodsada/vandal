@@ -6,6 +6,8 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0-beta.7] - 2026-10-03
+
 ### Added
 
 - **Automatic updates.** Vandal checks for a new version when it starts and once a day, and
@@ -302,7 +304,8 @@ The first build for beta testers.
 - Copy to clipboard, auto-save with a file-name pattern, and capture notifications.
 - Searchable Settings window where changes apply immediately.
 
-[Unreleased]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.6...HEAD
+[Unreleased]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.7...HEAD
+[0.3.0-beta.7]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.6...v0.3.0-beta.7
 [0.3.0-beta.6]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.5...v0.3.0-beta.6
 [0.3.0-beta.5]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.4...v0.3.0-beta.5
 [0.3.0-beta.4]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.3...v0.3.0-beta.4
