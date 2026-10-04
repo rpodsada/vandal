@@ -169,8 +169,9 @@ before the release itself (`0.3.0`). Every release must have a new, higher numbe
 2. Before bumping, check security:
    - `npm run security` passes (the release workflow runs it too and won't build if it fails).
    - Tauri's [security advisories](https://github.com/tauri-apps/tauri/security/advisories)
-     have nothing new for Tauri or the plugins we use. Plugins we don't use (the updater, HTTP)
-     don't matter until we add them, and then they need a check.
+     and [plugins' advisories](https://github.com/tauri-apps/plugins-workspace/security/advisories)
+     have nothing new for Tauri or the plugins we use, the updater included. Plugins we don't
+     use (HTTP, shell, fs) don't matter until we add them, and then they need a check.
 3. Bump the version:
 
    ```powershell
@@ -239,3 +240,29 @@ in its environment. Never put the key in the repo or a `VITE_` variable.
   release that carries the new public key but is still signed with the old key, so installed
   copies accept it; sign everything after that with the new key. A leaked key alone can't push
   an update: the manifests and installers also come from this repo.
+
+### Testing updates
+
+The app checks `https://raw.githubusercontent.com/rpodsada/vandal/update-manifests/<channel>.json`
+(`src-tauri/src/updater.rs`). For testing, `VANDAL_UPDATE_ENDPOINT` replaces that address with
+any manifest URL; the installer it points at must still be signed with the key in the build's
+`tauri.conf.json`. Dev builds only check when it's set, so with it, `npm run tauri:dev` shows
+the notification, the tray item and Settings › Updates against a local manifest (an installer
+that isn't really signed shows the "couldn't be verified" error).
+
+To test a real install without touching your own copy, build two versions under another name
+with a throwaway key, and serve the newer one's manifest locally:
+
+1. `npx tauri signer generate --ci -p <password> -w <scratch>/test.key`
+2. For each version, a `--config` overlay with `productName` ("Vandal Update Test"),
+   `identifier` (`com.vandal.updatetest`), `version`, and `plugins.updater` with the test
+   `pubkey`, `requireSignedVersion: true` and `dangerousInsecureTransportProtocol: true` (the
+   local server is plain http; never in the real config). Build each with
+   `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` set.
+3. A `beta.json` for the newer one (`scripts/updateManifestsLib.mjs` › `manifest` has the
+   shape; the signature is the `.sig` file's text) beside its installer, served with
+   `python -m http.server 8765 --bind 127.0.0.1`.
+4. Install the older one, start it with `VANDAL_UPDATE_ENDPOINT` set, and wait a minute.
+
+The test install takes over the shared registry entries (the browser extension's native host,
+"Open with" for `vandal.exe`): afterwards uninstall it and reinstall your real Vandal.

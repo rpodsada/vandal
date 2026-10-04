@@ -6,6 +6,24 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Automatic updates.** Vandal checks for a new version when it starts and once a day, and
+  tells you when one is ready. Install it from the notification, the tray menu (**Restart to
+  update**) or **Settings › Updates**, whenever suits you: Vandal downloads it, checks that it
+  was signed by Vandal's developer, and restarts into it, keeping your settings. Editors with
+  unsaved changes ask you to save first. This is the last version you need to install by hand.
+- **Settings › Updates**: check now, install, turn automatic checks off (Vandal then never
+  checks unless you ask), and choose the **Beta** or **Stable** channel. Beta, the default if
+  you installed a beta, gets test versions before each release.
+
+### Changed
+
+- **Vandal now connects to the internet for update checks**, and only for them: a small file
+  from GitHub that names the latest version, with nothing about you in the request. See
+  [Privacy](https://github.com/rpodsada/vandal/blob/main/README.md#privacy).
+- **The installer is about 3.5 MB** (was about 2.6 MB): the part that downloads updates securely.
+
 ## [0.3.0-beta.6] - 2026-10-03
 
 ### Changed

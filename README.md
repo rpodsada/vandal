@@ -47,8 +47,9 @@ screenshot.
   other way around.
 - **It remembers.** Each tool remembers its own settings (color, size, font, options, everything),
   even after a restart. Set your style once, and every screenshot after will match.
-- **Free, fast, private, and lightweight.** Open source, no account, no tracking, no network connections,
-  and no admin rights needed. Built in Rust with a ~2MB installer.
+- **Free, fast, private, and lightweight.** Open source, no account, no tracking, and no admin
+  rights needed. The only connection Vandal makes is an update check, which you can turn off.
+  Built in Rust with an installer of about 3.5 MB.
 
 ### Who it's for
 
@@ -328,6 +329,7 @@ setting by name.
 | Copy & save        | What happens after a capture and when the editor closes, save folder, file-name pattern, overwrite warning                                                        |
 | Markup             | Colors, line widths, fonts and font sizes, redact strengths, spotlight darkness, step markers, corner radii (also per tool), how the pickers look, shortcut hints |
 | Keyboard shortcuts | The capture shortcuts, each tool's key and swap colors, and a list of the shortcuts that can't be changed                                                         |
+| Updates            | Check now, install an update, automatic checks on or off, and the update channel (Beta or Stable)                                                                 |
 | About              | Version, license and a link to the project                                                                                                                        |
 
 Settings are stored in `%APPDATA%\com.vandal.desktop\settings.json`. They're kept when you
@@ -426,8 +428,21 @@ printed on the pickers (you can hide them in Settings).
 
 ## Updating and uninstalling
 
-**Updating:** run the new installer over the old version. Your settings are kept. Automatic
-updates are coming in a later beta.
+**Updating:** Vandal checks for updates when it starts and once a day. When there's a new
+version, it tells you, and you choose when to install it: **Install** in the notification,
+**Restart to update** in the tray menu, or **Install and restart** in **Settings › Updates**.
+Vandal downloads the new version, checks that it was signed by Vandal's developer, and restarts
+into it. Your settings are kept. Editors with unsaved changes ask you to save first, and
+nothing installs while you're capturing.
+
+- **Check now** in Settings › Updates checks right away.
+- **Check for updates automatically** can be turned off. Vandal then never checks unless you
+  press Check now.
+- **Update channel:** Beta gets test versions before each release (the default if you
+  installed a beta). Stable gets final releases only.
+- You can always update by hand: run a newer installer over the old version.
+
+Versions before 0.3.0-beta.7 can't update themselves: install beta.7 or later by hand once.
 
 **Uninstalling:** go to Windows **Settings › Apps › Installed apps**, find **Vandal** and choose
 **Uninstall**. This also removes Vandal from Explorer's "Open with" list. Saved screenshots are
@@ -458,7 +473,15 @@ Taskbar › Other system tray icons**.
 ## Privacy
 
 Vandal works entirely on your PC. Captures stay in memory until you copy or save them.
-Vandal doesn't collect usage data and doesn't make network connections.
+Vandal doesn't collect usage data. Its only network connection is the update check. The full
+policy is at [vandalscreenshot.com/privacy](https://vandalscreenshot.com/privacy/).
+
+- **Update checks.** When Vandal starts and once a day, or when you press Check now, it
+  downloads a small file from GitHub (`raw.githubusercontent.com`) that names the latest
+  version. The request carries nothing about you: no ID and no usage data, only what any
+  download sends (your IP address, and the updater's name and version as its user agent).
+  An update you install is downloaded from GitHub Releases. Turn automatic checks off in
+  **Settings › Updates**.
 
 - **Notification thumbnail.** Windows only shows a notification's picture from a file, so for
   a capture you haven't saved, Vandal writes a small copy to `%TEMP%\vandal\last-capture.png`.
@@ -474,9 +497,6 @@ Vandal doesn't collect usage data and doesn't make network connections.
   Vandal hands the image to Vandal on your PC.
 - **Launch on login** adds Vandal to your user account's startup list (it's on by default; see
   [Install](#install)).
-
-<!-- TODO(Phase 4): once the updater exists, note that Vandal checks for updates (and what that sends),
-     and add a link to a privacy policy. -->
 
 ## All features
 
@@ -529,9 +549,11 @@ Vandal doesn't collect usage data and doesn't make network connections.
 
 - Runs from the system tray and starts with Windows
 - Installs for your user account only, with no admin rights
-- Works entirely on your PC: no account, no usage data, no network connections
+- Works entirely on your PC: no account and no usage data. The only connection is an update
+  check, which you can turn off
+- Updates itself when you say so, with every update signed and checked before it installs
 - Free and open source (GPL-3.0)
-- A Rust core and an installer of about 2 MB. Vandal uses the WebView2 already in Windows
+- A Rust core and an installer of about 3.5 MB. Vandal uses the WebView2 already in Windows
   instead of bundling a browser engine
 
 ## Feedback and bug reports
