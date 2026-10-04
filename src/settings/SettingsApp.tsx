@@ -107,6 +107,7 @@ export function SettingsApp() {
         <ul className={styles.navList}>
           {sections.map((section) => {
             const open = !q && section.id === active.id;
+            const groups = open ? shownGroups(section, settings) : [];
             return (
               <li key={section.id}>
                 <button
@@ -122,10 +123,12 @@ export function SettingsApp() {
                   <section.icon />
                   {section.title}
                 </button>
-                {/* The open section's groups, as links to scroll to (PLAN 3D.9). */}
-                {open && (
+                {/* The open section's groups, as links to scroll to (PLAN 3D.9). A
+                    page without titled groups (Updates, About) gets no list, or
+                    its margin would push the next page down. */}
+                {groups.length > 0 && (
                   <ul className={styles.subList}>
-                    {shownGroups(section, settings).map((group) => {
+                    {groups.map((group) => {
                       const id = groupId(section, group);
                       return (
                         <li key={id}>
