@@ -29,6 +29,7 @@ clipboard. Vandal freezes the screen the instant you press the shortcut, so open
 and hover states stay in the picture.
 
 <!-- TODO(Phase 4): screenshot: selecting a region on a dimmed screen (docs/images/select.png) -->
+
 > **Vandal is in beta.** Expect rough edges, and please [report anything odd](#feedback-and-bug-reports).
 
 ## Why Vandal?
@@ -81,6 +82,7 @@ where every screenshot should look the same.
 - [Command line](#command-line)
 - [Keyboard reference](#keyboard-reference)
 - [Updating and uninstalling](#updating-and-uninstalling)
+- [Verify your download](#verify-your-download)
 - [Troubleshooting](#troubleshooting)
 - [Privacy](#privacy)
 - [All features](#all-features)
@@ -109,33 +111,15 @@ where every screenshot should look the same.
 Vandal needs Microsoft Edge WebView2, which is part of Windows 11 and up-to-date Windows 10.
 If it's missing, the installer downloads it for you.
 
-### Verify your download
-
-Optional, but worth it while the installer isn't code-signed. Either check works:
-
-- **Compare the SHA-256 with the website's.** The download dialog on
-  [vandalscreenshot.com](https://vandalscreenshot.com) shows the installer's SHA-256 under
-  **Check the download**. The website is hosted apart from GitHub, so a tampered installer
-  can't come with a matching hash. In PowerShell:
-
-  ```powershell
-  Get-FileHash .\Vandal_<version>_x64-setup.exe
-  ```
-
-- **Check its build provenance** with the [GitHub CLI](https://cli.github.com). Every
-  installer is built by this repository's release workflow, which signs a record of what it
-  built. This proves the file came from that workflow, unchanged:
-
-  ```powershell
-  gh attestation verify .\Vandal_<version>_x64-setup.exe --repo rpodsada/vandal
-  ```
+To check that the installer is genuine before you run it, see
+[Verify your download](#verify-your-download).
 
 ## Getting started
 
 1. Press **Win+F12** (you can change it in **Settings › Keyboard shortcuts**).
 2. Drag over the part of the screen you want. A toolbar appears under the selection: this is
    [quick edit](#quick-edit). Pick a tool and mark up the screenshot right there, or skip it.
-3. Press **Enter** (or click **Done**, or double-click inside the selection).
+3. Press **Enter** (or double-click inside the selection).
 
 The image is now on your clipboard. Paste it anywhere with Ctrl+V. A notification confirms
 the capture; click it (or its **Edit** button) to keep working on it in the editor, with your
@@ -144,19 +128,19 @@ auto-save.
 
 You can also left-click the tray icon to start a capture, or right-click it for the menu:
 
-| Tray menu item        | What it does                                                               |
-| --------------------- | -------------------------------------------------------------------------- |
-| Capture region        | Same as Win+F12                                                            |
-| Capture window        | Same as Win+Alt+F12                                                        |
-| Capture full screen   | A whole screen, opened in the editor. With several, pick one from its list |
-| Capture all screens   | Every screen as one image (shown with more than one screen)                |
-| New editor window     | An empty editor: open, paste or capture an image into it                   |
-| Open image…           | Open an image file in the editor                                           |
-| New from clipboard    | Open the image on the clipboard in the editor                              |
-| Save captures to file | Turn auto-save on or off (shown once you turn it on in Settings › General) |
-| Launch on login       | Start Vandal with Windows (on by default)                                  |
-| Settings…             | Open Settings                                                              |
-| Quit                  | Close Vandal                                                               |
+| Tray menu item      | What it does                                                               |
+| ------------------- | -------------------------------------------------------------------------- |
+| Capture region      | Same as Win+F12                                                            |
+| Capture window      | Same as Win+Alt+F12                                                        |
+| Capture full screen | A whole screen, opened in the editor. With several, pick one from its list |
+| Capture all screens | Every screen as one image (shown with more than one screen)                |
+| New editor window   | An empty editor: open, paste or capture an image into it                   |
+| New from clipboard  | Open the image on the clipboard in the editor                              |
+| Open image…         | Open an image file in the editor                                           |
+| Launch on login     | Start Vandal with Windows (on by default)                                  |
+| Settings…           | Open Settings                                                              |
+| Restart to update   | Install a new version (shown once one is ready)                            |
+| Quit                | Close Vandal                                                               |
 
 Clicking the tray icon, and opening Vandal from its desktop or Start menu icon, can open an
 empty editor instead of starting a capture: **Settings › General › Tray icon and app icon**.
@@ -183,9 +167,11 @@ While you're selecting a region:
 | **A**                    | Capture all monitors (opens the editor). Not shown with one monitor           |
 | Arrow keys               | Move the selection by 1 pixel (Shift: 10 pixels)                              |
 | Ctrl + arrow keys        | Resize from the bottom-right corner (Shift: 10 pixels)                        |
+| Shift while dragging     | Draw a square, keep the proportions from a corner, or move in a straight line |
 | **Esc** / right-click    | Cancel                                                                        |
 
-F and A work only before you've drawn a selection. After that, A is the arrow tool.
+With quick edit, F, W and A work only before you've drawn a selection. After that, A is the arrow
+tool. While picking a window, **W** or **Esc** goes back to selecting a region.
 
 ## Quick edit
 
@@ -195,12 +181,14 @@ Crop is the editor's.
 
 <!-- TODO(Phase 4): screenshot: quick edit with an arrow and a text label (docs/images/quick-edit-markup.png) -->
 
-- **Enter** or **Done** finishes: the result is copied (and saved, if auto-save is on).
-- **Ctrl+C** copies and **Ctrl+S** saves, then quick edit closes.
+- **Enter** (or double-click inside the selection) finishes: the result is copied (and saved, if
+  auto-save is on).
+- **Ctrl+C** or **Copy** copies and **Ctrl+S** or **Save** saves, then quick edit closes. To keep
+  it open after either, use **Settings › Capture**.
 - **Ctrl+E** or **Open in editor** moves your selection and marks into the full editor, still editable.
 - **Ctrl+,** or the gear opens Settings on top of quick edit, so you see changes as you make them.
 - **Esc** goes back one step at a time: stop typing, deselect, put the tool down, and finally
-  close without saving.
+  close without saving. The **×** button closes straight away.
 
 Once you've drawn something, dragging outside the selection and right-clicking no longer cancel,
 so a stray click can't lose your work. To turn quick edit off (Enter then just copies the region),
@@ -241,10 +229,13 @@ open, drop, paste (Ctrl+V) or capture an image into it.
   (fill and border, text and its box), **X** swaps them.
 - **Editing marks:** click a mark to select it, drag to move it, and drag its handles to reshape
   it. Double-click text (or press Enter) to edit it.
-- **Crop** never throws pixels away: undo it, or choose **Show full capture** in crop mode to
-  get the rest back.
+- **Crop:** drag to draw the box (Ctrl+drag draws a new one anywhere), type an exact width and
+  height, or keep a ratio such as 16:9 (with **Portrait** for 9:16). Enter applies, Esc cancels.
+  Crop never throws pixels away: undo it, or choose **Show full capture** in crop mode to get
+  the rest back.
 - **Zoom and pan:** Ctrl+mouse wheel, Ctrl+= / Ctrl+−, Ctrl+0 to fit (again for Fit width, on a tall image), Ctrl+Shift+0 for actual
-  size. Pan with Space+drag or the middle mouse button.
+  size. Pan with the mouse wheel (Shift+wheel goes sideways), Space+drag or the middle mouse
+  button.
 - **Capture** (Ctrl+N) takes a new screenshot without quick edit and brings it back to the
   editor: into the same window if it's empty, otherwise a new one.
 - **Closing** copies the image by default (you can change this in **Settings › Copy & save**).
@@ -279,7 +270,7 @@ can't write (WebP, HEIC, AVIF, GIF, ICO) always go to Save As, with PNG selected
 What happens after a capture is set in **Settings › Copy & save**:
 
 - **Copy to clipboard:** on by default.
-- **Save to a file automatically:** off by default. It can also be switched from the tray menu.
+- **Save to a file automatically:** off by default.
 - **Open in the editor:** off by default.
 
 Captures are saved as PNG in `Pictures\Screenshots`, named like
@@ -330,15 +321,15 @@ Open Settings from the tray menu, with Ctrl+, in quick edit or the editor, or wi
 `vandal --settings`. Changes apply immediately, with no restart. Use the search box to find a
 setting by name.
 
-| Page               | What's there                                                                                                                                                      |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| General            | Theme (light, dark or follow Windows), accent color, launch on login, what the tray icon and opening Vandal do, notification buttons, tray menu                   |
-| Capture            | Screen dimming, selection size readout, quick edit behavior                                                                                                       |
-| Copy & save        | What happens after a capture and when the editor closes, save folder, file-name pattern, overwrite warning                                                        |
-| Markup             | Colors, line widths, fonts and font sizes, redact strengths, spotlight darkness, step markers, corner radii (also per tool), how the pickers look, shortcut hints |
-| Keyboard shortcuts | The capture shortcuts, each tool's key and swap colors, and a list of the shortcuts that can't be changed                                                         |
-| Updates            | Check now, install an update, automatic checks on or off, and the update channel (Beta or Stable)                                                                 |
-| About              | Version, license and a link to the project                                                                                                                        |
+| Page               | What's there                                                                                                                                                                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| General            | Theme (light, dark or follow Windows), accent color, launch on login, what the tray icon and opening Vandal do, notifications and their buttons                                                                                                         |
+| Capture            | Screen dimming, selection size readout, quick edit behavior                                                                                                                                                                                             |
+| Copy & save        | What happens after a capture and when the editor closes, save folder, file-name pattern, overwrite warning                                                                                                                                              |
+| Markup             | How tools behave (selecting under the pointer, one shared color, remembering styles), colors, line widths, fonts and font sizes, redact strengths, spotlight darkness, step markers, corner radii (also per tool), how the pickers look, shortcut hints |
+| Keyboard shortcuts | The capture shortcuts, each tool's key and swap colors, and a list of the shortcuts that can't be changed                                                                                                                                               |
+| Updates            | Check now, install an update, automatic checks on or off, and the update channel (Beta or Stable)                                                                                                                                                       |
+| About              | Version, license, links to the website and the project, and a link to report a bug or suggest an idea                                                                                                                                                   |
 
 Settings are stored in `%APPDATA%\com.vandal.desktop\settings.json`. They're kept when you
 update Vandal.
@@ -387,6 +378,7 @@ Shift, in **Settings › Keyboard shortcuts**, which also lists every shortcut.
 | Ctrl+1–9               | Color (with two colors: the fill, text or label); the 10th is click-only               |
 | Ctrl+Shift+1–9         | The second color (the border, text box, marker or callout)                             |
 | Alt+1–9, 0             | Font (text, callouts, step markers), or corner radius (rectangles, spotlight)          |
+| Alt+↑ / Alt+↓          | Previous / next font, also while you type                                              |
 | \` / Shift+\` / Alt+\` | The lowest of the above: the key left of 1 bottoms out a picker or slider              |
 | Ctrl+B / Ctrl+I        | Bold / italic (text)                                                                   |
 
@@ -408,6 +400,7 @@ printed on the pickers (you can hide them in Settings).
 | Esc                  | Step back: deselect, then put the tool down                    |
 | Shift while drawing  | Square, circle, or lines at 45° steps                          |
 | Shift while moving   | Move only horizontally or vertically                           |
+| Ctrl+drag            | Draw over a mark instead of selecting it (or the reverse)      |
 
 **Editor window**
 
@@ -425,12 +418,14 @@ printed on the pickers (you can hide them in Settings).
 | Ctrl+,                | Settings                                                                 |
 | Ctrl+= / Ctrl+−       | Zoom in / out                                                            |
 | Ctrl+0 / Ctrl+Shift+0 | Fit to window (again: Fit width) / actual size                           |
+| Enter / Esc           | While cropping: apply / cancel                                           |
+| Ctrl+drag             | While cropping: draw a new box anywhere                                  |
 
 **Quick edit**
 
 | Keys                 | Action                                      |
 | -------------------- | ------------------------------------------- |
-| Enter / double-click | Done                                        |
+| Enter / double-click | Finish (copy, and save if auto-save is on)  |
 | Ctrl+C / Ctrl+S      | Copy / save, then close                     |
 | Ctrl+E               | Open in the editor                          |
 | Ctrl+,               | Settings                                    |
@@ -457,6 +452,27 @@ Versions before 0.3.0-beta.7 can't update themselves: install beta.7 or later by
 **Uninstalling:** go to Windows **Settings › Apps › Installed apps**, find **Vandal** and choose
 **Uninstall**. This also removes Vandal from Explorer's "Open with" list. Saved screenshots are
 never touched.
+
+## Verify your download
+
+Optional, but worth it while the installer isn't code-signed. Either check works:
+
+- **Compare the SHA-256 with the website's.** The download dialog on
+  [vandalscreenshot.com](https://vandalscreenshot.com) shows the installer's SHA-256 under
+  **Check the download**. The website is hosted apart from GitHub, so a tampered installer
+  can't come with a matching hash. In PowerShell:
+
+  ```powershell
+  Get-FileHash .\Vandal_<version>_x64-setup.exe
+  ```
+
+- **Check its build provenance** with the [GitHub CLI](https://cli.github.com). Every
+  installer is built by this repository's release workflow, which signs a record of what it
+  built. This proves the file came from that workflow, unchanged:
+
+  ```powershell
+  gh attestation verify .\Vandal_<version>_x64-setup.exe --repo rpodsada/vandal
+  ```
 
 ## Troubleshooting
 
@@ -517,11 +533,11 @@ policy is at [vandalscreenshot.com/privacy](https://vandalscreenshot.com/privacy
 
 - Freezes the screen the instant you press the shortcut: open menus, tooltips and hover states
   stay in the picture
-- Region, one monitor or all monitors
+- Region, window, one monitor or all monitors
 - Pixel-exact on multi-monitor setups with mixed scaling
 - Precise selection with handles, arrow keys and a size readout
-- Your own capture shortcuts (Win+F12 and Win+Shift+F12 by default), checked for conflicts,
-  including PrintScreen
+- Your own capture shortcuts (Win+F12, Win+Alt+F12 and Win+Shift+F12 by default), checked for
+  conflicts, including PrintScreen
 
 **Markup**
 
@@ -553,6 +569,7 @@ policy is at [vandalscreenshot.com/privacy](https://vandalscreenshot.com/privacy
 - Mark up existing images: PNG, JPEG, BMP, GIF, TIFF, ICO and WebP, plus HEIC and AVIF with
   the Windows codecs
 - Explorer "Open with", drag and drop, or paste from the clipboard
+- Flip through an image's folder with the arrow keys
 - Command line for launchers, mouse buttons and Stream Deck keys
 - Capture notifications with Edit, Save and Open folder buttons
 - Browser extension for Chrome: visible area, region or full page, then copy,
