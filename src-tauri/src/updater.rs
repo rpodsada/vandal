@@ -251,6 +251,36 @@ fn notify_available(app: &AppHandle<Wry>, info: &UpdateInfo) {
     }
 }
 
+/// Startup: delete installers earlier updates left in %TEMP%. The plugin
+/// downloads each into `<product>-<version>-updater-<random>\`, and can't
+/// delete it before exiting: the installer runs from there.
+pub fn delete_old_installers(app: &AppHandle<Wry>) {
+    let product = crate::product_name(app);
+    // %TEMP% can be large: off the startup path.
+    std::thread::spawn(move || {
+        let Ok(entries) = std::fs::read_dir(std::env::temp_dir()) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            if is_old_installer_dir(&name.to_string_lossy(), &product)
+                && entry.file_type().is_ok_and(|t| t.is_dir())
+            {
+                let _ = std::fs::remove_dir_all(entry.path());
+            }
+        }
+    });
+}
+
+/// `Vandal-0.3.0-beta.7-updater-AbC123` for product "Vandal", but not
+/// another product's ("Vandal Dev-…", "Vandal Update Test-…").
+fn is_old_installer_dir(name: &str, product: &str) -> bool {
+    name.strip_prefix(product)
+        .and_then(|rest| rest.strip_prefix('-'))
+        .and_then(|rest| rest.split_once("-updater-"))
+        .is_some_and(|(version, _)| !version.is_empty() && !version.contains(' '))
+}
+
 /// After the relaunch (`--updated`): "Vandal updated to X", with What's new.
 pub fn announce_updated(app: &AppHandle<Wry>) {
     let version = app.package_info().version.to_string();
@@ -443,4 +473,32 @@ pub fn editor_kept(app: &AppHandle<Wry>) {
 fn before_exit(app: &AppHandle<Wry>) {
     output::delete_preview();
     crate::tray::remove(app);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn old_installer_dirs_are_this_products_only() {
+        assert!(is_old_installer_dir(
+            "Vandal-0.3.0-beta.7-updater-AbC123",
+            "Vandal"
+        ));
+        assert!(is_old_installer_dir(
+            "Vandal Update Test-0.3.0-beta.6.2-updater-3x2gVj",
+            "Vandal Update Test"
+        ));
+        assert!(!is_old_installer_dir(
+            "Vandal Dev-0.3.0-updater-x",
+            "Vandal"
+        ));
+        assert!(!is_old_installer_dir(
+            "Vandal Update Test-0.3.0-updater-x",
+            "Vandal"
+        ));
+        assert!(!is_old_installer_dir("Vandal-updater-x", "Vandal"));
+        assert!(!is_old_installer_dir("Vandal-0.3.0-beta.7", "Vandal"));
+        assert!(!is_old_installer_dir("Other-0.3.0-updater-x", "Vandal"));
+    }
 }

@@ -267,6 +267,7 @@ pub fn run() {
             if std::env::args().any(|a| a == updater::UPDATED_ARG) {
                 updater::announce_updated(app.handle());
             }
+            updater::delete_old_installers(app.handle());
             // Dev builds leave the Run key alone unless toggled from the tray.
             #[cfg(not(debug_assertions))]
             tray::apply_autostart(app.handle(), settings.startup.launch_on_login);
