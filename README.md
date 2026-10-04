@@ -470,6 +470,9 @@ Taskbar › Other system tray icons**.
 
 **SmartScreen blocks the installer.** Click **More info → Run anyway** (see [Install](#install)).
 
+**Something else?** [Open an issue on GitHub](https://github.com/rpodsada/vandal/issues/new)
+(see [Feedback and bug reports](#feedback-and-bug-reports)).
+
 ## Privacy
 
 Vandal works entirely on your PC. Captures stay in memory until you copy or save them.
@@ -558,13 +561,18 @@ policy is at [vandalscreenshot.com/privacy](https://vandalscreenshot.com/privacy
 
 ## Feedback and bug reports
 
-<!-- TODO(Phase 4): feedback address or issue tracker, once hosting is decided. -->
-
-Found a bug or have an idea? Please tell us. It helps to include:
+Found a bug or have an idea? [Open an issue on GitHub](https://github.com/rpodsada/vandal/issues/new)
+(it needs a free GitHub account), or look through the
+[existing issues](https://github.com/rpodsada/vandal/issues) first in case it's already there.
+You can also get there from **Settings › About › Report a bug or suggest an idea**. For a bug, it
+helps to include:
 
 - your Vandal version (**Settings › About**) and Windows version
 - how many monitors you use and their scaling (Windows **Settings › System › Display**)
 - what you did, what you expected, and what happened instead, with a screenshot if you can
+
+Security problems are the exception: please report those privately, as
+[SECURITY.md](https://github.com/rpodsada/vandal/blob/main/SECURITY.md) explains.
 
 ## Building from source
 

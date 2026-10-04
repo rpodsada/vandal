@@ -165,6 +165,16 @@ pub fn open_website() {
         .spawn();
 }
 
+/// GitHub's new-issue page, to report a bug or suggest an idea (Settings ›
+/// About). A fixed address, like `open_project_page`.
+#[tauri::command]
+#[specta::specta]
+pub fn open_issues() {
+    let _ = std::process::Command::new("explorer.exe")
+        .arg("https://github.com/rpodsada/vandal/issues/new")
+        .spawn();
+}
+
 /// The default settings, for "Reset" buttons.
 #[tauri::command]
 #[specta::specta]

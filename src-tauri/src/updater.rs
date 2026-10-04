@@ -401,7 +401,8 @@ fn friendly_error(e: &tauri_plugin_updater::Error) -> String {
         | E::SignedVersionMismatch { .. }
         | E::MissingSignedVersion => concat!(
             "This update couldn't be verified as coming from Vandal, so it wasn't installed ",
-            "and nothing changed. Try again later, and if it keeps happening, please report it.",
+            "and nothing changed. Try again later, and if it keeps happening, please report it ",
+            "at github.com/rpodsada/vandal/issues.",
         )
         .into(),
         E::Reqwest(_) | E::Network(_) | E::ReleaseNotFound | E::Io(_) => {

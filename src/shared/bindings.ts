@@ -109,6 +109,11 @@ export const commands = {
 	 *  address, like `open_project_page`.
 	 */
 	openWebsite: () => __TAURI_INVOKE<void>("open_website"),
+	/**
+	 *  GitHub's new-issue page, to report a bug or suggest an idea (Settings ›
+	 *  About). A fixed address, like `open_project_page`.
+	 */
+	openIssues: () => __TAURI_INVOKE<void>("open_issues"),
 	/**  The default settings, for "Reset" buttons. */
 	defaultSettings: () => __TAURI_INVOKE<Settings>("default_settings"),
 	/**  Quick edit: this overlay's selection now has markup (or no longer has). */

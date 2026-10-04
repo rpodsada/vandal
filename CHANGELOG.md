@@ -6,6 +6,11 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Report a bug or suggest an idea** in Settings › About opens a new issue on
+  [GitHub](https://github.com/rpodsada/vandal/issues), where bugs and ideas now go.
+
 ## [0.3.0-beta.7] - 2026-10-03
 
 ### Added

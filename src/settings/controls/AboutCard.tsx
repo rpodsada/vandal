@@ -16,7 +16,7 @@ function versionLabel(): string {
   return details.length ? `${version} (${details.join(", ")})` : version;
 }
 
-/** Settings › About: the logo, name and version, what Vandal is, who made it, and where it lives. */
+/** Settings › About: the logo, name and version, what Vandal is, who made it, where it lives, and where to report bugs. */
 export function AboutCard({ id }: ControlProps<AboutItem>) {
   return (
     <div id={id} className={styles.about}>
@@ -48,6 +48,13 @@ export function AboutCard({ id }: ControlProps<AboutItem>) {
             onClick={() => void commands.openProjectPage()}
           >
             github.com/rpodsada/vandal
+          </button>
+          <button
+            type="button"
+            className={styles.aboutLink}
+            onClick={() => void commands.openIssues()}
+          >
+            Report a bug or suggest an idea
           </button>
         </div>
       </div>
