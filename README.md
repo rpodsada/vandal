@@ -20,13 +20,15 @@
 
 ---
 
+<p align="center">
+  <img src="docs/images/quick-edit.png" width="980" alt="Vandal's quick edit toolbar under a selected region of a Wikipedia page">
+</p>
+
 Press a shortcut, drag over any part of the screen, mark it up right there, and it's on your
 clipboard. Vandal freezes the screen the instant you press the shortcut, so open menus, tooltips
 and hover states stay in the picture.
 
 <!-- TODO(Phase 4): screenshot: selecting a region on a dimmed screen (docs/images/select.png) -->
-<!-- TODO(Phase 4): screenshot: quick edit toolbar under a selection (docs/images/quick-edit.png) -->
-
 > **Vandal is in beta.** Expect rough edges, and please [report anything odd](#feedback-and-bug-reports).
 
 ## Why Vandal?
