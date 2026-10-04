@@ -9,6 +9,7 @@ mod compose;
 mod decode;
 mod editor;
 mod encode;
+mod folder;
 mod fonts;
 // Some of these APIs are first used by the editor (Phase 2) and window snap (not built yet).
 #[allow(dead_code)]
@@ -75,6 +76,8 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::open_project_page,
             commands::open_website,
             commands::open_issues,
+            commands::editor_folder_position,
+            commands::editor_flip,
             commands::default_settings,
             commands::quick_markup_changed,
             commands::quick_focus_overlay,

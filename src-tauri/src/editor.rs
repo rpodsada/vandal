@@ -35,6 +35,7 @@ use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWMAXIMIZED};
 use crate::capture::MonitorFrame;
 use crate::compose::{self, RgbaImage};
 use crate::encode::{self, FileFormat};
+use crate::folder::{self, FolderPosition, FolderStep};
 use crate::frames::Capture;
 use crate::geometry::{monitor_at, virtual_bounds, MonitorInfo, PhysicalRect};
 use crate::redact::{self, Redaction};
@@ -540,6 +541,55 @@ fn file_name(path: &Path) -> String {
 }
 
 /// A file's window title: its name.
+/// The image file an editor works on; None for captures and pasted images.
+fn file_of(app: &AppHandle, id: EditorId) -> Option<PathBuf> {
+    let state = app.state::<AppState>();
+    let editors = state.editors.lock().unwrap();
+    editors.open.get(&id).and_then(|e| e.file.clone())
+}
+
+/// Where the editor's file is among its folder's images (PLAN 3Q).
+pub fn folder_position(app: &AppHandle, id: EditorId) -> Option<FolderPosition> {
+    folder::position(&file_of(app, id)?)
+}
+
+/// Open the folder's previous/next/first/last image in this editor (PLAN 3Q),
+/// skipping any that won't open. The page has already asked about unsaved
+/// changes. Ok(None): nowhere to go. Blocking: decodes.
+pub fn flip(
+    app: &AppHandle,
+    id: EditorId,
+    step: FolderStep,
+) -> Result<Option<FolderPosition>, String> {
+    let Some(file) = file_of(app, id) else {
+        return Ok(None);
+    };
+    let candidates = folder::step_from(&file, step);
+    if candidates.is_empty() {
+        return Ok(None);
+    }
+    for path in candidates {
+        match decode::decode_file(&path) {
+            Ok(image) => {
+                let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
+                let title = file_title(app, &path);
+                load_into(
+                    app,
+                    id,
+                    Arc::new(image),
+                    crop,
+                    &title,
+                    Some(path.clone()),
+                    true,
+                );
+                return Ok(folder::position(&path));
+            }
+            Err(e) => eprintln!("[folder] skipped {}: {e}", path.display()),
+        }
+    }
+    Err("None of the other images in this folder could be opened.".into())
+}
+
 fn file_title(app: &AppHandle, path: &Path) -> String {
     format!("{} — {}", file_name(path), crate::product_name(app))
 }

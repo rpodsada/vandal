@@ -9,6 +9,7 @@ use tauri_plugin_dialog::DialogExt;
 use crate::editor::{
     self, CloseChoice, EditorInit, ExportAction, ExportMarkup, ExportOutcome, LeaveReason,
 };
+use crate::folder::{FolderPosition, FolderStep};
 use crate::frames::CaptureId;
 use crate::geometry::PhysicalRect;
 use crate::ocr::{OcrError, OcrLine};
@@ -163,6 +164,39 @@ pub fn open_website() {
     let _ = std::process::Command::new("explorer.exe")
         .arg("https://vandalscreenshot.com")
         .spawn();
+}
+
+/// Where the editor's image file is in its folder ("12 of 41"), PLAN 3Q.
+/// None for captures and pasted images.
+#[tauri::command]
+#[specta::specta]
+pub async fn editor_folder_position(
+    app: AppHandle,
+    window: WebviewWindow,
+) -> Option<FolderPosition> {
+    let id = editor::id_from_label(window.label())?;
+    tauri::async_runtime::spawn_blocking(move || editor::folder_position(&app, id))
+        .await
+        .ok()
+        .flatten()
+}
+
+/// Left/Right/Home/End in the editor: the folder's previous, next, first or
+/// last image takes this one's place (PLAN 3Q), after the page has asked
+/// about unsaved changes. Returns its position; None if there's nowhere to go.
+#[tauri::command]
+#[specta::specta]
+pub async fn editor_flip(
+    app: AppHandle,
+    window: WebviewWindow,
+    step: FolderStep,
+) -> Result<Option<FolderPosition>, String> {
+    let Some(id) = editor::id_from_label(window.label()) else {
+        return Ok(None);
+    };
+    tauri::async_runtime::spawn_blocking(move || editor::flip(&app, id, step))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 /// GitHub's new-issue page, to report a bug or suggest an idea (Settings ›
