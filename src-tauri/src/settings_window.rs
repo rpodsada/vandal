@@ -2,28 +2,50 @@
 
 use std::time::Duration;
 
+use serde::{Deserialize, Serialize};
+use specta::Type;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri_specta::Event;
 use windows::Win32::Foundation::HWND;
 use windows::Win32::UI::WindowsAndMessaging::{SetWindowLongPtrW, GWLP_HWNDPARENT};
 
 pub const LABEL: &str = "settings";
 
+/// Rust → the settings window: show this page (a section id, e.g. "about").
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+pub struct SettingsShowPage(pub String);
+
 /// Focus the settings window, creating it if needed. It starts hidden and the
 /// page shows it after its first render, so it never flashes white.
 pub fn open(app: &AppHandle) {
+    open_at(app, None);
+}
+
+/// [`open`], at one of its pages (a section id in `sections.tsx`).
+pub fn open_page(app: &AppHandle, page: &str) {
+    open_at(app, Some(page));
+}
+
+fn open_at(app: &AppHandle, page: Option<&str>) {
     if let Some(window) = app.get_webview_window(LABEL) {
         follow_overlay(app, &window);
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
+        if let Some(page) = page {
+            let _ = SettingsShowPage(page.to_string()).emit_to(app, LABEL);
+        }
         return;
     }
+    let url = match page {
+        Some(page) => format!("settings.html#{page}"),
+        None => "settings.html".to_string(),
+    };
     // Creating a webview from the main thread's event handlers can deadlock
     // on Windows, so build it elsewhere.
     let app = app.clone();
     std::thread::spawn(move || {
-        let builder =
-            WebviewWindowBuilder::new(&app, LABEL, WebviewUrl::App("settings.html".into()));
+        let builder = WebviewWindowBuilder::new(&app, LABEL, WebviewUrl::App(url.into()));
         let built = crate::appearance::themed(&app, builder)
             .title(format!("{} Settings", crate::product_name(&app)))
             .inner_size(920.0, 680.0)

@@ -13,7 +13,7 @@
 //! highlights into it, composites the layer over that, and copies or saves in
 //! Rust.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -102,6 +102,8 @@ pub struct Editors {
     open: HashMap<EditorId, Editor>,
     /// The editor that last had focus, for the tray click (PLAN 3H.9).
     last_focused: Option<EditorId>,
+    /// Editors whose document has changes not copied or saved (the page says).
+    unsaved: HashSet<EditorId>,
 }
 
 impl Editors {
@@ -116,6 +118,19 @@ impl Editors {
         self.last_focused
             .filter(|id| self.open.contains_key(id))
             .or_else(|| self.open.keys().max().copied())
+    }
+
+    pub fn set_unsaved(&mut self, id: EditorId, unsaved: bool) {
+        if unsaved && self.open.contains_key(&id) {
+            self.unsaved.insert(id);
+        } else {
+            self.unsaved.remove(&id);
+        }
+    }
+
+    /// Whether any editor would ask "save first?" before closing (PLAN 3P.4).
+    pub fn any_unsaved(&self) -> bool {
+        !self.unsaved.is_empty()
     }
 
     pub fn image(&self, id: EditorId) -> Option<Arc<RgbaImage>> {
@@ -1064,12 +1079,10 @@ pub fn closing(app: &AppHandle, window: &Window) {
 /// The window is gone: free its image.
 pub fn destroyed(app: &AppHandle, window_label: &str) {
     if let Some(id) = id_from_label(window_label) {
-        app.state::<AppState>()
-            .editors
-            .lock()
-            .unwrap()
-            .open
-            .remove(&id);
+        let state = app.state::<AppState>();
+        let mut editors = state.editors.lock().unwrap();
+        editors.open.remove(&id);
+        editors.unsaved.remove(&id);
     }
 }
 

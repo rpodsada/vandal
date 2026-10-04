@@ -7,7 +7,7 @@ import {
   type ComponentType,
 } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import type { Settings } from "../shared/ipc";
+import { events, type Settings } from "../shared/ipc";
 import { controls, type ControlProps } from "./controls";
 import { SearchIcon } from "./icons";
 import { matchesQuery, type Group, type Item, type Section } from "./schema";
@@ -19,7 +19,8 @@ export function SettingsApp() {
   const settings = useSettingsStore((s) => s.settings);
   const error = useSettingsStore((s) => s.error);
   const clearError = useSettingsStore((s) => s.clearError);
-  const [activeId, setActiveId] = useState(sections[0].id);
+  // Opened at a page (`settings.html#about`, e.g. from an update notification).
+  const [activeId, setActiveId] = useState(() => pageFromHash() ?? sections[0].id);
   const [query, setQuery] = useState("");
   const loaded = settings !== null;
   const mainRef = useRef<HTMLElement>(null);
@@ -66,6 +67,16 @@ export function SettingsApp() {
 
   useEffect(() => {
     void useSettingsStore.getState().init();
+  }, []);
+
+  // Already open and asked for a page (PLAN 3P.4).
+  useEffect(() => {
+    const unlisten = events.settingsShowPage.listen(({ payload }) => {
+      if (!sections.some((s) => s.id === payload)) return;
+      setQuery("");
+      setActiveId(payload);
+    });
+    return () => void unlisten.then((f) => f());
   }, []);
 
   // The window starts hidden; show it once there's something to show.
@@ -261,4 +272,9 @@ function Row({ item, settings }: { item: Item; settings: Settings }) {
       </div>
     </div>
   );
+}
+
+function pageFromHash(): string | undefined {
+  const id = window.location.hash.slice(1);
+  return sections.some((s) => s.id === id) ? id : undefined;
 }

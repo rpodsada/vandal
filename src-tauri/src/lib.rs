@@ -100,6 +100,8 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::update_available,
             commands::update_install,
             commands::update_editor_kept,
+            commands::editor_set_unsaved,
+            commands::open_release_notes,
         ])
         .events(collect_events![
             session::OverlayLoad,
@@ -112,6 +114,7 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             updater::UpdateAvailable,
             updater::UpdateProgress,
             updater::EditorLeaveForUpdate,
+            settings_window::SettingsShowPage,
         ])
         .typ::<geometry::MonitorInfo>()
         .typ::<geometry::PhysicalPoint>()
@@ -258,8 +261,12 @@ pub fn run() {
             // A crash or forced shutdown skips the cleanup on exit.
             output::delete_preview();
             hotkeys::register(app.handle(), &settings.hotkeys);
-            tray::create(app.handle(), &settings)?;
+            // Before the tray: its menu shows an update waiting.
             updater::init(app.handle());
+            tray::create(app.handle(), &settings)?;
+            if std::env::args().any(|a| a == updater::UPDATED_ARG) {
+                updater::announce_updated(app.handle());
+            }
             // Dev builds leave the Run key alone unless toggled from the tray.
             #[cfg(not(debug_assertions))]
             tray::apply_autostart(app.handle(), settings.startup.launch_on_login);

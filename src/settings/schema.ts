@@ -135,6 +135,11 @@ export interface AboutItem extends BaseItem {
   kind: "about";
 }
 
+/** Update status, Check now and Install (PLAN 3P.4). */
+export interface UpdatesItem extends BaseItem {
+  kind: "updates";
+}
+
 /** Read-only value, for things not editable yet or informational. */
 export interface InfoItem extends BaseItem {
   kind: "info";
@@ -156,6 +161,7 @@ export type Item =
   | ShortcutItem
   | KeyListItem
   | AboutItem
+  | UpdatesItem
   | InfoItem;
 export type ItemKind = Item["kind"];
 

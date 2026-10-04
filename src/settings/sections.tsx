@@ -6,7 +6,15 @@
 import { SHORTCUT_NAMES, type ShortcutId } from "../markup/shortcuts";
 import { commands } from "../shared/ipc";
 import { EDITOR_KEYS, MARKUP_KEYS, QUICK_EDIT_KEYS } from "./fixedShortcuts";
-import { AboutIcon, CaptureIcon, GeneralIcon, KeyboardIcon, MarkupIcon, SaveIcon } from "./icons";
+import {
+  AboutIcon,
+  CaptureIcon,
+  GeneralIcon,
+  KeyboardIcon,
+  MarkupIcon,
+  SaveIcon,
+  UpdatesIcon,
+} from "./icons";
 import type { Section } from "./schema";
 
 /** What clicking the tray icon or opening Vandal does (PLAN 3G). */
@@ -689,6 +697,44 @@ export const sections: Section[] = [
           // Found by what they do: "duplicate", "zoom"...
           keywords: ["shortcut", "keyboard", "key", ...entries.flatMap((e) => [e.what, ...e.keys])],
         })),
+      },
+    ],
+  },
+  {
+    id: "updates",
+    title: "Updates",
+    icon: UpdatesIcon,
+    groups: [
+      {
+        items: [
+          {
+            id: "update-status",
+            kind: "updates",
+            label: "Updates",
+            keywords: ["update", "upgrade", "new version", "check", "install", "download"],
+          },
+          {
+            id: "check-automatically",
+            kind: "toggle",
+            path: "updates.checkAutomatically",
+            label: "Check for updates automatically",
+            description:
+              "When Vandal starts and once a day. A check only downloads a small file from GitHub; nothing about you or your screenshots is sent. Off: Vandal never checks unless you press Check now.",
+            keywords: ["update", "automatic", "privacy", "network", "internet", "offline"],
+          },
+          {
+            id: "update-channel",
+            kind: "choice",
+            path: "updates.channel",
+            label: "Update channel",
+            description: "Beta gets new features first, with test versions before each release.",
+            options: [
+              { value: "stable", label: "Stable" },
+              { value: "beta", label: "Beta" },
+            ],
+            keywords: ["update", "beta", "stable", "prerelease", "testing", "channel"],
+          },
+        ],
       },
     ],
   },

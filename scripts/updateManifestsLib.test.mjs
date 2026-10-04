@@ -5,6 +5,7 @@ import {
   manifest,
   parsePublicKey,
   shouldWrite,
+  signedVersion,
   verifySignature,
 } from "./updateManifestsLib.mjs";
 
@@ -154,8 +155,26 @@ describe("verifySignature", () => {
     expect(() => verifySignature(data, b64(lines.join("\n")), pubkey)).toThrow("trusted comment");
   });
 
+  it("returns the signed trusted comment", () => {
+    const { pubkey, signFile } = minisignKey();
+    const comment = "timestamp:1\tfile:Vandal_0.3.0-beta.7_x64-setup.exe\tversion:0.3.0-beta.7";
+    expect(verifySignature(data, signFile(data, comment), pubkey)).toBe(comment);
+  });
+
   it("rejects text that isn't a signature", () => {
     const { pubkey } = minisignKey();
     expect(() => verifySignature(data, b64("hello"), pubkey)).toThrow("Not a minisign signature");
+  });
+});
+
+describe("signedVersion", () => {
+  it("reads the version Tauri's CLI signs", () => {
+    const comment =
+      "timestamp:1791071989\tfile:Vandal_0.3.0-beta.6_x64-setup.exe\tversion:0.3.0-beta.6";
+    expect(signedVersion(comment)).toBe("0.3.0-beta.6");
+  });
+
+  it("is null for signatures without one", () => {
+    expect(signedVersion("timestamp:1\tfile:test.exe")).toBeNull();
   });
 });

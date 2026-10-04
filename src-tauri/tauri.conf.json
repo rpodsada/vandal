@@ -18,7 +18,8 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdFRjNENTJFNzVGQzI1REIKUldUYkpmeDFMdFh6ZnNtbWRsa1FiNlJ6c01zU3ZvNnhQY3hRM1Q0SS9PQ2hJd0lDNVB0dC9UeE4K"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdFRjNENTJFNzVGQzI1REIKUldUYkpmeDFMdFh6ZnNtbWRsa1FiNlJ6c01zU3ZvNnhQY3hRM1Q0SS9PQ2hJd0lDNVB0dC9UeE4K",
+      "requireSignedVersion": true
     }
   },
   "bundle": {

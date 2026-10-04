@@ -4,13 +4,14 @@
 //! Each channel's manifest is a static file on the `update-manifests` branch,
 //! written by `publish-updates.yml` when a release is published. Checks run a
 //! minute after startup and then daily, only while `updates.checkAutomatically`
-//! is on; "Check now" always works. Installing never interrupts work: it waits
-//! out a capture on screen, and asks every editor to leave the way closing
-//! does (on-close copy, or "save first?"), giving up if one stays.
+//! is on; "Check now" always works. Installing never interrupts work: it
+//! refuses while a capture is on screen, and asks every editor to leave the
+//! way a replaced document does ("Save before updating?" when it has
+//! changes), giving up if one stays.
 //!
-//! Dev builds never check by themselves. `VANDAL_UPDATE_ENDPOINT` (a full
-//! manifest URL) replaces the channel's address, for testing; the installer
-//! must still be signed with the key in `tauri.conf.json`.
+//! `VANDAL_UPDATE_ENDPOINT` (a full manifest URL) replaces the channel's
+//! address, for testing; the installer must still be signed with the key in
+//! `tauri.conf.json`. Dev builds only check when it's set.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -21,6 +22,7 @@ use specta::Type;
 use tauri::{AppHandle, Manager, Url, Wry};
 use tauri_plugin_updater::{Update, UpdaterExt};
 use tauri_specta::Event;
+use tauri_winrt_notification::Toast;
 
 use crate::settings::{UpdateChannel, UpdateSettings};
 use crate::state::AppState;
@@ -91,7 +93,7 @@ pub struct EditorLeaveForUpdate;
 /// Startup: the state, and the daily checks (not in dev builds).
 pub fn init(app: &AppHandle<Wry>) {
     app.manage(UpdaterState::default());
-    if cfg!(debug_assertions) {
+    if !can_check() {
         return;
     }
     let app = app.clone();
@@ -99,7 +101,7 @@ pub fn init(app: &AppHandle<Wry>) {
         std::thread::sleep(FIRST_CHECK);
         loop {
             if check_due(&app) {
-                if let Err(e) = tauri::async_runtime::block_on(check(&app)) {
+                if let Err(e) = tauri::async_runtime::block_on(check(&app, true)) {
                     eprintln!("[updates] check failed: {e}");
                 }
             }
@@ -125,17 +127,23 @@ fn check_due(app: &AppHandle<Wry>) -> bool {
 pub fn settings_changed(app: &AppHandle<Wry>, old: &UpdateSettings, new: &UpdateSettings) {
     if old.channel != new.channel {
         *app.state::<UpdaterState>().available.lock().unwrap() = None;
+        crate::tray::rebuild(app);
     }
     let turned_on = new.check_automatically && !old.check_automatically;
     let switched = new.check_automatically && old.channel != new.channel;
-    if (turned_on || switched) && !cfg!(debug_assertions) {
+    if (turned_on || switched) && can_check() {
         let app = app.clone();
         tauri::async_runtime::spawn(async move {
-            if let Err(e) = check(&app).await {
+            if let Err(e) = check(&app, true).await {
                 eprintln!("[updates] check failed: {e}");
             }
         });
     }
+}
+
+/// Dev builds only check against a test manifest.
+fn can_check() -> bool {
+    !cfg!(debug_assertions) || std::env::var_os(ENDPOINT_ENV).is_some()
 }
 
 fn endpoint(channel: UpdateChannel) -> Result<Url, String> {
@@ -159,8 +167,9 @@ fn endpoint(channel: UpdateChannel) -> Result<Url, String> {
 }
 
 /// Ask the channel's manifest for a newer version. Remembers what it finds
-/// for [`install`], and announces a version it hadn't found before.
-pub async fn check(app: &AppHandle<Wry>) -> Result<Option<UpdateInfo>, String> {
+/// for [`install`] and the tray, and tells the pages about a version it hadn't
+/// found before; `notify` (the automatic checks) also shows a notification.
+pub async fn check(app: &AppHandle<Wry>, notify: bool) -> Result<Option<UpdateInfo>, String> {
     let channel = app
         .state::<AppState>()
         .settings
@@ -182,18 +191,116 @@ pub async fn check(app: &AppHandle<Wry>) -> Result<Option<UpdateInfo>, String> {
         .on_before_exit(move || before_exit(&exit_app))
         .build()
         .map_err(|e| e.to_string())?;
-    let found = updater.check().await.map_err(|e| e.to_string())?;
+    let found = updater.check().await.map_err(|e| {
+        eprintln!("[updates] check: {e}");
+        friendly_error(&e)
+    })?;
 
     let state = app.state::<UpdaterState>();
     *state.last_check.lock().unwrap() = Some(SystemTime::now());
     let info = found.as_ref().map(UpdateInfo::from);
     let previous = std::mem::replace(&mut *state.available.lock().unwrap(), found);
-    if let Some(info) = &info {
-        if previous.is_none_or(|p| p.version != info.version) {
+    let previous = previous.map(|p| p.version);
+    if previous.as_ref() != info.as_ref().map(|i| &i.version) {
+        crate::tray::rebuild(app);
+        if let Some(info) = &info {
             let _ = UpdateAvailable(info.clone()).emit(app);
+            if notify {
+                notify_available(app, info);
+            }
         }
     }
     Ok(info)
+}
+
+/// "Vandal X is available": Install, or Later (the notification goes; the tray
+/// and Settings › Updates keep offering it). The body opens Settings › Updates.
+fn notify_available(app: &AppHandle<Wry>, info: &UpdateInfo) {
+    let app = app.clone();
+    let unsaved = app
+        .state::<AppState>()
+        .editors
+        .lock()
+        .unwrap()
+        .any_unsaved();
+    let detail = if unsaved {
+        "You have unsaved changes. Vandal will ask you to save them before it installs."
+    } else {
+        "Installing restarts Vandal."
+    };
+    let toast = Toast::new(&output::app_id(&app))
+        .title(&format!(
+            "{} {} is available",
+            crate::product_name(&app),
+            info.version
+        ))
+        .text1(detail)
+        .sound(None)
+        .add_button("Install", "install")
+        .add_button("Later", "later");
+    let toast = toast.on_activated(move |action| {
+        match action.as_deref() {
+            Some("install") => install_in_background(&app),
+            Some("later") => {}
+            _ => crate::settings_window::open_page(&app, "updates"),
+        }
+        Ok(())
+    });
+    if let Err(e) = toast.show() {
+        eprintln!("[updates] toast failed: {e}");
+    }
+}
+
+/// After the relaunch (`--updated`): "Vandal updated to X", with What's new.
+pub fn announce_updated(app: &AppHandle<Wry>) {
+    let version = app.package_info().version.to_string();
+    let app = app.clone();
+    let toast = Toast::new(&output::app_id(&app))
+        .title(&format!(
+            "{} updated to {version}",
+            crate::product_name(&app)
+        ))
+        .text1("See what's new in this version.")
+        .sound(None)
+        .add_button("What's new", "notes");
+    let toast = toast.on_activated(move |action| {
+        match action.as_deref() {
+            None | Some("notes") => open_release_notes(&version),
+            _ => {}
+        }
+        Ok(())
+    });
+    if let Err(e) = toast.show() {
+        eprintln!("[updates] toast failed: {e}");
+    }
+}
+
+/// A release's page on GitHub (its notes are the CHANGELOG section).
+pub fn open_release_notes(version: &str) {
+    // Only a version number goes into the address (and onto explorer's command line).
+    let plain = version.split('+').next().unwrap_or(version);
+    if plain.is_empty()
+        || !plain
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
+    {
+        return;
+    }
+    let _ = std::process::Command::new("explorer.exe")
+        .arg(format!(
+            "https://github.com/rpodsada/vandal/releases/tag/v{plain}"
+        ))
+        .spawn();
+}
+
+/// Install from the notification or the tray; a failure is a notification.
+pub fn install_in_background(app: &AppHandle<Wry>) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = install(&app).await {
+            output::notify_error(&app, "Update not installed", &e);
+        }
+    });
 }
 
 /// The update found by the last check, if any.
@@ -241,7 +348,10 @@ async fn install_inner(app: &AppHandle<Wry>, update: &Update) -> Result<(), Stri
             || {},
         )
         .await
-        .map_err(|e| format!("The download failed: {e}"))?;
+        .map_err(|e| {
+            eprintln!("[updates] download: {e}");
+            friendly_error(&e)
+        })?;
     if !leave_editors(app).await {
         return Err("An editor is still open, so the update wasn't installed.".into());
     }
@@ -249,6 +359,26 @@ async fn install_inner(app: &AppHandle<Wry>, update: &Update) -> Result<(), Stri
     update
         .install(bytes)
         .map_err(|e| format!("The installer didn't start: {e}"))
+}
+
+/// What to tell people when a check or download fails; the details go to the log.
+fn friendly_error(e: &tauri_plugin_updater::Error) -> String {
+    use tauri_plugin_updater::Error as E;
+    match e {
+        E::Minisign(_)
+        | E::Base64(_)
+        | E::SignatureUtf8(_)
+        | E::SignedVersionMismatch { .. }
+        | E::MissingSignedVersion => concat!(
+            "This update couldn't be verified as coming from Vandal, so it wasn't installed ",
+            "and nothing changed. Try again later, and if it keeps happening, please report it.",
+        )
+        .into(),
+        E::Reqwest(_) | E::Network(_) | E::ReleaseNotFound | E::Io(_) => {
+            "Couldn't reach the update server. Check your internet connection and try again.".into()
+        }
+        other => format!("Something went wrong with the update: {other}"),
+    }
 }
 
 fn ensure_no_capture(app: &AppHandle<Wry>) -> Result<(), String> {

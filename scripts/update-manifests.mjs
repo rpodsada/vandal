@@ -19,6 +19,7 @@ import {
   channelRelease,
   manifest,
   shouldWrite,
+  signedVersion,
   verifySignature,
 } from "./updateManifestsLib.mjs";
 
@@ -92,7 +93,9 @@ for (const channel of CHANNELS) {
     sig = (await get(pick.signature.browser_download_url)).toString("utf8");
     const installer = await get(pick.installer.browser_download_url);
     try {
-      verifySignature(installer, sig, pubkey);
+      const signed = signedVersion(verifySignature(installer, sig, pubkey));
+      // The app refuses a signature for another version (requireSignedVersion).
+      if (signed !== pick.version) throw new Error(`signed for ${signed ?? "no version"}`);
     } catch (e) {
       fail(`${pick.installer.name}: ${e.message}; not offering it`);
     }

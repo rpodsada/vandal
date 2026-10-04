@@ -527,7 +527,7 @@ pub fn reveal_in_explorer(path: &Path) {
 
 /// Unpackaged dev builds have no registered AppUserModelID, so borrow
 /// PowerShell's; the installer registers ours (the bundle identifier).
-fn app_id(app: &AppHandle) -> String {
+pub(crate) fn app_id(app: &AppHandle) -> String {
     if cfg!(debug_assertions) {
         Toast::POWERSHELL_APP_ID.to_string()
     } else {

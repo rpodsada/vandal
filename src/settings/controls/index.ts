@@ -8,6 +8,7 @@ import { FolderInput } from "./FolderInput";
 import { HotkeyField } from "./HotkeyField";
 import { FontPickerSetting } from "./FontPickerEditor";
 import { AboutCard } from "./AboutCard";
+import { UpdatesCard } from "./UpdatesCard";
 import { Info } from "./Info";
 import { KeyList } from "./KeyList";
 import { ShortcutField } from "./ShortcutField";
@@ -50,6 +51,7 @@ export const controls: Registry = {
   shortcut: { component: ShortcutField, layout: "inline" },
   keyList: { component: KeyList, layout: "stacked" },
   about: { component: AboutCard, layout: "bare" },
+  updates: { component: UpdatesCard, layout: "bare" },
   text: { component: TextInput, layout: "stacked" },
   folder: { component: FolderInput, layout: "stacked" },
 };

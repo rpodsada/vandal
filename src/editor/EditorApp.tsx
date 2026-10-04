@@ -195,6 +195,17 @@ export function EditorApp() {
     return () => void unlisten.then((f) => f());
   }, [leaveDocument]);
 
+  // Rust keeps track of unsaved work, so the update notification only mentions
+  // it when there is some (PLAN 3P.4).
+  useEffect(() => {
+    let unsaved = false;
+    return docStore.subscribe((s) => {
+      if (hasUnsavedChanges(s) === unsaved) return;
+      unsaved = !unsaved;
+      void commands.editorSetUnsaved(unsaved);
+    });
+  }, []);
+
   // An update is about to install (PLAN 3P): leave like closing, but a capture
   // with changes asks first rather than copying quietly, as when replaced.
   // Staying tells Rust, which then doesn't install.

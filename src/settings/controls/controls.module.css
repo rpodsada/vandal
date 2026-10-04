@@ -884,3 +884,62 @@
 .aboutLink:hover {
   text-decoration-thickness: 2px;
 }
+
+/* ---- Updates (PLAN 3P.4) ---- */
+
+.updates {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.updatesRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.updatesText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.updatesText p {
+  margin: 0;
+}
+
+/* Like a field's error message (.fieldError), across the whole card. */
+.updatesError {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: var(--error-bg);
+  box-shadow: 0 0 0 1px var(--error-border);
+}
+
+.updatesProgress {
+  width: 240px;
+  max-width: 100%;
+  height: 4px;
+  accent-color: var(--accent);
+}
+
+.updatesButtons {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.updatesButtons .button:disabled {
+  opacity: 0.5;
+}
+
+.updatesNote {
+  color: var(--text-2);
+  font-size: 12px;
+}

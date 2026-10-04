@@ -85,7 +85,8 @@ export function parsePublicKey(base64Text) {
 
 /**
  * Checks a Tauri updater signature (.sig text) for `data` against the public key
- * (tauri.conf.json's `plugins.updater.pubkey`). Throws with the reason if it fails.
+ * (tauri.conf.json's `plugins.updater.pubkey`). Throws with the reason if it
+ * fails; returns the signed trusted comment ("timestamp:… file:… version:…").
  */
 export function verifySignature(data, sigText, pubkeyText) {
   const pub = parsePublicKey(pubkeyText);
@@ -108,4 +109,14 @@ export function verifySignature(data, sigText, pubkeyText) {
   if (!verify(null, signed, key, sig.subarray(10))) throw new Error("Bad signature for this file");
   const comment = Buffer.concat([sig.subarray(10), Buffer.from(trusted[1], "utf8")]);
   if (!verify(null, comment, key, global)) throw new Error("Bad signature on the trusted comment");
+  return trusted[1];
+}
+
+/**
+ * The version a trusted comment says the file was signed for (Tauri's CLI
+ * writes `version:<v>`), or null. The app requires it to match the manifest
+ * (`requireSignedVersion`), so a manifest can't pass off an older release.
+ */
+export function signedVersion(trustedComment) {
+  return /(?:^|\t)version:([^\t]+)/.exec(trustedComment)?.[1] ?? null;
 }

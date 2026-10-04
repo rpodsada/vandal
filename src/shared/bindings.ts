@@ -216,7 +216,7 @@ export const commands = {
 	 *  virtual-desktop physical pixels like `rect`.
 	 */
 	quickRecognizeText: (captureId: number, rect: PhysicalRect) => typedError<OcrLine[], OcrError>(__TAURI_INVOKE("quick_recognize_text", { captureId, rect })),
-	/**  Settings › About's "Check now" (PLAN 3P): the newer version, if any. */
+	/**  Settings › Updates' "Check now" (PLAN 3P): the newer version, if any. */
 	updateCheck: () => typedError<{
 	version: string,
 	currentVersion: string,
@@ -242,6 +242,16 @@ export const commands = {
 	updateInstall: () => typedError<null, string>(__TAURI_INVOKE("update_install")),
 	/**  An editor asked to leave for an update kept its document instead. */
 	updateEditorKept: () => __TAURI_INVOKE<void>("update_editor_kept"),
+	/**
+	 *  The editor page's document gained or lost unsaved changes, so the update
+	 *  notification can say whether installing will ask about them.
+	 */
+	editorSetUnsaved: (unsaved: boolean) => __TAURI_INVOKE<void>("editor_set_unsaved", { unsaved }),
+	/**
+	 *  A release's notes on GitHub, in the default browser (Settings › Updates'
+	 *  "What's new"). Only a version number goes into the address.
+	 */
+	openReleaseNotes: (version: string) => __TAURI_INVOKE<void>("open_release_notes", { version }),
 };
 
 /** Events */
@@ -253,6 +263,7 @@ export const events = {
 	overlayShown: makeEvent<OverlayShown>("overlay-shown"),
 	overlayWindowPick: makeEvent<OverlayWindowPick>("overlay-window-pick"),
 	settingsChanged: makeEvent<SettingsChanged>("settings-changed"),
+	settingsShowPage: makeEvent<SettingsShowPage>("settings-show-page"),
 	updateAvailable: makeEvent<UpdateAvailable>("update-available"),
 	updateProgress: makeEvent<UpdateProgress>("update-progress"),
 	windowsAccentChanged: makeEvent<WindowsAccentChanged>("windows-accent-changed"),
@@ -695,6 +706,9 @@ export type Settings = {
 
 /**  Rust → all windows: settings changed (from any source), here's the new state. */
 export type SettingsChanged = Settings;
+
+/**  Rust → the settings window: show this page (a section id, e.g. "about"). */
+export type SettingsShowPage = string;
 
 /**  Human-readable, e.g. `"V"` or `"Ctrl+L"`. `None` = no shortcut. */
 export type Shortcuts = {

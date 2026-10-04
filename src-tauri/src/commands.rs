@@ -494,11 +494,11 @@ pub async fn quick_recognize_text(
     Ok(lines)
 }
 
-/// Settings › About's "Check now" (PLAN 3P): the newer version, if any.
+/// Settings › Updates' "Check now" (PLAN 3P): the newer version, if any.
 #[tauri::command]
 #[specta::specta]
 pub async fn update_check(app: AppHandle) -> Result<Option<UpdateInfo>, String> {
-    updater::check(&app).await
+    updater::check(&app, false).await
 }
 
 /// The update the last check found, for pages that open later.
@@ -515,6 +515,25 @@ pub fn update_available(app: AppHandle) -> Option<UpdateInfo> {
 #[specta::specta]
 pub async fn update_install(app: AppHandle) -> Result<(), String> {
     updater::install(&app).await
+}
+
+/// A release's notes on GitHub, in the default browser (Settings › Updates'
+/// "What's new"). Only a version number goes into the address.
+#[tauri::command]
+#[specta::specta]
+pub fn open_release_notes(version: String) {
+    updater::open_release_notes(&version);
+}
+
+/// The editor page's document gained or lost unsaved changes, so the update
+/// notification can say whether installing will ask about them.
+#[tauri::command]
+#[specta::specta]
+pub fn editor_set_unsaved(app: AppHandle, window: WebviewWindow, unsaved: bool) {
+    if let Some(id) = editor::id_from_label(window.label()) {
+        let state = app.state::<AppState>();
+        state.editors.lock().unwrap().set_unsaved(id, unsaved);
+    }
 }
 
 /// An editor asked to leave for an update kept its document instead.

@@ -68,6 +68,16 @@ export function AboutIcon() {
   );
 }
 
+/** Circling arrow: updates (PLAN 3P.4). */
+export function UpdatesIcon() {
+  return (
+    <svg {...props}>
+      <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9" />
+      <path d="M12.2 1.6v2.8H9.4" />
+    </svg>
+  );
+}
+
 export function SearchIcon() {
   return (
     <svg {...props}>

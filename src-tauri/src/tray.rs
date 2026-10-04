@@ -111,6 +111,16 @@ fn build_menu(app: &AppHandle, s: &Settings) -> tauri::Result<Menu<Wry>> {
         None::<&str>,
     )?)?;
     menu.append(&PredefinedMenuItem::separator(app)?)?;
+    // An update found and waiting (PLAN 3P.4).
+    if let Some(update) = crate::updater::available(app) {
+        menu.append(&MenuItem::with_id(
+            app,
+            "install-update",
+            format!("Restart to update to {}", update.version),
+            true,
+            None::<&str>,
+        )?)?;
+    }
     menu.append(&MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?)?;
     Ok(menu)
 }
@@ -143,6 +153,7 @@ pub fn create(app: &AppHandle, s: &Settings) -> tauri::Result<()> {
                         ),
                         "window" => session::start_window(app),
                         "settings" => settings_window::open(app),
+                        "install-update" => crate::updater::install_in_background(app),
                         "open" => {
                             // The dialog blocks; keep the tray responsive.
                             let app = app.clone();
