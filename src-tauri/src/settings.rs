@@ -43,6 +43,8 @@ pub struct Settings {
     pub startup: Startup,
     pub history: History,
     pub tray: TraySettings,
+    /// Automatic updates (PLAN 3P).
+    pub updates: UpdateSettings,
 }
 
 impl Default for Settings {
@@ -61,6 +63,7 @@ impl Default for Settings {
             startup: Startup::default(),
             history: History::default(),
             tray: TraySettings::default(),
+            updates: UpdateSettings::default(),
         }
     }
 }
@@ -341,6 +344,51 @@ pub struct TraySettings {
     pub click_action: IconAction,
 }
 
+/// Which releases the updater offers (PLAN 3P).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum UpdateChannel {
+    /// Prereleases and final releases.
+    Beta,
+    /// Final releases only.
+    Stable,
+}
+
+impl UpdateChannel {
+    /// The default for a build: whoever installed a beta is testing betas.
+    pub fn for_version(version: &str) -> Self {
+        if version.split('+').next().unwrap_or(version).contains('-') {
+            Self::Beta
+        } else {
+            Self::Stable
+        }
+    }
+}
+
+impl Default for UpdateChannel {
+    fn default() -> Self {
+        Self::for_version(env!("CARGO_PKG_VERSION"))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(default, rename_all = "camelCase")]
+pub struct UpdateSettings {
+    /// Check on startup and daily. Off: nothing is fetched unless asked for
+    /// (Richard: privacy first, their choice).
+    pub check_automatically: bool,
+    pub channel: UpdateChannel,
+}
+
+impl Default for UpdateSettings {
+    fn default() -> Self {
+        Self {
+            check_automatically: true,
+            channel: UpdateChannel::default(),
+        }
+    }
+}
+
 /// Rust → all windows: settings changed (from any source), here's the new state.
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 pub struct SettingsChanged(pub Settings);
@@ -416,6 +464,9 @@ pub fn update(app: &AppHandle<Wry>, new: Settings) -> Result<Settings, String> {
         crate::appearance::apply(app, new.appearance.theme);
     }
     crate::tray::refresh(app, &new);
+    if new.updates != old.updates {
+        crate::updater::settings_changed(app, &old.updates, &new.updates);
+    }
 
     let _ = SettingsChanged(new.clone()).emit(app);
     Ok(new)
@@ -774,6 +825,36 @@ mod tests {
         assert_eq!(v["tray"]["clickAction"], "capture");
         assert_eq!(v["startup"]["launchAction"], "capture");
         assert_eq!(v["shortcuts"]["swapColors"], "X");
+        assert_eq!(v["updates"]["checkAutomatically"], true);
+    }
+
+    #[test]
+    fn update_channel_follows_the_build() {
+        assert_eq!(
+            UpdateChannel::for_version("0.3.0-beta.6"),
+            UpdateChannel::Beta
+        );
+        assert_eq!(
+            UpdateChannel::for_version("0.3.0-beta.6+5"),
+            UpdateChannel::Beta
+        );
+        assert_eq!(UpdateChannel::for_version("1.0.0"), UpdateChannel::Stable);
+        // Build metadata isn't a prerelease, even with a dash in it.
+        assert_eq!(
+            UpdateChannel::for_version("1.0.0+5-x"),
+            UpdateChannel::Stable
+        );
+    }
+
+    #[test]
+    fn files_from_before_updates_get_the_defaults() {
+        let v = u64::from(CURRENT_VERSION);
+        let (s, _) = migrate(Some(serde_json::json!({ "version": v })));
+        assert_eq!(s.updates, UpdateSettings::default());
+        let stored = serde_json::json!({ "version": v, "updates": { "channel": "stable" } });
+        let (s, _) = migrate(Some(stored));
+        assert!(s.updates.check_automatically);
+        assert_eq!(s.updates.channel, UpdateChannel::Stable);
     }
 
     #[test]

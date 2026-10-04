@@ -18,6 +18,7 @@ use crate::session::{
 };
 use crate::settings::{self, Settings};
 use crate::state::AppState;
+use crate::updater::{self, UpdateInfo};
 
 /// Overlay page mounted; returns its frame if a capture is waiting on it.
 #[tauri::command]
@@ -491,6 +492,36 @@ pub async fn quick_recognize_text(
         word.rect = word.rect.translate(rect.x, rect.y);
     }
     Ok(lines)
+}
+
+/// Settings › About's "Check now" (PLAN 3P): the newer version, if any.
+#[tauri::command]
+#[specta::specta]
+pub async fn update_check(app: AppHandle) -> Result<Option<UpdateInfo>, String> {
+    updater::check(&app).await
+}
+
+/// The update the last check found, for pages that open later.
+#[tauri::command]
+#[specta::specta]
+pub fn update_available(app: AppHandle) -> Option<UpdateInfo> {
+    updater::available(&app)
+}
+
+/// Install the update found and restart into it. Returns only if something
+/// stopped it (a capture on screen, an editor that stayed open, a failed
+/// download).
+#[tauri::command]
+#[specta::specta]
+pub async fn update_install(app: AppHandle) -> Result<(), String> {
+    updater::install(&app).await
+}
+
+/// An editor asked to leave for an update kept its document instead.
+#[tauri::command]
+#[specta::specta]
+pub fn update_editor_kept(app: AppHandle) {
+    updater::editor_kept(&app);
 }
 
 async fn recognize_text(

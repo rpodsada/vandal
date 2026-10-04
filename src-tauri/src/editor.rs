@@ -198,6 +198,8 @@ pub enum LeaveReason {
     Open,
     /// A capture started from it will take its place (PLAN 3H.7).
     Capture,
+    /// An update is about to install (PLAN 3P).
+    Update,
 }
 
 /// The answer to "save before closing?".
@@ -964,6 +966,7 @@ pub fn confirm_close(app: &AppHandle, window: &WebviewWindow, reason: LeaveReaso
             LeaveReason::Close => "Save before closing?",
             LeaveReason::Open => "Save before opening another image?",
             LeaveReason::Capture => "Save before capturing?",
+            LeaveReason::Update => "Save before updating?",
         })
         .kind(MessageDialogKind::Warning)
         .parent(window)

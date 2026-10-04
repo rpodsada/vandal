@@ -216,16 +216,45 @@ export const commands = {
 	 *  virtual-desktop physical pixels like `rect`.
 	 */
 	quickRecognizeText: (captureId: number, rect: PhysicalRect) => typedError<OcrLine[], OcrError>(__TAURI_INVOKE("quick_recognize_text", { captureId, rect })),
+	/**  Settings › About's "Check now" (PLAN 3P): the newer version, if any. */
+	updateCheck: () => typedError<{
+	version: string,
+	currentVersion: string,
+	/**  The release notes (the CHANGELOG section, Markdown). */
+	notes: string,
+	/**  When it was published (RFC 3339), if the manifest says. */
+	date: string | null,
+} | null, string>(__TAURI_INVOKE("update_check")),
+	/**  The update the last check found, for pages that open later. */
+	updateAvailable: () => __TAURI_INVOKE<{
+	version: string,
+	currentVersion: string,
+	/**  The release notes (the CHANGELOG section, Markdown). */
+	notes: string,
+	/**  When it was published (RFC 3339), if the manifest says. */
+	date: string | null,
+} | null>("update_available"),
+	/**
+	 *  Install the update found and restart into it. Returns only if something
+	 *  stopped it (a capture on screen, an editor that stayed open, a failed
+	 *  download).
+	 */
+	updateInstall: () => typedError<null, string>(__TAURI_INVOKE("update_install")),
+	/**  An editor asked to leave for an update kept its document instead. */
+	updateEditorKept: () => __TAURI_INVOKE<void>("update_editor_kept"),
 };
 
 /** Events */
 export const events = {
+	editorLeaveForUpdate: makeEvent<EditorLeaveForUpdate>("editor-leave-for-update"),
 	overlayClearSelection: makeEvent<OverlayClearSelection>("overlay-clear-selection"),
 	overlayLoad: makeEvent<OverlayLoad>("overlay-load"),
 	overlayMarkupOwner: makeEvent<OverlayMarkupOwner>("overlay-markup-owner"),
 	overlayShown: makeEvent<OverlayShown>("overlay-shown"),
 	overlayWindowPick: makeEvent<OverlayWindowPick>("overlay-window-pick"),
 	settingsChanged: makeEvent<SettingsChanged>("settings-changed"),
+	updateAvailable: makeEvent<UpdateAvailable>("update-available"),
+	updateProgress: makeEvent<UpdateProgress>("update-progress"),
 	windowsAccentChanged: makeEvent<WindowsAccentChanged>("windows-accent-changed"),
 };
 
@@ -300,6 +329,9 @@ export type EditorInit = {
 	/**  No image yet (PLAN 3G): the page shows how to get one. */
 	empty: boolean,
 };
+
+/**  Rust → editor windows: leave as closing would (`updateEditorKept` if not). */
+export type EditorLeaveForUpdate = null;
 
 export type EditorOnClose = {
 	copy?: boolean,
@@ -439,7 +471,9 @@ export type LeaveReason = "close" |
 /**  Another image opens in its place (PLAN 3H.6). */
 "open" | 
 /**  A capture started from it will take its place (PLAN 3H.7). */
-"capture";
+"capture" | 
+/**  An update is about to install (PLAN 3P). */
+"update";
 
 export type MonitorInfo = {
 	index: number,
@@ -655,6 +689,8 @@ export type Settings = {
 	startup?: Startup,
 	history?: History,
 	tray?: TraySettings,
+	/**  Automatic updates (PLAN 3P). */
+	updates?: UpdateSettings,
 };
 
 /**  Rust → all windows: settings changed (from any source), here's the new state. */
@@ -743,6 +779,41 @@ export type TransferFormat =
 export type TraySettings = {
 	/**  Clicking the tray icon (PLAN 3G). */
 	clickAction?: IconAction,
+};
+
+/**  Rust → all windows: a newer version was found (not repeated for the same one). */
+export type UpdateAvailable = UpdateInfo;
+
+/**  Which releases the updater offers (PLAN 3P). */
+export type UpdateChannel = 
+/**  Prereleases and final releases. */
+"beta" | 
+/**  Final releases only. */
+"stable";
+
+/**  An update that can be installed. */
+export type UpdateInfo = {
+	version: string,
+	currentVersion: string,
+	/**  The release notes (the CHANGELOG section, Markdown). */
+	notes: string,
+	/**  When it was published (RFC 3339), if the manifest says. */
+	date: string | null,
+};
+
+/**  Rust → all windows: the installer is downloading. */
+export type UpdateProgress = {
+	downloaded: number,
+	total: number | null,
+};
+
+export type UpdateSettings = {
+	/**
+	 *  Check on startup and daily. Off: nothing is fetched unless asked for
+	 *  (Richard: privacy first, their choice).
+	 */
+	checkAutomatically?: boolean,
+	channel?: UpdateChannel,
 };
 
 /**

@@ -201,6 +201,12 @@ fn tray_icon() -> tauri::Result<tauri::image::Image<'static>> {
     tauri::image::Image::from_bytes(bytes)
 }
 
+/// Take the icon down now: an app ended with `process::exit` (installing an
+/// update, PLAN 3P) would leave it in the tray until it's hovered.
+pub fn remove(app: &AppHandle) {
+    drop(app.remove_tray_by_id(TRAY_ID));
+}
+
 /// Rebuild the menu from the current settings and monitors (after a display
 /// change).
 pub fn rebuild(app: &AppHandle) {

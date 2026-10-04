@@ -9,6 +9,7 @@ import { useRedactSource } from "../markup/redact";
 import { setTextRecognizer } from "../markup/textRedact";
 import {
   commands,
+  events,
   type EditorInit,
   type ExportAction,
   type LeaveReason,
@@ -190,6 +191,23 @@ export function EditorApp() {
         event.preventDefault();
         setNotice({ text: `Not closed: ${errorText(e)}`, error: true });
       }
+    });
+    return () => void unlisten.then((f) => f());
+  }, [leaveDocument]);
+
+  // An update is about to install (PLAN 3P): leave like closing, but a capture
+  // with changes asks first rather than copying quietly, as when replaced.
+  // Staying tells Rust, which then doesn't install.
+  useEffect(() => {
+    const unlisten = events.editorLeaveForUpdate.listen(async () => {
+      let left = false;
+      try {
+        left = await leaveDocument("update");
+      } catch (e) {
+        setNotice({ text: `Not updated: ${errorText(e)}`, error: true });
+      }
+      if (left) await getCurrentWindow().destroy();
+      else await commands.updateEditorKept();
     });
     return () => void unlisten.then((f) => f());
   }, [leaveDocument]);

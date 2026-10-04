@@ -37,6 +37,8 @@ arboard = "3.6.1"
 png = "0.18.1"
 tauri-winrt-notification = "0.8"
 tauri-plugin-dialog = "2"
+# Updates (PLAN 3P). Rust only: no webview gets the updater permission.
+tauri-plugin-updater = "2"
 
 
 # Pixel loops (swizzle, BMP encode) are unusably slow at opt-level 0.

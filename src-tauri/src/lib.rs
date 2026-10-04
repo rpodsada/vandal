@@ -31,6 +31,7 @@ mod state;
 mod styles;
 mod tool_styles;
 mod tray;
+mod updater;
 mod winenum;
 
 use std::sync::{Mutex, RwLock};
@@ -95,6 +96,10 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::set_tool_styles,
             commands::editor_recognize_text,
             commands::quick_recognize_text,
+            commands::update_check,
+            commands::update_available,
+            commands::update_install,
+            commands::update_editor_kept,
         ])
         .events(collect_events![
             session::OverlayLoad,
@@ -104,6 +109,9 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             session::OverlayMarkupOwner,
             appearance::WindowsAccentChanged,
             settings::SettingsChanged,
+            updater::UpdateAvailable,
+            updater::UpdateProgress,
+            updater::EditorLeaveForUpdate,
         ])
         .typ::<geometry::MonitorInfo>()
         .typ::<geometry::PhysicalPoint>()
@@ -170,7 +178,9 @@ pub fn run() {
                 settings_window::open(app);
             } else if files.is_empty()
                 && browser.is_empty()
-                && !args.iter().any(|a| a == AUTOSTART_ARG)
+                && !args
+                    .iter()
+                    .any(|a| a == AUTOSTART_ARG || a == updater::UPDATED_ARG)
             {
                 tray::icon_action(app, |s| s.startup.launch_action);
             }
@@ -185,6 +195,7 @@ pub fn run() {
     let app = builder
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         // Started on login: it never acts on launch (PLAN 3G).
         .plugin(
             tauri_plugin_autostart::Builder::new()
@@ -248,6 +259,7 @@ pub fn run() {
             output::delete_preview();
             hotkeys::register(app.handle(), &settings.hotkeys);
             tray::create(app.handle(), &settings)?;
+            updater::init(app.handle());
             // Dev builds leave the Run key alone unless toggled from the tray.
             #[cfg(not(debug_assertions))]
             tray::apply_autostart(app.handle(), settings.startup.launch_on_login);
