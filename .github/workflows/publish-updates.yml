@@ -1,0 +1,79 @@
+# Publishes the updater's channel manifests (PLAN 3P.2).
+#
+# Installed copies read https://raw.githubusercontent.com/rpodsada/vandal/update-manifests/<channel>.json
+# (beta.json or stable.json). This workflow rewrites them on the orphan
+# update-manifests branch with scripts/update-manifests.mjs, which only offers
+# installers whose updater signature checks out against tauri.conf.json's key.
+#
+# - A release is published (drafts never trigger this): a channel can only move up.
+# - Run it by hand (Actions > Publish updates > Run workflow): the channels are set
+#   to whatever the published releases say. To pull a bad release, turn it back into
+#   a draft, then run this; copies that already installed it keep it.
+#
+# Actions are pinned to full commit SHAs (the tag is in the comment); Dependabot bumps them.
+name: Publish updates
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# One at a time, in order: two publishes close together must not race.
+concurrency:
+  group: update-manifests
+  cancel-in-progress: false
+
+jobs:
+  manifests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # The scripts and the public key come from main, not from the release's tag.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Check out the manifests branch
+        run: |
+          if git ls-remote --exit-code --heads origin update-manifests > /dev/null; then
+            git fetch --depth 1 origin update-manifests
+            git worktree add manifests FETCH_HEAD
+          else
+            git worktree add --orphan -b update-manifests manifests
+            cat > manifests/README.md <<'EOF'
+          # Vandal update manifests
+
+          Written by `.github/workflows/publish-updates.yml` on `main`; don't edit by hand.
+          Installed copies of Vandal read `beta.json` or `stable.json` from here, depending
+          on their update channel. See PLAN 3P / DEVELOPMENT.md › Releasing.
+          EOF
+          fi
+
+      - name: Write the manifests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANUAL: ${{ github.event_name == 'workflow_dispatch' }}
+        run: node scripts/update-manifests.mjs --out manifests $([ "$MANUAL" = true ] && echo --manual)
+
+      - name: Commit and push
+        working-directory: manifests
+        env:
+          WHAT: ${{ github.event_name == 'release' && format('Publish {0}', github.event.release.tag_name) || 'Manual run' }}
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Manifests unchanged."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "$WHAT: update manifests"
+          git push origin HEAD:update-manifests
+          git show --stat --format="%h %s" HEAD

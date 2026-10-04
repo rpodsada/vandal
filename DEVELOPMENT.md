@@ -201,6 +201,18 @@ before the release itself (`0.3.0`). Every release must have a new, higher numbe
    SHA-256 (`Get-FileHash`) matches the draft's `SHA256SUMS.txt`, and put
    it on the website's download dialog, which is hosted apart from GitHub, so a swapped
    installer can't come with a matching hash. Then press **Publish release** on GitHub.
+7. Publishing starts the **Publish updates** workflow (`.github/workflows/publish-updates.yml`).
+   It checks the installer's updater signature against the public key and writes the channel
+   manifests to the `update-manifests` branch: `beta.json` gets every release, `stable.json`
+   only final ones. Installed copies read them from
+   `https://raw.githubusercontent.com/rpodsada/vandal/update-manifests/<channel>.json` (cached for
+   up to 5 minutes). Check the run is green and the manifest shows the new version.
+
+**Pulling a bad release:** turn it back into a draft on GitHub (or delete it), then run
+**Actions › Publish updates › Run workflow**. A manual run sets each channel to the highest
+published, signed release, even if that's lower; a publish only ever moves a channel up. Copies
+that already installed the bad release keep it (the updater never goes down a version), so
+the fix is the next release.
 
 If the workflow fails, fix the problem on `main`, then move the tag and push it again:
 `git tag -f -a v… -m "…"` and `git push -f origin v…`. A re-run replaces the files on an
