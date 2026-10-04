@@ -9,6 +9,8 @@ const init: EditorInit = {
   height: 1080,
   crop: { x: 100, y: 50, width: 400, height: 300 },
   url: "",
+  sourceUrl: null,
+  sourceOrientation: 1,
   layerUrl: "",
   highlightsUrl: "",
   markup: null,

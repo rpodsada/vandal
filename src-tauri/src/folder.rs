@@ -76,18 +76,20 @@ fn locate(names: &[String], current: &str) -> Result<usize, usize> {
     }
 }
 
-/// The indexes to try for `step`, best first: the target, then on in the same
-/// direction (wrapping) in case it won't open. Never the current image; empty
-/// when there's nowhere to go.
-fn candidates(count: usize, at: Result<usize, usize>, step: FolderStep) -> Vec<usize> {
+/// The indexes to try for `step` (`by` images along for previous/next, at
+/// least 1), best first: the target, then on in the same direction (wrapping)
+/// in case it won't open. Never the current image; empty when there's nowhere
+/// to go.
+fn candidates(count: usize, at: Result<usize, usize>, step: FolderStep, by: usize) -> Vec<usize> {
     if count == 0 {
         return Vec::new();
     }
     let current = at.ok();
+    let by = by.max(1) % count;
     let (start, forward) = match (step, at) {
-        (FolderStep::Next, Ok(i)) => (i + 1, true),
-        (FolderStep::Next, Err(i)) => (i, true),
-        (FolderStep::Previous, Ok(i) | Err(i)) => (i + count - 1, false),
+        (FolderStep::Next, Ok(i)) => (i + by, true),
+        (FolderStep::Next, Err(i)) => (i + by + count - 1, true),
+        (FolderStep::Previous, Ok(i) | Err(i)) => (i + count - by, false),
         (FolderStep::First, _) => (0, true),
         (FolderStep::Last, _) => (count - 1, false),
     };
@@ -108,11 +110,11 @@ fn candidates(count: usize, at: Result<usize, usize>, step: FolderStep) -> Vec<u
         .collect()
 }
 
-/// The images to try for `step` from `current`, best first.
-pub fn step_from(current: &Path, step: FolderStep) -> Vec<PathBuf> {
+/// The images to try for `step` (`by` along) from `current`, best first.
+pub fn step_from(current: &Path, step: FolderStep, by: usize) -> Vec<PathBuf> {
     let images = images_beside(current);
     let names: Vec<String> = images.iter().map(|p| name(p)).collect();
-    candidates(images.len(), locate(&names, &name(current)), step)
+    candidates(images.len(), locate(&names, &name(current)), step, by)
         .into_iter()
         .map(|i| images[i].clone())
         .collect()
@@ -148,24 +150,33 @@ mod tests {
 
     #[test]
     fn next_and_previous_wrap_around() {
-        assert_eq!(candidates(4, Ok(1), FolderStep::Next), [2, 3, 0]);
-        assert_eq!(candidates(4, Ok(3), FolderStep::Next), [0, 1, 2]);
-        assert_eq!(candidates(4, Ok(1), FolderStep::Previous), [0, 3, 2]);
-        assert_eq!(candidates(4, Ok(0), FolderStep::Previous), [3, 2, 1]);
+        assert_eq!(candidates(4, Ok(1), FolderStep::Next, 1), [2, 3, 0]);
+        assert_eq!(candidates(4, Ok(3), FolderStep::Next, 1), [0, 1, 2]);
+        assert_eq!(candidates(4, Ok(1), FolderStep::Previous, 1), [0, 3, 2]);
+        assert_eq!(candidates(4, Ok(0), FolderStep::Previous, 1), [3, 2, 1]);
     }
 
     #[test]
     fn first_and_last_then_onward_if_they_wont_open() {
-        assert_eq!(candidates(4, Ok(2), FolderStep::First), [0, 1, 3]);
-        assert_eq!(candidates(4, Ok(1), FolderStep::Last), [3, 2, 0]);
-        assert!(candidates(4, Ok(0), FolderStep::First).is_empty());
-        assert!(candidates(4, Ok(3), FolderStep::Last).is_empty());
+        assert_eq!(candidates(4, Ok(2), FolderStep::First, 1), [0, 1, 3]);
+        assert_eq!(candidates(4, Ok(1), FolderStep::Last, 1), [3, 2, 0]);
+        assert!(candidates(4, Ok(0), FolderStep::First, 1).is_empty());
+        assert!(candidates(4, Ok(3), FolderStep::Last, 1).is_empty());
+    }
+
+    #[test]
+    fn presses_that_piled_up_jump_at_once() {
+        assert_eq!(candidates(5, Ok(1), FolderStep::Next, 3), [4, 0, 2, 3]);
+        assert_eq!(candidates(5, Ok(1), FolderStep::Previous, 3), [3, 2, 0, 4]);
+        // A full lap (or more) lands on the next one along.
+        assert_eq!(candidates(4, Ok(1), FolderStep::Next, 4)[0], 2);
+        assert_eq!(candidates(4, Ok(1), FolderStep::Next, 6)[0], 3);
     }
 
     #[test]
     fn a_lone_image_goes_nowhere() {
-        assert!(candidates(1, Ok(0), FolderStep::Next).is_empty());
-        assert!(candidates(0, Err(0), FolderStep::Next).is_empty());
+        assert!(candidates(1, Ok(0), FolderStep::Next, 1).is_empty());
+        assert!(candidates(0, Err(0), FolderStep::Next, 1).is_empty());
     }
 
     #[test]
@@ -173,8 +184,8 @@ mod tests {
         let list = names(&["a.png", "c.png", "e.png"]);
         let at = locate(&list, "d.png");
         assert_eq!(at, Err(2));
-        assert_eq!(candidates(3, at, FolderStep::Next), [2, 0, 1]);
-        assert_eq!(candidates(3, at, FolderStep::Previous), [1, 0, 2]);
+        assert_eq!(candidates(3, at, FolderStep::Next, 1), [2, 0, 1]);
+        assert_eq!(candidates(3, at, FolderStep::Previous, 1), [1, 0, 2]);
         assert_eq!(locate(&list, "C.PNG"), Ok(1));
     }
 

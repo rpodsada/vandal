@@ -3,6 +3,8 @@
 //!
 //! - `GET /frame/{capture_id}/{monitor_index}?fmt=rgba|bmp`: a monitor frame (overlay)
 //! - `GET /editor/{editor_id}`: an editor's base image, raw RGBA
+//! - `GET /editor/{editor_id}/source`: its image file's bytes, when the page
+//!   can decode them itself (PLAN 3Q)
 //! - `POST /editor/{editor_id}/layer`, `…/highlights`: the editor's annotation
 //!   and highlight layers for the next export, raw straight-alpha RGBA of the
 //!   crop's size
@@ -48,6 +50,10 @@ pub fn editor_url(editor_id: EditorId) -> String {
     format!("http://{SCHEME}.localhost/editor/{editor_id}")
 }
 
+pub fn editor_source_url(editor_id: EditorId) -> String {
+    format!("http://{SCHEME}.localhost/editor/{editor_id}/source")
+}
+
 /// Where quick edit POSTs a capture's annotation or highlight layer.
 pub fn capture_layer_url(capture_id: u32, kind: LayerKind) -> String {
     format!(
@@ -78,6 +84,8 @@ enum Route {
         format: TransferFormat,
     },
     Editor(EditorId),
+    /// The editor's image file, for the page to decode (PLAN 3Q).
+    EditorSource(EditorId),
     EditorLayer(EditorId, LayerKind),
     CaptureLayer(u32, LayerKind),
 }
@@ -140,9 +148,25 @@ pub fn handle<R: Runtime>(
                 responder.respond(error(StatusCode::NOT_FOUND));
                 return;
             };
+            eprintln!(
+                "[editor] #{id}: raw pixels ({:.1} MB)",
+                image.rgba.len() as f64 / 1e6
+            );
             std::thread::spawn(move || {
                 responder.respond(ok(image.rgba.clone(), "application/octet-stream"));
             });
+        }
+        Some(Route::EditorSource(id)) => {
+            let Some(source) = state.editors.lock().unwrap().source(id) else {
+                responder.respond(error(StatusCode::NOT_FOUND));
+                return;
+            };
+            eprintln!(
+                "[editor] #{id}: the file ({}, {:.1} MB)",
+                source.mime,
+                source.bytes.len() as f64 / 1e6
+            );
+            responder.respond(ok(source.bytes.to_vec(), source.mime));
         }
         Some(Route::EditorLayer(id, kind)) => {
             let bytes = request.into_body();
@@ -207,6 +231,9 @@ fn parse(uri: &tauri::http::Uri) -> Option<Route> {
             })
         }
         ["editor", id] if uri.query().is_none() => Some(Route::Editor(id.parse().ok()?)),
+        ["editor", id, "source"] if uri.query().is_none() => {
+            Some(Route::EditorSource(id.parse().ok()?))
+        }
         ["editor", id, "layer"] if uri.query().is_none() => {
             Some(Route::EditorLayer(id.parse().ok()?, LayerKind::Annotations))
         }
@@ -329,6 +356,8 @@ mod tests {
         assert_eq!(parse(&uri), frame(1, 0, TransferFormat::Rgba));
         let uri: tauri::http::Uri = editor_url(4).parse().unwrap();
         assert_eq!(parse(&uri), Some(Route::Editor(4)));
+        let uri: tauri::http::Uri = editor_source_url(4).parse().unwrap();
+        assert_eq!(parse(&uri), Some(Route::EditorSource(4)));
         for kind in [LayerKind::Annotations, LayerKind::Highlights] {
             let uri: tauri::http::Uri = editor_layer_url(4, kind).parse().unwrap();
             assert_eq!(parse(&uri), Some(Route::EditorLayer(4, kind)));
@@ -339,6 +368,8 @@ mod tests {
             "http://capture.localhost/editor/1/2",
             "http://capture.localhost/editor/1/layer/x",
             "http://capture.localhost/editor/1?fmt=bmp",
+            "http://capture.localhost/editor/1/source?x=1",
+            "http://capture.localhost/editor/x/source",
             "http://capture.localhost/frame/1",
             "http://capture.localhost/frame/x/0",
             "http://capture.localhost/frame/1/0/extra",

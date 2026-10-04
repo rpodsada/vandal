@@ -43,6 +43,13 @@ const UNKNOWN_FORMAT: i32 = 0x8898_2F07_u32 as i32;
 /// Decode the image at `path`: the first frame (the largest one for icons),
 /// upright. Errors are sentences for the user.
 pub fn decode_file(path: &Path) -> Result<RgbaImage, String> {
+    decode_file_oriented(path).map(|(image, _)| image)
+}
+
+/// [`decode_file`], and the EXIF orientation it turned the image upright from
+/// (1: none), so the editor page can decode the file itself the same way
+/// (PLAN 3Q).
+pub fn decode_file_oriented(path: &Path) -> Result<(RgbaImage, u16), String> {
     let started = std::time::Instant::now();
     let (image, orientation) = decode_wic(path).map_err(|e| describe(path, &e))?;
     let image = orient(image, orientation);
@@ -53,7 +60,23 @@ pub fn decode_file(path: &Path) -> Result<RgbaImage, String> {
         image.height,
         started.elapsed().as_secs_f64() * 1000.0
     );
-    Ok(image)
+    Ok((image, orientation))
+}
+
+/// Formats the editor page's browser engine decodes itself, so it can fetch
+/// the file (about 1 MB) instead of raw pixels (48 MB for 12 MP): PLAN 3Q.
+/// Not TIFF, ICO (which frame?), HEIC/HEIF: those keep the raw path.
+pub fn browser_mime(path: &Path) -> Option<&'static str> {
+    let ext = path.extension()?.to_str()?.to_ascii_lowercase();
+    Some(match ext.as_str() {
+        "png" => "image/png",
+        "jpg" | "jpeg" | "jpe" | "jfif" => "image/jpeg",
+        "gif" => "image/gif",
+        "bmp" | "dib" => "image/bmp",
+        "webp" => "image/webp",
+        "avif" => "image/avif",
+        _ => return None,
+    })
 }
 
 enum DecodeError {

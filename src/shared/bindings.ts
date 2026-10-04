@@ -114,6 +114,27 @@ export const commands = {
 	 *  About). A fixed address, like `open_project_page`.
 	 */
 	openIssues: () => __TAURI_INVOKE<void>("open_issues"),
+	/**
+	 *  Where the editor's image file is in its folder ("12 of 41"), PLAN 3Q.
+	 *  None for captures and pasted images.
+	 */
+	editorFolderPosition: () => __TAURI_INVOKE<{
+	/**  1-based. */
+	index: number,
+	count: number,
+} | null>("editor_folder_position"),
+	/**
+	 *  Left/Right/Home/End in the editor: the folder's previous, next, first or
+	 *  last image (`by` along, for presses that piled up) takes this one's place
+	 *  (PLAN 3Q), after the page has asked about unsaved changes. The page then
+	 *  loads it itself (`editor_init`), with no reload. Returns its position;
+	 *  None if there's nowhere to go.
+	 */
+	editorFlip: (step: FolderStep, by: number) => typedError<{
+	/**  1-based. */
+	index: number,
+	count: number,
+} | null, string>(__TAURI_INVOKE("editor_flip", { step, by })),
 	/**  The default settings, for "Reset" buttons. */
 	defaultSettings: () => __TAURI_INVOKE<Settings>("default_settings"),
 	/**  Quick edit: this overlay's selection now has markup (or no longer has). */
@@ -163,6 +184,17 @@ export const commands = {
 	crop: PhysicalRect,
 	/**  Raw RGBA bytes of the base image. */
 	url: string,
+	/**
+	 *  The image file itself, when the page can decode it: much faster to
+	 *  fetch than `url` (PLAN 3Q). The page falls back to `url` if its decode
+	 *  doesn't come out `width` × `height`.
+	 */
+	sourceUrl: string | null,
+	/**
+	 *  The EXIF orientation (1–8) to turn `source_url`'s image upright with,
+	 *  as Rust did (`decode::orient`).
+	 */
+	sourceOrientation: number,
 	/**  Where to POST the annotation layer before an export. */
 	layerUrl: string,
 	/**  Where to POST the highlight layer before an export. */
@@ -325,6 +357,17 @@ export type EditorInit = {
 	crop: PhysicalRect,
 	/**  Raw RGBA bytes of the base image. */
 	url: string,
+	/**
+	 *  The image file itself, when the page can decode it: much faster to
+	 *  fetch than `url` (PLAN 3Q). The page falls back to `url` if its decode
+	 *  doesn't come out `width` × `height`.
+	 */
+	sourceUrl: string | null,
+	/**
+	 *  The EXIF orientation (1–8) to turn `source_url`'s image upright with,
+	 *  as Rust did (`decode::orient`).
+	 */
+	sourceOrientation: number,
 	/**  Where to POST the annotation layer before an export. */
 	layerUrl: string,
 	/**  Where to POST the highlight layer before an export. */
@@ -414,6 +457,16 @@ export type ExportMarkup = {
 export type ExportOutcome = { kind: "copied" } | { kind: "saved"; path: string } | 
 /**  Save As was dismissed. */
 { kind: "cancelled" };
+
+/**  Where an image is among its folder's images, for the status bar ("12 of 41"). */
+export type FolderPosition = {
+	/**  1-based. */
+	index: number,
+	count: number,
+};
+
+/**  Which image to go to. */
+export type FolderStep = "previous" | "next" | "first" | "last";
 
 /**  How the font picker shows its fonts. */
 export type FontControl = "dropdown" | 

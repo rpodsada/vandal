@@ -12,6 +12,8 @@ import {
   events,
   type EditorInit,
   type ExportAction,
+  type FolderPosition,
+  type FolderStep,
   type LeaveReason,
   type Settings,
 } from "../shared/ipc";
@@ -19,7 +21,8 @@ import { alreadyDone, exportImage, markDelivered } from "./actions";
 import { CommandBar } from "./CommandBar";
 import { CropOptions } from "./CropOptions";
 import { EmptyEditor } from "./EmptyEditor";
-import { applyCrop, beginCrop, useCropStore } from "./cropStore";
+import { applyCrop, beginCrop, cancelCrop, useCropStore } from "./cropStore";
+import { orientation } from "./orient";
 import { Stage } from "./Stage";
 import { useCropKeys } from "./useCropKeys";
 import { StatusBar, type Notice } from "./StatusBar";
@@ -46,6 +49,11 @@ export function EditorApp() {
   const [status, setStatus] = useState<Status>({ kind: "loading" });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+  /** An image file's place among its folder's images (PLAN 3Q). */
+  const [folderPosition, setFolderPosition] = useState<FolderPosition | null>(null);
+  const flippingRef = useRef(false);
+  /** Flip presses made while one was loading: run as one jump (PLAN 3Q). */
+  const flipQueueRef = useRef<{ to: FolderStep | null; by: number }>({ to: null, by: 0 });
   const initRef = useRef<EditorInit | null>(null);
   const busyRef = useRef(false);
   const settingsRef = useRef<Settings | null>(null);
@@ -62,6 +70,38 @@ export function EditorApp() {
     [cropping, empty],
   );
 
+  // Show a document: on mount, and in place when flipping through a folder
+  // (PLAN 3Q: no reload, so the toolbars and status bar stay put).
+  const showDocument = useCallback(
+    async (init: EditorInit, isCancelled: () => boolean = () => false) => {
+      const pixels = await fetchPixels(init);
+      if (isCancelled()) return;
+      // The whole frame, so the crop can grow back (the stage clips it).
+      paintFrame(canvasRef.current!, init, pixels);
+      // Redactions preview from these pixels (PLAN 3D.3).
+      useRedactSource.setState({
+        image: { x: 0, y: 0, width: init.width, height: init.height, data: pixels },
+      });
+      // Redact's Detect text toggle reads this image's words (PLAN 3J).
+      setTextRecognizer(() => commands.editorRecognizeText());
+      cancelCrop();
+      docStore.getState().load(initialDoc(init));
+      // Reopened from a notification: already delivered (PLAN 3D.1).
+      if (init.delivered) markDelivered(docStore.getState().doc);
+      // Markup handed over from quick edit hasn't been copied or saved yet.
+      else if (init.markup)
+        docStore.setState({
+          baseline: emptyDoc({ width: init.width, height: init.height }, init.crop),
+        });
+      initRef.current = init;
+      setStatus({ kind: "ready", init });
+      // A new image always starts fitted, even one the same size as the last.
+      useViewStore.getState().setImage({ width: init.crop.width, height: init.crop.height });
+      setFolderPosition(init.file ? await commands.editorFolderPosition() : null);
+    },
+    [],
+  );
+
   // Fetch the base image, paint it, then let Rust show the window.
   useEffect(() => {
     let cancelled = false;
@@ -75,28 +115,7 @@ export function EditorApp() {
           setStatus({ kind: "empty" });
           return;
         }
-        const res = await fetch(init.url);
-        if (!res.ok) throw new Error(`Couldn't load the image (HTTP ${res.status}).`);
-        const pixels = new Uint8ClampedArray(await res.arrayBuffer());
-        if (cancelled) return;
-        // The whole frame, so the crop can grow back (the stage clips it).
-        paintFrame(canvasRef.current!, init, pixels);
-        // Redactions preview from these pixels (PLAN 3D.3).
-        useRedactSource.setState({
-          image: { x: 0, y: 0, width: init.width, height: init.height, data: pixels },
-        });
-        // Redact's Detect text toggle reads this image's words (PLAN 3J).
-        setTextRecognizer(() => commands.editorRecognizeText());
-        docStore.getState().load(initialDoc(init));
-        // Reopened from a notification: already delivered (PLAN 3D.1).
-        if (init.delivered) markDelivered(docStore.getState().doc);
-        // Markup handed over from quick edit hasn't been copied or saved yet.
-        else if (init.markup)
-          docStore.setState({
-            baseline: emptyDoc({ width: init.width, height: init.height }, init.crop),
-          });
-        initRef.current = init;
-        setStatus({ kind: "ready", init });
+        await showDocument(init, () => cancelled);
       } catch (e) {
         if (!cancelled) setStatus({ kind: "error", message: errorText(e) });
       }
@@ -104,7 +123,7 @@ export function EditorApp() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [showDocument]);
 
   // Show the window once whatever we have is on screen (two frames: layout, then paint).
   useEffect(() => {
@@ -249,6 +268,87 @@ export function EditorApp() {
     await commands.editorOpenHere(paths);
   }, [leaveDocument]);
 
+  // Left/Right/Home/End: the folder's previous, next, first or last image
+  // takes this one's place, like Windows Photos (PLAN 3Q). Only for an image
+  // file, with nothing selected (arrows nudge a selection), not typing or
+  // cropping. Unsaved changes ask first. The new image loads in place.
+  /** One step (`by` along); false stops the presses still queued. */
+  const flipOnce = useCallback(
+    async (step: FolderStep, by: number): Promise<boolean> => {
+      const at = await commands.editorFolderPosition();
+      if (!at || at.count < 2) return false;
+      if (step === "first" && at.index === 1) return true;
+      if (step === "last" && at.index === at.count) return true;
+      if (!(await leaveDocument("open"))) return false;
+      const r = await commands.editorFlip(step, by);
+      if (r.status === "error") {
+        setNotice({ text: r.error, error: true });
+        return false;
+      }
+      if (!r.data) return true;
+      const init = await commands.editorInit();
+      if (!init) return false;
+      setNotice(null);
+      await showDocument(init);
+      return true;
+    },
+    [leaveDocument, showDocument],
+  );
+
+  /** Run the queued presses: those made while one loads add up into one jump. */
+  const runFlips = useCallback(async () => {
+    if (flippingRef.current) return;
+    flippingRef.current = true;
+    const queue = flipQueueRef.current;
+    try {
+      for (;;) {
+        let step: FolderStep;
+        let by = 1;
+        if (queue.to) {
+          step = queue.to;
+          queue.to = null;
+        } else if (queue.by) {
+          step = queue.by > 0 ? "next" : "previous";
+          by = Math.abs(queue.by);
+          queue.by = 0;
+        } else break;
+        if (!(await flipOnce(step, by))) break;
+      }
+    } catch (e) {
+      setNotice({ text: `Not opened: ${errorText(e)}`, error: true });
+    } finally {
+      queue.to = null;
+      queue.by = 0;
+      flippingRef.current = false;
+    }
+  }, [flipOnce]);
+
+  useEffect(() => {
+    const steps: Record<string, FolderStep> = {
+      ArrowLeft: "previous",
+      ArrowRight: "next",
+      Home: "first",
+      End: "last",
+    };
+    const onKey = (e: KeyboardEvent) => {
+      const step = steps[e.code];
+      if (!step || e.defaultPrevented || e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return;
+      if (!initRef.current?.file || busyRef.current) return;
+      if (isTyping(e.target) || useCropStore.getState().draft) return;
+      if (docStore.getState().selection.length) return;
+      e.preventDefault();
+      const queue = flipQueueRef.current;
+      if (step === "first" || step === "last") {
+        // Home/End replace whatever was queued.
+        queue.to = step;
+        queue.by = 0;
+      } else queue.by += step === "next" ? 1 : -1;
+      void runFlips();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [runFlips]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Hidden: the markup as JSON (markupJson.ts). Ctrl+Alt is never a tool's shortcut.
@@ -375,6 +475,7 @@ export function EditorApp() {
       <StatusBar
         notice={notice}
         loaded={status.kind === "ready"}
+        folderPosition={folderPosition}
         onReveal={(path) => void commands.revealFile(path)}
       />
     </div>
@@ -382,6 +483,54 @@ export function EditorApp() {
 }
 
 /** Draw a raw RGBA base image onto `canvas` at 1:1. */
+/**
+ * The base image's RGBA pixels. An image file the page can decode (PLAN 3Q)
+ * is fetched as the file itself (about 1 MB, decoded by the browser engine
+ * and turned upright as Rust did) instead of raw pixels (48 MB for 12 MP).
+ * Anything else, or a decode that doesn't come out the size Rust decoded,
+ * uses the raw pixels.
+ */
+async function fetchPixels(init: EditorInit): Promise<Uint8ClampedArray<ArrayBuffer>> {
+  if (init.sourceUrl) {
+    try {
+      const pixels = await decodeSource(init.sourceUrl, init);
+      if (pixels) return pixels;
+    } catch (e) {
+      console.warn("Decoding the file failed; using raw pixels", e);
+    }
+  }
+  const res = await fetch(init.url);
+  if (!res.ok) throw new Error(`Couldn't load the image (HTTP ${res.status}).`);
+  return new Uint8ClampedArray(await res.arrayBuffer());
+}
+
+async function decodeSource(
+  url: string,
+  init: EditorInit,
+): Promise<Uint8ClampedArray<ArrayBuffer> | null> {
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  // Unrotated and without colour management: the same pixel values as
+  // Rust's decode, which the export is made from.
+  const bitmap = await createImageBitmap(await res.blob(), {
+    imageOrientation: "none",
+    colorSpaceConversion: "none",
+    premultiplyAlpha: "none",
+  });
+  try {
+    const upright = orientation(init.sourceOrientation, bitmap.width, bitmap.height);
+    if (upright.width !== init.width || upright.height !== init.height) return null;
+    const canvas = new OffscreenCanvas(upright.width, upright.height);
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.setTransform(...upright.transform);
+    ctx.drawImage(bitmap, 0, 0);
+    return ctx.getImageData(0, 0, upright.width, upright.height).data;
+  } finally {
+    bitmap.close();
+  }
+}
+
 function paintFrame(
   canvas: HTMLCanvasElement,
   init: EditorInit,

@@ -262,6 +262,12 @@ Vandal can mark up existing images too:
 It opens PNG, JPEG, BMP, GIF (first frame), TIFF, ICO and WebP, plus HEIC and AVIF if Windows
 has those codecs installed. Photos are turned the right way up automatically.
 
+**Flip through a folder** like in Windows Photos: with an image file open and nothing selected,
+**←** and **→** open the previous and next image in its folder, going round from the last back to
+the first, and **Home** and **End** open the first and last. The status bar shows where you are
+("12 of 41"). Images are in Explorer's name order, and any that won't open are skipped. If you've
+changed the image, Vandal asks whether to save it first.
+
 **Save (Ctrl+S) overwrites the original file**, with your markup flattened into it. Vandal
 warns you the first time. Use **Save As** (Ctrl+Shift+S) to keep the original. Formats Vandal
 can't write (WebP, HEIC, AVIF, GIF, ICO) always go to Save As, with PNG selected.
@@ -409,6 +415,8 @@ printed on the pickers (you can hide them in Settings).
 | Ctrl+S                | Save (captures use your file-name pattern; opened files are overwritten) |
 | Ctrl+Shift+S          | Save As                                                                  |
 | Ctrl+O                | Open an image                                                            |
+| ← / →                 | Previous / next image in the folder (an image file, nothing selected)    |
+| Home / End            | First / last image in the folder                                         |
 | Ctrl+N                | Capture, back into the editor                                            |
 | Ctrl+V                | Paste an image (into an empty editor)                                    |
 | Ctrl+W                | Close                                                                    |

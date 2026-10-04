@@ -55,6 +55,11 @@ export const EDITOR_KEYS: KeyEntry[] = [
   { keys: ["Ctrl+Shift+S"], what: "Save as" },
   { keys: ["Ctrl+N"], what: "Capture" },
   { keys: ["Ctrl+O"], what: "Open an image" },
+  {
+    keys: ["←", "→"],
+    what: "Previous, next image in the folder (an image file, nothing selected)",
+  },
+  { keys: ["Home", "End"], what: "First, last image in the folder" },
   { keys: ["Ctrl+W"], what: "Close" },
   { keys: ["Ctrl+=", "Ctrl+-"], what: "Zoom in, zoom out" },
   { keys: ["Ctrl+wheel"], what: "Zoom" },

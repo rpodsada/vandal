@@ -70,10 +70,66 @@ pub struct Editor {
     pub markup: Option<HandoffMarkup>,
     /// The image file this editor works on (PLAN 2D); None for captures.
     pub file: Option<PathBuf>,
+    /// The file's bytes, if the page can decode them itself (PLAN 3Q).
+    pub source: Option<Source>,
     /// Saving over `file` was confirmed (or it was just chosen in Save As).
     pub overwrite_confirmed: bool,
     /// Reopened from a notification: the document was already delivered.
     pub delivered: bool,
+}
+
+/// An image file's bytes as read when it was decoded, served to the editor
+/// page (`/editor/{id}/source`) for formats its browser engine decodes: about
+/// 1 MB instead of 48 MB of raw pixels for a 12 MP photo (PLAN 3Q). Kept, not
+/// re-read, so the page always gets the image Rust decoded, even after a Save
+/// has flattened markup into the file on disk.
+#[derive(Clone)]
+pub struct Source {
+    pub bytes: Arc<Vec<u8>>,
+    pub mime: &'static str,
+    /// The EXIF orientation Rust turned the image upright from: the page
+    /// decodes the file unrotated and turns it the same way.
+    pub orientation: u16,
+}
+
+/// An image file opened in an editor: its path, and its [`Source`] if the
+/// page can decode it.
+#[derive(Clone)]
+pub struct OpenedFile {
+    pub path: PathBuf,
+    pub source: Option<Source>,
+}
+
+/// Decode an image file for an editor, keeping its bytes for the page when it
+/// can decode them itself. Errors are sentences for the user. Blocking.
+fn read_image_file(path: &Path) -> Result<(RgbaImage, OpenedFile), String> {
+    let (image, orientation) = decode::decode_file_oriented(path)?;
+    let source = decode::browser_mime(path).and_then(|mime| {
+        let bytes = std::fs::read(path).ok()?;
+        Some(Source {
+            bytes: Arc::new(bytes),
+            mime,
+            orientation,
+        })
+    });
+    let file = OpenedFile {
+        path: path.to_path_buf(),
+        source,
+    };
+    Ok((image, file))
+}
+
+/// How [`load_into`] treats an editor that already has a document.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Load {
+    /// Only into an empty editor (PLAN 3G).
+    IfEmpty,
+    /// In place of its document; the page reloads (its on-close actions or
+    /// "save first?" have already run).
+    Replace,
+    /// In place of its document, with no reload: the page asked for it and
+    /// fetches the new one itself (flipping through a folder, PLAN 3Q).
+    Swap,
 }
 
 /// Quick edit's annotations, handed to the editor still editable (PLAN 2B.3).
@@ -134,6 +190,11 @@ impl Editors {
         !self.unsaved.is_empty()
     }
 
+    /// The editor's image file bytes, for the page to decode (PLAN 3Q).
+    pub fn source(&self, id: EditorId) -> Option<Source> {
+        self.open.get(&id).and_then(|e| e.source.clone())
+    }
+
     pub fn image(&self, id: EditorId) -> Option<Arc<RgbaImage>> {
         self.open.get(&id).and_then(|e| e.image.clone())
     }
@@ -166,6 +227,13 @@ pub struct EditorInit {
     pub crop: PhysicalRect,
     /// Raw RGBA bytes of the base image.
     pub url: String,
+    /// The image file itself, when the page can decode it: much faster to
+    /// fetch than `url` (PLAN 3Q). The page falls back to `url` if its decode
+    /// doesn't come out `width` × `height`.
+    pub source_url: Option<String>,
+    /// The EXIF orientation (1–8) to turn `source_url`'s image upright with,
+    /// as Rust did (`decode::orient`).
+    pub source_orientation: u16,
     /// Where to POST the annotation layer before an export.
     pub layer_url: String,
     /// Where to POST the highlight layer before an export.
@@ -288,7 +356,7 @@ fn open_frames(
             crop.relative_to(bounds.origin()),
             &title,
             None,
-            true,
+            Load::Replace,
         );
         bring_back(app, id);
         if loaded {
@@ -316,11 +384,11 @@ pub fn open_file(app: &AppHandle, path: &Path) {
 pub fn open_file_in(app: &AppHandle, path: &Path, into: Option<EditorId>) {
     let app = app.clone();
     let path = path.to_path_buf();
-    std::thread::spawn(move || match decode::decode_file(&path) {
-        Ok(image) => {
+    std::thread::spawn(move || match read_image_file(&path) {
+        Ok((image, file)) => {
             let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
             let title = file_title(&app, &path);
-            open_or_load(&app, into, Arc::new(image), crop, title, Some(path));
+            open_or_load(&app, into, Arc::new(image), crop, title, Some(file));
         }
         Err(message) => output::notify_error(&app, "Couldn't open the image", &message),
     });
@@ -408,10 +476,18 @@ fn open_or_load(
     image: Arc<RgbaImage>,
     crop: PhysicalRect,
     title: String,
-    file: Option<PathBuf>,
+    file: Option<OpenedFile>,
 ) {
     if let Some(id) = into {
-        if load_into(app, id, image.clone(), crop, &title, file.clone(), false) {
+        if load_into(
+            app,
+            id,
+            image.clone(),
+            crop,
+            &title,
+            file.clone(),
+            Load::IfEmpty,
+        ) {
             return;
         }
     }
@@ -428,8 +504,8 @@ fn load_into(
     image: Arc<RgbaImage>,
     crop: PhysicalRect,
     title: &str,
-    file: Option<PathBuf>,
-    replace: bool,
+    file: Option<OpenedFile>,
+    mode: Load,
 ) -> bool {
     let Some(window) = app.get_webview_window(&label(id)) else {
         return false;
@@ -440,10 +516,11 @@ fn load_into(
         let Some(e) = editors
             .open
             .get_mut(&id)
-            .filter(|e| replace || e.image.is_none())
+            .filter(|e| mode != Load::IfEmpty || e.image.is_none())
         else {
             return false;
         };
+        let (file, source) = file.map_or((None, None), |f| (Some(f.path), f.source));
         *e = Editor {
             image: Some(image),
             crop,
@@ -452,13 +529,16 @@ fn load_into(
             highlights: None,
             markup: None,
             file,
+            source,
             overwrite_confirmed: false,
             delivered: false,
         };
     }
     let _ = window.set_title(title);
-    if let Err(e) = window.eval("location.reload()") {
-        eprintln!("[editor] couldn't reload {}: {e}", label(id));
+    if mode != Load::Swap {
+        if let Err(e) = window.eval("location.reload()") {
+            eprintln!("[editor] couldn't reload {}: {e}", label(id));
+        }
     }
     true
 }
@@ -503,13 +583,21 @@ pub fn open_files_here(app: &AppHandle, id: EditorId, paths: Vec<PathBuf>) {
         return;
     };
     let handle = app.clone();
-    std::thread::spawn(move || match decode::decode_file(&first) {
-        Ok(image) => {
+    std::thread::spawn(move || match read_image_file(&first) {
+        Ok((image, file)) => {
             let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
             let title = file_title(&handle, &first);
             let image = Arc::new(image);
-            let file = Some(first);
-            if !load_into(&handle, id, image.clone(), crop, &title, file.clone(), true) {
+            let file = Some(file);
+            if !load_into(
+                &handle,
+                id,
+                image.clone(),
+                crop,
+                &title,
+                file.clone(),
+                Load::Replace,
+            ) {
                 open(&handle, Some(image), crop, None, title, file, false);
             }
         }
@@ -554,23 +642,26 @@ pub fn folder_position(app: &AppHandle, id: EditorId) -> Option<FolderPosition> 
 }
 
 /// Open the folder's previous/next/first/last image in this editor (PLAN 3Q),
-/// skipping any that won't open. The page has already asked about unsaved
-/// changes. Ok(None): nowhere to go. Blocking: decodes.
+/// `by` images along for previous/next (presses that piled up while one was
+/// loading), skipping any that won't open. The page has already asked about
+/// unsaved changes, and loads the new image itself (no reload). Ok(None):
+/// nowhere to go. Blocking: decodes.
 pub fn flip(
     app: &AppHandle,
     id: EditorId,
     step: FolderStep,
+    by: u32,
 ) -> Result<Option<FolderPosition>, String> {
     let Some(file) = file_of(app, id) else {
         return Ok(None);
     };
-    let candidates = folder::step_from(&file, step);
+    let candidates = folder::step_from(&file, step, by as usize);
     if candidates.is_empty() {
         return Ok(None);
     }
     for path in candidates {
-        match decode::decode_file(&path) {
-            Ok(image) => {
+        match read_image_file(&path) {
+            Ok((image, opened)) => {
                 let crop = PhysicalRect::new(0, 0, image.width as i32, image.height as i32);
                 let title = file_title(app, &path);
                 load_into(
@@ -579,8 +670,8 @@ pub fn flip(
                     Arc::new(image),
                     crop,
                     &title,
-                    Some(path.clone()),
-                    true,
+                    Some(opened),
+                    Load::Swap,
                 );
                 return Ok(folder::position(&path));
             }
@@ -641,11 +732,12 @@ fn open(
     crop: PhysicalRect,
     markup: Option<HandoffMarkup>,
     title: String,
-    file: Option<PathBuf>,
+    file: Option<OpenedFile>,
     delivered: bool,
 ) {
     let remembered = load_window_state(app);
     let state = app.state::<AppState>();
+    let (file, source) = file.map_or((None, None), |f| (Some(f.path), f.source));
     let id = state.editors.lock().unwrap().insert(Editor {
         image,
         crop,
@@ -654,6 +746,7 @@ fn open(
         highlights: None,
         markup,
         file,
+        source,
         overwrite_confirmed: false,
         delivered,
     });
@@ -731,6 +824,8 @@ pub fn init(app: &AppHandle, window_label: &str) -> Option<EditorInit> {
         height: e.image.as_ref().map_or(0, |i| i.height),
         crop: e.crop,
         url: protocol::editor_url(id),
+        source_url: e.source.as_ref().map(|_| protocol::editor_source_url(id)),
+        source_orientation: e.source.as_ref().map_or(1, |s| s.orientation),
         layer_url: protocol::editor_layer_url(id, LayerKind::Annotations),
         highlights_url: protocol::editor_layer_url(id, LayerKind::Highlights),
         markup: e.markup.clone(),

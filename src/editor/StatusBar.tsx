@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { HintLine, hint } from "../markup/HintLine";
 import { SETTINGS_ICON } from "../shared/icons";
-import { commands } from "../shared/ipc";
+import { commands, type FolderPosition } from "../shared/ipc";
 import { useCropStore } from "./cropStore";
 import { zoomLabel } from "./view";
 import { useViewStore } from "./viewStore";
@@ -23,11 +23,14 @@ const MENU_ZOOMS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 8];
 export function StatusBar({
   notice,
   loaded,
+  folderPosition,
   onReveal,
 }: {
   notice: Notice | null;
   /** An image is on show: the size and zoom controls apply (not while empty or loading). */
   loaded: boolean;
+  /** An image file's place in its folder, "12 of 41" (PLAN 3Q); null for captures. */
+  folderPosition: FolderPosition | null;
   onReveal: (path: string) => void;
 }) {
   const image = useViewStore((s) => s.image);
@@ -63,6 +66,17 @@ export function StatusBar({
       <span className={styles.spacer} />
       {loaded && image && (
         <>
+          {folderPosition && folderPosition.count > 1 && (
+            <>
+              <span
+                className={styles.size}
+                title="Left and Right arrows: previous and next image in this folder. Home and End: first and last."
+              >
+                {folderPosition.index} of {folderPosition.count}
+              </span>
+              <span className={styles.divider} />
+            </>
+          )}
           <span className={styles.size}>
             {draft && frame
               ? `Crop ${draft.width} × ${draft.height} px of ${frame.width} × ${frame.height} px`

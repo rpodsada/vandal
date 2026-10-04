@@ -182,19 +182,22 @@ pub async fn editor_folder_position(
 }
 
 /// Left/Right/Home/End in the editor: the folder's previous, next, first or
-/// last image takes this one's place (PLAN 3Q), after the page has asked
-/// about unsaved changes. Returns its position; None if there's nowhere to go.
+/// last image (`by` along, for presses that piled up) takes this one's place
+/// (PLAN 3Q), after the page has asked about unsaved changes. The page then
+/// loads it itself (`editor_init`), with no reload. Returns its position;
+/// None if there's nowhere to go.
 #[tauri::command]
 #[specta::specta]
 pub async fn editor_flip(
     app: AppHandle,
     window: WebviewWindow,
     step: FolderStep,
+    by: u32,
 ) -> Result<Option<FolderPosition>, String> {
     let Some(id) = editor::id_from_label(window.label()) else {
         return Ok(None);
     };
-    tauri::async_runtime::spawn_blocking(move || editor::flip(&app, id, step))
+    tauri::async_runtime::spawn_blocking(move || editor::flip(&app, id, step, by))
         .await
         .map_err(|e| e.to_string())?
 }

@@ -8,8 +8,18 @@ All notable changes to Vandal are listed here. The format follows
 
 ### Added
 
+- **Flip through a folder**, like in Windows Photos: with an image file open in the editor and
+  nothing selected, **←** and **→** open the previous and next image in its folder (wrapping
+  around), and **Home** and **End** the first and last. The status bar shows "12 of 41". If
+  you've changed the image, Vandal asks whether to save it first.
 - **Report a bug or suggest an idea** in Settings › About opens a new issue on
   [GitHub](https://github.com/rpodsada/vandal/issues), where bugs and ideas now go.
+
+### Changed
+
+- **Images open much faster in the editor**, especially large photos: JPEG, PNG, GIF, BMP, WebP
+  and AVIF files are now read as the file itself instead of as raw pixels (about 1 MB instead
+  of 48 MB for a 12-megapixel photo). HEIC and TIFF open as before.
 
 ## [0.3.0-beta.7] - 2026-10-03
 
