@@ -1,11 +1,11 @@
 {
-  "version": "0.3.0-beta.7",
-  "notes": "### Added\n\n- **Automatic updates.** Vandal checks for a new version when it starts and once a day, and\n  tells you when one is ready. Install it from the notification, the tray menu (**Restart to\n  update**) or **Settings › Updates**, whenever suits you: Vandal downloads it, checks that it\n  was signed by Vandal's developer, and restarts into it, keeping your settings. Editors with\n  unsaved changes ask you to save first. This is the last version you need to install by hand.\n- **Settings › Updates**: check now, install, turn automatic checks off (Vandal then never\n  checks unless you ask), and choose the **Beta** or **Stable** channel. Beta, the default if\n  you installed a beta, gets test versions before each release.\n\n### Changed\n\n- **Vandal now connects to the internet for update checks**, and only for them: a small file\n  from GitHub that names the latest version, with nothing about you in the request. See\n  [Privacy](https://github.com/rpodsada/vandal/blob/main/README.md#privacy).\n- **The installer is about 3.5 MB** (was about 2.6 MB): the part that downloads updates securely.\n",
-  "pub_date": "2026-10-04T02:18:07Z",
+  "version": "0.3.0-beta.8",
+  "notes": "### Added\n\n- **Flip through a folder**, like in Windows Photos: with an image file open in the editor and\n  nothing selected, **←** and **→** open the previous and next image in its folder (wrapping\n  around), and **Home** and **End** the first and last. The status bar shows \"12 of 41\". If\n  you've changed the image, Vandal asks whether to save it first.\n- **Report a bug or suggest an idea** in Settings › About opens a new issue on\n  [GitHub](https://github.com/rpodsada/vandal/issues), where bugs and ideas now go.\n\n### Changed\n\n- **Images open much faster in the editor**, especially large photos: JPEG, PNG, GIF, BMP, WebP\n  and AVIF files are now read as the file itself instead of as raw pixels (about 1 MB instead\n  of 48 MB for a 12-megapixel photo). HEIC and TIFF open as before.\n",
+  "pub_date": "2026-10-04T04:22:22Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUYkpmeDFMdFh6ZnZwTDVRNVVvam9uVmoxSkhKanU4MVVWbTNadUpFUjEvbmpwOGdxVm9obkh5VVRLWlF4UmJydWdPKzFOWjFKRlluV051Y0xlemwrQlBzSEZ0UHhvS2dZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxMDgwMDgwCWZpbGU6VmFuZGFsXzAuMy4wLWJldGEuN194NjQtc2V0dXAuZXhlCXZlcnNpb246MC4zLjAtYmV0YS43CmIrQkNxR0UxR2U2TWtYc1JYWnhoNzJyVGJWNDJ3L0xDZTRHY2R2cHkwS3NaN09YWmk3ckVHdi9MKzJZaGdVWUVNaTZwN1UzUFF1dTJmVjlnbks4NEFRPT0K",
-      "url": "https://github.com/rpodsada/vandal/releases/download/v0.3.0-beta.7/Vandal_0.3.0-beta.7_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUYkpmeDFMdFh6ZnErcXRQTlozdFlvUjhXVVpWREs3YzJabUI1TUdoZUx0L0VLV1lwKzA4M2s2YjlHVGR1SU1DeDI0T2VlcHN2ZjM3M1J2VGphREhua1BWNTlEc3VzOWdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxMDg3NjE2CWZpbGU6VmFuZGFsXzAuMy4wLWJldGEuOF94NjQtc2V0dXAuZXhlCXZlcnNpb246MC4zLjAtYmV0YS44ClIraGVURkdOMXl6RHRYZHBlb1lXRFQxNTlaTE9UL3JtRDF3V1M4N2FWSEFzbS9DUFM3Y29jYjJJditFZU0yTUMrUGtJaTc1OXFpRVFXcVo2Nm8rMkR3PT0K",
+      "url": "https://github.com/rpodsada/vandal/releases/download/v0.3.0-beta.8/Vandal_0.3.0-beta.8_x64-setup.exe"
     }
   }
 }
