@@ -228,7 +228,12 @@ open, drop, paste (Ctrl+V) or capture an image into it.
   on. Changing a style while a mark is selected restyles that mark. Where there are two colors
   (fill and border, text and its box), **X** swaps them.
 - **Editing marks:** click a mark to select it, drag to move it, and drag its handles to reshape
-  it. Double-click text (or press Enter) to edit it.
+  it. Double-click text (or press Enter) to edit it. Right-click a mark for Duplicate, the
+  stacking order (to front, forward one, back one, to back) and Delete.
+- **Copying marks:** Ctrl+Shift+C copies the selected marks and Ctrl+V pastes them, into the
+  same editor or another one, in front and selected (Ctrl+C copies the image). They keep their
+  place relative to the image's top-left corner, and slide in if they'd land outside it. The
+  right-click menu also has **Copy All Markup**, on a mark or on empty canvas.
 - **Crop:** drag to draw the box (Ctrl+drag draws a new one anywhere), type an exact width and
   height, or keep a ratio such as 16:9 (with **Portrait** for 9:16). Enter applies, Esc cancels.
   Crop never throws pixels away: undo it, or choose **Show full capture** in crop mode to get
@@ -393,6 +398,8 @@ printed on the pickers (you can hide them in Settings).
 | Ctrl+Y, Ctrl+Shift+Z | Redo                                                           |
 | Ctrl+A               | Select all marks                                               |
 | Ctrl+D               | Duplicate the selected marks                                   |
+| Ctrl+Shift+C         | Copy the selected marks (editor)                               |
+| Ctrl+V               | Paste copied marks (editor)                                    |
 | Delete / Backspace   | Delete the selected marks                                      |
 | Arrow keys           | Move the selected marks by 1 pixel (Shift: 10)                 |
 | Ctrl+] / Ctrl+[      | Bring forward / send backward (with Shift: to front / to back) |
@@ -413,7 +420,7 @@ printed on the pickers (you can hide them in Settings).
 | ← / →                 | Previous / next image in the folder (an image file, nothing selected)    |
 | Home / End            | First / last image in the folder                                         |
 | Ctrl+N                | Capture, back into the editor                                            |
-| Ctrl+V                | Paste an image (into an empty editor)                                    |
+| Ctrl+V                | Paste an image into an empty editor (or copied marks, see Editing)       |
 | Ctrl+W                | Close                                                                    |
 | Ctrl+,                | Settings                                                                 |
 | Ctrl+= / Ctrl+−       | Zoom in / out                                                            |
@@ -548,7 +555,9 @@ policy is at [vandalscreenshot.com/privacy](https://vandalscreenshot.com/privacy
 - Curved lines and arrows, rounded corners, and two colors with a one-key swap
 - Quick edit: draw right on the frozen screen, without opening a window
 - Full editor with zoom, pan, undo/redo and crop that never throws pixels away
-- Every mark stays editable: select, move, resize, restyle, duplicate, reorder or delete it
+- Every mark stays editable: select, move, resize, restyle, duplicate, reorder or delete it,
+  from the keyboard or a right-click menu
+- Copy and paste marks between images
 - Single-key tools (keys you can change), plus number-key shortcuts for sizes, colors, fonts and
   corners
 - Shortcuts work on any keyboard layout, on the number row or the numpad

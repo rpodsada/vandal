@@ -13,8 +13,9 @@ All notable changes to Vandal are listed here. The format follows
   there's nothing else to move past.
 - **Copy and paste objects** between editors, or within one. **Ctrl+Shift+C** copies the
   selected objects and **Ctrl+V** pastes them in front of yours, selected (Ctrl+C still copies
-  the image). The editor's right-click menu has Copy All Markup, Copy Object and Paste Markup,
-  on an object or on empty canvas.
+  the image). Pasted objects keep their place relative to the image's top-left corner, and
+  slide in if they'd land outside it. The editor's right-click menu has Copy All Markup, Copy
+  Object and Paste Markup, on an object or on empty canvas.
 
 ### Changed
 
