@@ -4,7 +4,7 @@ import { docStore, hasUnsavedChanges } from "../markup/model/store";
 import { useMarkupKeys } from "../markup/useMarkupKeys";
 import { emptyDoc } from "../markup/model/types";
 import { initialDoc } from "./handoff";
-import { markupFromJson, markupToJson, readMarkup } from "./markupJson";
+import { markupFromJson, markupToJson, placePasted, readMarkup } from "./markupJson";
 import { setMarkupClipboard } from "../markup/markupClipboard";
 import { addCopies } from "../markup/objectActions";
 import { useRedactSource } from "../markup/redact";
@@ -594,7 +594,7 @@ async function pasteMarkup(notify: Notify): Promise<void> {
     notify({ text: `Markup not pasted: ${read.reason}`, error: true });
     return;
   }
-  const n = addCopies(read.markup.annotations).length;
+  const n = addCopies(placePasted(read.markup, docStore.getState().doc.crop)).length;
   notify({ text: n === 1 ? "1 object pasted" : `${n} objects pasted`, success: true });
 }
 

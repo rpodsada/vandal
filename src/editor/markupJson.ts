@@ -12,6 +12,7 @@ import {
   type Doc,
   type Rect,
 } from "../markup/model/types";
+import { annotationBounds, translateAnnotation } from "../markup/geometry";
 
 /** Marks the text as Vandal markup. */
 export const MARKUP_KIND = "vandal-markup";
@@ -82,6 +83,37 @@ export function readMarkup(text: string): ReadMarkup {
     ids.add(a.id);
   }
   return { ok: true, markup: { source, crop, annotations: annotations as Annotation[] } };
+}
+
+/**
+ * Where pasted markup goes in a document cropped to `crop` (PLAN 3R): at the
+ * same place relative to the visible area as where it was copied from, so
+ * pasting into the image it came from leaves it in place. If the objects'
+ * box would leave the visible area, they slide in together just far enough;
+ * a box bigger than the area is centred on it. Never scaled or clipped.
+ */
+export function placePasted(markup: Markup, crop: Rect): Annotation[] {
+  const { annotations } = markup;
+  if (!annotations.length) return [];
+  const boxes = annotations.map(annotationBounds);
+  const left = Math.min(...boxes.map((b) => b.x));
+  const top = Math.min(...boxes.map((b) => b.y));
+  const right = Math.max(...boxes.map((b) => b.x + b.width));
+  const bottom = Math.max(...boxes.map((b) => b.y + b.height));
+  let dx = crop.x - markup.crop.x;
+  let dy = crop.y - markup.crop.y;
+  dx += fitShift(left + dx, right - left, crop.x, crop.width);
+  dy += fitShift(top + dy, bottom - top, crop.y, crop.height);
+  if (dx === 0 && dy === 0) return annotations;
+  return annotations.map((a) => translateAnnotation(a, dx, dy));
+}
+
+/** How far a span at `start` of `size` moves to fit in the one at `lo` of `length`. */
+function fitShift(start: number, size: number, lo: number, length: number): number {
+  if (size > length) return Math.round(lo + (length - size) / 2 - start);
+  if (start < lo) return Math.ceil(lo - start);
+  if (start + size > lo + length) return Math.floor(lo + length - (start + size));
+  return 0;
 }
 
 /** `current` with the markup in `text` in place of its own (the hidden paste). */

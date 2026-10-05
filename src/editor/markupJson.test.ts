@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { emptyDoc, type Annotation, type Doc } from "../markup/model/types";
-import { MARKUP_KIND, markupFromJson, markupToJson, readMarkup } from "./markupJson";
+import { emptyDoc, type Annotation, type Doc, type ShapeAnnotation } from "../markup/model/types";
+import {
+  MARKUP_KIND,
+  markupFromJson,
+  markupToJson,
+  placePasted,
+  readMarkup,
+  type Markup,
+} from "./markupJson";
 
 const step: Annotation = {
   kind: "step",
@@ -77,5 +84,61 @@ describe("readMarkup", () => {
 
   it("refuses text that isn't markup", () => {
     expect(readMarkup("hello").ok).toBe(false);
+  });
+});
+
+describe("placePasted", () => {
+  // A 20×20 rectangle at (30, 40) of the source, copied with the crop at (10, 20).
+  const box = (x: number, y: number, width = 20, height = 20): Annotation =>
+    ({
+      kind: "rect",
+      id: "r",
+      rect: { x, y, width, height },
+      rotation: 0,
+      style: { color: "#e53935", width: 4, opacity: 1 },
+      fill: null,
+      cornerRadius: 0,
+    }) as unknown as Annotation;
+  const copied = (a: Annotation, crop = { x: 10, y: 20, width: 200, height: 100 }): Markup => ({
+    source: { width: 400, height: 300 },
+    crop,
+    annotations: [a],
+  });
+  const rectOf = (as: Annotation[]) => (as[0] as ShapeAnnotation).rect;
+
+  it("leaves it in place in the same visible area", () => {
+    const a = box(30, 40);
+    expect(placePasted(copied(a), { x: 10, y: 20, width: 200, height: 100 })[0]).toBe(a);
+  });
+
+  it("keeps its place relative to the visible area's corner", () => {
+    const placed = placePasted(copied(box(30, 40)), { x: 0, y: 0, width: 200, height: 100 });
+    expect(rectOf(placed)).toMatchObject({ x: 20, y: 20 });
+  });
+
+  it("slides in just far enough when it would leave the area", () => {
+    const placed = placePasted(copied(box(190, 110)), { x: 0, y: 0, width: 100, height: 60 });
+    expect(rectOf(placed)).toMatchObject({ x: 80, y: 40 });
+  });
+
+  it("is centred when bigger than the area", () => {
+    const placed = placePasted(copied(box(10, 20, 120, 20)), {
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 60,
+    });
+    expect(rectOf(placed)).toMatchObject({ x: -10, y: 0 });
+  });
+
+  it("moves several objects together, keeping their layout", () => {
+    const markup: Markup = {
+      ...copied(box(10, 20)),
+      annotations: [box(10, 20), { ...box(90, 20), id: "s" } as Annotation],
+    };
+    const placed = placePasted(markup, { x: 0, y: 0, width: 50, height: 50 });
+    const xs = placed.map((a) => (a as ShapeAnnotation).rect.x);
+    // 100 px wide in a 50 px area: centred, still 80 apart.
+    expect(xs).toEqual([-25, 55]);
   });
 });
