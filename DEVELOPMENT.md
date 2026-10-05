@@ -102,9 +102,10 @@ handoff to an elevated app.
 
 To load it, open `chrome://extensions` (or `edge://extensions`), turn on Developer mode, click
 **Load unpacked** and pick `extension/chrome/dist`. After a rebuild, click the extension's reload
-button there and reopen the popup. The manifest's `key` keeps the extension ID the same
-everywhere (`bmloooliddgohojbpadiljacckgdbngm`); Vandal's native messaging host will only accept
-that ID.
+button there and reopen the popup. The manifest's `key` keeps the unpacked extension's ID the
+same everywhere (`bmloooliddgohojbpadiljacckgdbngm`). The Chrome Web Store install has its own
+(`glniniimcccgnpgfddfdepdnpbajpnfc`), so the two can sit side by side. Vandal's native messaging
+host only accepts those two IDs (`native_host.rs`, `windows/hooks.nsh`, `scripts/ext-host-dev.mjs`).
 
 ## Build an installer
 

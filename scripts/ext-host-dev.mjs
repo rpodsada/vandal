@@ -11,7 +11,8 @@ import { join, resolve } from "node:path";
 import process from "node:process";
 
 const NAME = "com.vandal.desktop.dev";
-const EXTENSION_ID = "bmloooliddgohojbpadiljacckgdbngm";
+// The Chrome Web Store install, then unpacked builds (the manifest's `key`).
+const EXTENSION_IDS = ["glniniimcccgnpgfddfdepdnpbajpnfc", "bmloooliddgohojbpadiljacckgdbngm"];
 const BROWSERS = ["Google\\Chrome", "Microsoft\\Edge", "BraveSoftware\\Brave-Browser", "Chromium"];
 
 const dir = join(process.env.LOCALAPPDATA, NAME);
@@ -37,7 +38,7 @@ if (process.argv.includes("--remove")) {
     description: "Vandal Dev",
     path: exe,
     type: "stdio",
-    allowed_origins: [`chrome-extension://${EXTENSION_ID}/`],
+    allowed_origins: EXTENSION_IDS.map((id) => `chrome-extension://${id}/`),
   };
   writeFileSync(manifest, JSON.stringify(host, null, 2));
   for (const key of keys) reg("add", key, "/ve", "/t", "REG_SZ", "/d", manifest, "/f");

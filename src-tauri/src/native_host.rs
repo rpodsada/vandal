@@ -19,8 +19,12 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 
 /// The extensions allowed to use the host; the host manifest's
-/// `allowed_origins` says the same, and the browser enforces it.
-const ALLOWED_ORIGINS: &[&str] = &["chrome-extension://bmloooliddgohojbpadiljacckgdbngm/"];
+/// `allowed_origins` says the same, and the browser enforces it. The Chrome
+/// Web Store install, then unpacked builds (the manifest's `key`).
+const ALLOWED_ORIGINS: &[&str] = &[
+    "chrome-extension://glniniimcccgnpgfddfdepdnpbajpnfc/",
+    "chrome-extension://bmloooliddgohojbpadiljacckgdbngm/",
+];
 /// Chrome caps a message to a host at 64 MiB.
 const MAX_MESSAGE: usize = 64 * 1024 * 1024;
 /// The largest capture we accept: a full page at the 65,000 px cap is far less.
