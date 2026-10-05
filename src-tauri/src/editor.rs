@@ -47,6 +47,8 @@ pub type EditorId = u32;
 const PREFIX: &str = "editor-";
 const STATE_FILE: &str = "window-state.json";
 const STATE_KEY: &str = "editor";
+/// Where Open starts: the folder files were last picked from.
+const OPEN_FOLDER_KEY: &str = "openFolder";
 
 /// Space around the image in a new window (logical px): the command, options
 /// and status bars plus a margin.
@@ -549,19 +551,29 @@ fn load_into(
     true
 }
 
-/// Ask for image files, modal to `parent` if given. Blocks: call off the
+/// Ask for image files, modal to `parent` if given, starting in the folder
+/// the last ones were picked from (else the Desktop). Blocks: call off the
 /// main thread.
 pub fn pick_images(app: &AppHandle, parent: Option<&WebviewWindow>) -> Vec<PathBuf> {
+    let store = app.store(STATE_FILE).ok();
+    let last = store
+        .as_ref()
+        .and_then(|s| s.get(OPEN_FOLDER_KEY))
+        .and_then(|v| v.as_str().map(PathBuf::from))
+        .filter(|d| d.is_dir());
     let mut dialog = app
         .dialog()
         .file()
         .set_title("Open image")
         .add_filter("Images", decode::EXTENSIONS)
         .add_filter("All files", &["*"]);
+    if let Some(start) = last.clone().or_else(|| app.path().desktop_dir().ok()) {
+        dialog = dialog.set_directory(start);
+    }
     if let Some(parent) = parent {
         dialog = dialog.set_parent(parent);
     }
-    dialog
+    let files: Vec<PathBuf> = dialog
         .blocking_pick_files()
         .unwrap_or_default()
         .into_iter()
@@ -570,7 +582,17 @@ pub fn pick_images(app: &AppHandle, parent: Option<&WebviewWindow>) -> Vec<PathB
                 .map_err(|e| eprintln!("[editor] can't open a picked file: {e}"))
                 .ok()
         })
-        .collect()
+        .collect();
+    let folder = files.first().and_then(|f| f.parent());
+    if let (Some(store), Some(folder)) = (store, folder) {
+        if last.as_deref() != Some(folder) {
+            store.set(OPEN_FOLDER_KEY, json!(folder.display().to_string()));
+            if let Err(e) = store.save() {
+                eprintln!("[editor] cannot save the Open folder: {e}");
+            }
+        }
+    }
+    files
 }
 
 /// The tray's "Open image…": each picked file in its own editor.
