@@ -173,6 +173,10 @@ pub struct SaveSettings {
     pub format: String,
     /// Offer a "Save" button on the capture notification when not auto-saved.
     pub notification_save_button: bool,
+    /// Where the editor's Open dialog starts.
+    pub open_starts_in: OpenStartsIn,
+    /// Where the editor's Save As dialog starts.
+    pub save_as_starts_in: SaveAsStartsIn,
 }
 
 impl Default for SaveSettings {
@@ -182,8 +186,35 @@ impl Default for SaveSettings {
             filename_template: "Screenshot {yyyy}-{MM}-{dd} {HH}-{mm}-{ss}".into(),
             format: "png".into(),
             notification_save_button: true,
+            open_starts_in: OpenStartsIn::default(),
+            save_as_starts_in: SaveAsStartsIn::default(),
         }
     }
+}
+
+/// Where the editor's Open dialog starts.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum OpenStartsIn {
+    /// The folder images were last opened from (the Desktop at first).
+    #[default]
+    LastOpened,
+    /// The save folder.
+    SaveFolder,
+}
+
+/// Where the editor's Save As dialog starts.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum SaveAsStartsIn {
+    /// The folder the last Save As saved to.
+    #[default]
+    LastSaved,
+    /// An opened image's own folder; for a capture, the folder images were
+    /// last opened from.
+    ImageFolder,
+    /// The save folder.
+    SaveFolder,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]

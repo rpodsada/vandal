@@ -286,6 +286,40 @@ export const sections: Section[] = [
         ],
       },
       {
+        title: "Open and Save As",
+        description:
+          "Where the editor's dialogs start. If that folder isn't there, Open starts on your Desktop, and Save As next to the opened image or in the save folder.",
+        items: [
+          {
+            id: "open-starts-in",
+            kind: "choice",
+            control: "select",
+            path: "save.openStartsIn",
+            label: "Open starts in",
+            options: [
+              { value: "lastOpened", label: "The last folder you opened from" },
+              { value: "saveFolder", label: "The save folder" },
+            ],
+            keywords: ["open", "dialog", "browse", "folder", "directory", "start", "default"],
+          },
+          {
+            id: "save-as-starts-in",
+            kind: "choice",
+            control: "select",
+            path: "save.saveAsStartsIn",
+            label: "Save As starts in",
+            description:
+              "For a capture, the image's folder is the last folder you opened an image from.",
+            options: [
+              { value: "lastSaved", label: "The last folder you saved to" },
+              { value: "imageFolder", label: "The image's folder" },
+              { value: "saveFolder", label: "The save folder" },
+            ],
+            keywords: ["save as", "dialog", "browse", "folder", "directory", "start", "default"],
+          },
+        ],
+      },
+      {
         title: "Opened images",
         items: [
           {

@@ -47,8 +47,10 @@ pub type EditorId = u32;
 const PREFIX: &str = "editor-";
 const STATE_FILE: &str = "window-state.json";
 const STATE_KEY: &str = "editor";
-/// Where Open starts: the folder files were last picked from.
+/// The folder files were last picked from in Open.
 const OPEN_FOLDER_KEY: &str = "openFolder";
+/// The folder the last Save As saved to.
+const SAVE_FOLDER_KEY: &str = "saveFolder";
 
 /// Space around the image in a new window (logical px): the command, options
 /// and status bars plus a margin.
@@ -551,23 +553,16 @@ fn load_into(
     true
 }
 
-/// Ask for image files, modal to `parent` if given, starting in the folder
-/// the last ones were picked from (else the Desktop). Blocks: call off the
-/// main thread.
+/// Ask for image files, modal to `parent` if given, starting where
+/// [`open_start`] says. Blocks: call off the main thread.
 pub fn pick_images(app: &AppHandle, parent: Option<&WebviewWindow>) -> Vec<PathBuf> {
-    let store = app.store(STATE_FILE).ok();
-    let last = store
-        .as_ref()
-        .and_then(|s| s.get(OPEN_FOLDER_KEY))
-        .and_then(|v| v.as_str().map(PathBuf::from))
-        .filter(|d| d.is_dir());
     let mut dialog = app
         .dialog()
         .file()
         .set_title("Open image")
         .add_filter("Images", decode::EXTENSIONS)
         .add_filter("All files", &["*"]);
-    if let Some(start) = last.clone().or_else(|| app.path().desktop_dir().ok()) {
+    if let Some(start) = open_start(app) {
         dialog = dialog.set_directory(start);
     }
     if let Some(parent) = parent {
@@ -583,16 +578,82 @@ pub fn pick_images(app: &AppHandle, parent: Option<&WebviewWindow>) -> Vec<PathB
                 .ok()
         })
         .collect();
-    let folder = files.first().and_then(|f| f.parent());
-    if let (Some(store), Some(folder)) = (store, folder) {
-        if last.as_deref() != Some(folder) {
-            store.set(OPEN_FOLDER_KEY, json!(folder.display().to_string()));
-            if let Err(e) = store.save() {
-                eprintln!("[editor] cannot save the Open folder: {e}");
-            }
-        }
+    if let Some(folder) = files.first().and_then(|f| f.parent()) {
+        remember_folder(app, OPEN_FOLDER_KEY, folder);
     }
     files
+}
+
+/// Where Open starts (Settings › Copying & Saving): the last folder opened
+/// from or the save folder, else the Desktop.
+fn open_start(app: &AppHandle) -> Option<PathBuf> {
+    let save = app
+        .state::<AppState>()
+        .settings
+        .read()
+        .unwrap()
+        .save
+        .clone();
+    match save.open_starts_in {
+        settings::OpenStartsIn::LastOpened => remembered_folder(app, OPEN_FOLDER_KEY),
+        settings::OpenStartsIn::SaveFolder => existing_dir(output::resolve_dir(&save.directory)),
+    }
+    .or_else(|| app.path().desktop_dir().ok())
+}
+
+/// Where Save As starts for the opened image `file`, or a capture
+/// (Settings › Copying & Saving). If that folder isn't there: the image's
+/// own folder, else the save folder.
+fn save_as_start(app: &AppHandle, file: Option<&Path>) -> Option<PathBuf> {
+    let save = app
+        .state::<AppState>()
+        .settings
+        .read()
+        .unwrap()
+        .save
+        .clone();
+    let save_dir = || existing_dir(output::resolve_dir(&save.directory));
+    let file_dir = || {
+        file.and_then(Path::parent)
+            .and_then(|d| existing_dir(d.into()))
+    };
+    match save.save_as_starts_in {
+        settings::SaveAsStartsIn::LastSaved => remembered_folder(app, SAVE_FOLDER_KEY),
+        settings::SaveAsStartsIn::ImageFolder if file.is_some() => file_dir(),
+        settings::SaveAsStartsIn::ImageFolder => remembered_folder(app, OPEN_FOLDER_KEY),
+        settings::SaveAsStartsIn::SaveFolder => save_dir(),
+    }
+    .or_else(file_dir)
+    .or_else(save_dir)
+}
+
+fn existing_dir(dir: PathBuf) -> Option<PathBuf> {
+    dir.is_dir().then_some(dir)
+}
+
+/// A folder a dialog remembered under `key`, if it's still there.
+fn remembered_folder(app: &AppHandle, key: &str) -> Option<PathBuf> {
+    app.store(STATE_FILE)
+        .ok()?
+        .get(key)?
+        .as_str()
+        .map(PathBuf::from)
+        .filter(|d| d.is_dir())
+}
+
+/// Remember `folder` under `key` for the next dialog.
+fn remember_folder(app: &AppHandle, key: &str, folder: &Path) {
+    let Ok(store) = app.store(STATE_FILE) else {
+        return;
+    };
+    let folder = json!(folder.display().to_string());
+    if store.get(key).as_ref() == Some(&folder) {
+        return;
+    }
+    store.set(key, folder);
+    if let Err(e) = store.save() {
+        eprintln!("[editor] cannot save {key}: {e}");
+    }
 }
 
 /// The tray's "Open image…": each picked file in its own editor.
@@ -1083,9 +1144,10 @@ fn confirm_overwrite(app: &AppHandle, window: &WebviewWindow, id: EditorId, file
     true
 }
 
-/// Save As for a file, modal to the editor: its folder and name, its format
-/// first (PNG for formats we can't write), and the others we can. The
-/// returned path always has an extension we can write.
+/// Save As for a file, modal to the editor: its name, starting where
+/// [`save_as_start`] says, its format first (PNG for formats we can't write),
+/// and the others we can. The returned path always has an extension we can
+/// write.
 fn ask_file_save_path(window: &WebviewWindow, file: &Path) -> Option<PathBuf> {
     let original = FileFormat::for_path(file);
     let first = original.unwrap_or(FileFormat::Png);
@@ -1102,7 +1164,7 @@ fn ask_file_save_path(window: &WebviewWindow, file: &Path) -> Option<PathBuf> {
         .set_title("Save image as")
         .set_parent(window)
         .set_file_name(&name);
-    if let Some(dir) = file.parent().filter(|d| d.is_dir()) {
+    if let Some(dir) = save_as_start(window.app_handle(), Some(file)) {
         dialog = dialog.set_directory(dir);
     }
     for format in std::iter::once(first).chain(FileFormat::ALL.into_iter().filter(|f| *f != first))
@@ -1117,11 +1179,14 @@ fn ask_file_save_path(window: &WebviewWindow, file: &Path) -> Option<PathBuf> {
         name.push(first.filter().1[0]);
         path.set_file_name(name);
     }
+    if let Some(folder) = path.parent() {
+        remember_folder(window.app_handle(), SAVE_FOLDER_KEY, folder);
+    }
     Some(path)
 }
 
-/// Save As dialog, modal to the editor, starting in the save folder with the
-/// template's name. Always returns a `.png` path.
+/// Save As dialog, modal to the editor, with the template's name, starting
+/// where [`save_as_start`] says. Always returns a `.png` path.
 fn ask_save_path(app: &AppHandle, window: &WebviewWindow) -> Option<std::path::PathBuf> {
     let save = app
         .state::<AppState>()
@@ -1130,7 +1195,7 @@ fn ask_save_path(app: &AppHandle, window: &WebviewWindow) -> Option<std::path::P
         .unwrap()
         .save
         .clone();
-    let dir = output::resolve_dir(&save.directory);
+    let dir = save_as_start(app, None).unwrap_or_else(|| output::resolve_dir(&save.directory));
     let name = format!("{}.png", output::file_stem(&dir, &save.filename_template));
     let mut dialog = window
         .dialog()
@@ -1148,6 +1213,9 @@ fn ask_save_path(app: &AppHandle, window: &WebviewWindow) -> Option<std::path::P
         .is_some_and(|e| e.eq_ignore_ascii_case("png"))
     {
         path.set_extension("png");
+    }
+    if let Some(folder) = path.parent() {
+        remember_folder(app, SAVE_FOLDER_KEY, folder);
     }
     Some(path)
 }

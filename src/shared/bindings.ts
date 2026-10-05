@@ -583,6 +583,13 @@ export type OcrWord = {
 	rect: PhysicalRect,
 };
 
+/**  Where the editor's Open dialog starts. */
+export type OpenStartsIn = 
+/**  The folder images were last opened from (the Desktop at first). */
+"lastOpened" | 
+/**  The save folder. */
+"saveFolder";
+
 /**  Rust → overlays: a selection started on `monitor_index`; clear yours. */
 export type OverlayClearSelection = {
 	captureId: number,
@@ -728,6 +735,18 @@ export type Redaction = {
 	strength: number,
 };
 
+/**  Where the editor's Save As dialog starts. */
+export type SaveAsStartsIn = 
+/**  The folder the last Save As saved to. */
+"lastSaved" | 
+/**
+ *  An opened image's own folder; for a capture, the folder images were
+ *  last opened from.
+ */
+"imageFolder" | 
+/**  The save folder. */
+"saveFolder";
+
 export type SaveSettings = {
 	/**  May contain `%ENV%` variables. */
 	directory?: string,
@@ -739,6 +758,10 @@ export type SaveSettings = {
 	format?: string,
 	/**  Offer a "Save" button on the capture notification when not auto-saved. */
 	notificationSaveButton?: boolean,
+	/**  Where the editor's Open dialog starts. */
+	openStartsIn?: OpenStartsIn,
+	/**  Where the editor's Save As dialog starts. */
+	saveAsStartsIn?: SaveAsStartsIn,
 };
 
 export type Settings = {
