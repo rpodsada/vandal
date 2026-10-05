@@ -14,17 +14,23 @@ export interface Box {
 const GAP = 4;
 const MARGIN = 8;
 
+/** Which edges of the menu and its anchor line up: left (start) or right (end). */
+export type MenuAlign = "start" | "end";
+
 /**
- * Below `anchor`, left edges aligned; slid left if it would leave the
- * window, and flipped above if there's no room below but there is above.
+ * Below `anchor`, left edges aligned (right edges with `align: "end"`); slid
+ * back in if it would leave the window, and flipped above if there's no room
+ * below but there is above.
  */
 export function placeMenu(
   anchor: Box,
   menu: { width: number; height: number },
   view: { width: number; height: number },
+  align: MenuAlign = "start",
 ): { left: number; top: number } {
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, hi));
-  const left = clamp(anchor.left, MARGIN, view.width - MARGIN - menu.width);
+  const start = align === "end" ? anchor.left + anchor.width - menu.width : anchor.left;
+  const left = clamp(start, MARGIN, view.width - MARGIN - menu.width);
   const below = anchor.top + anchor.height + GAP;
   const above = anchor.top - GAP - menu.height;
   const top =
@@ -45,6 +51,7 @@ export function useMenuPlacement(
   open: boolean,
   menuRef: RefObject<HTMLElement | null>,
   anchor: () => Box | null,
+  align: MenuAlign = "start",
 ): void {
   const anchorRef = useRef(anchor);
   useLayoutEffect(() => {
@@ -64,6 +71,7 @@ export function useMenuPlacement(
         a,
         { width: menu.offsetWidth, height: menu.offsetHeight },
         { width: window.innerWidth, height: window.innerHeight },
+        align,
       );
       menu.style.left = `${left}px`;
       menu.style.top = `${top}px`;
@@ -78,7 +86,7 @@ export function useMenuPlacement(
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
     };
-  }, [open, menuRef]);
+  }, [open, menuRef, align]);
 }
 
 /** The box of an element, for `useMenuPlacement`. */

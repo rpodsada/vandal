@@ -1,8 +1,10 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
-import { boxOf, useMenuPlacement } from "./menuPlacement";
+import { boxOf, useMenuPlacement, type MenuAlign } from "./menuPlacement";
 import styles from "./options.module.css";
 
 interface Props {
+  /** The button's id, for a `<label htmlFor>` (Settings). */
+  id?: string;
   className: string;
   title: string;
   /** The button's content (a chevron is added). */
@@ -18,6 +20,9 @@ interface Props {
   menuClassName?: string;
   /** After the menu closes, however it closed. */
   onClose?: () => void;
+  disabled?: boolean;
+  /** Line the menu up with the button's left edge (default) or right edge. */
+  align?: MenuAlign;
 }
 
 /**
@@ -25,12 +30,15 @@ interface Props {
  * window). Esc or a click elsewhere closes it.
  */
 export function Dropdown({
+  id,
   className,
   title,
   button,
   children,
   menuClassName,
   onClose,
+  disabled,
+  align = "start",
   rightClickOpens = false,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -40,7 +48,7 @@ export function Dropdown({
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  useMenuPlacement(open, menuRef, () => boxOf(buttonRef.current));
+  useMenuPlacement(open, menuRef, () => boxOf(buttonRef.current), align);
   const onCloseRef = useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -77,7 +85,9 @@ export function Dropdown({
     <div ref={rootRef} className={styles.dropdownRoot}>
       <button
         ref={buttonRef}
+        id={id}
         type="button"
+        disabled={disabled}
         className={className}
         title={title}
         aria-haspopup="menu"

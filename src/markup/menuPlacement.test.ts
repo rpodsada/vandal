@@ -26,6 +26,16 @@ describe("placeMenu", () => {
     expect(placeMenu(anchor, tall, view).top).toBe(600 - 8 - 500);
   });
 
+  it("lines up right edges with align end", () => {
+    const anchor = { left: 400, top: 50, width: 150, height: 30 };
+    expect(placeMenu(anchor, menu, view, "end").left).toBe(400 + 150 - 260);
+  });
+
+  it("slides an end-aligned menu back in at the left edge", () => {
+    const anchor = { left: 20, top: 50, width: 100, height: 30 };
+    expect(placeMenu(anchor, menu, view, "end").left).toBe(8);
+  });
+
   it("keeps the left margin when the menu is wider than the window", () => {
     const anchor = { left: 100, top: 50, width: 30, height: 30 };
     expect(placeMenu(anchor, { width: 900, height: 100 }, view).left).toBe(8);
