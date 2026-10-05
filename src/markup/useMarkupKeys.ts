@@ -25,14 +25,10 @@ import {
   widthPickerFor,
 } from "./styles";
 import { editStepLabel } from "./stepEditing";
-import { nextStepSeq } from "./steps";
 import { editText } from "./textEditing";
-import type { Annotation, NewAnnotation, StepAnnotation } from "./model/types";
+import { duplicateSelection } from "./objectActions";
 import { shortcutOf } from "./shortcuts";
 import { isTool, useToolStore } from "./toolStore";
-
-/** Duplicates land this far (source px) down-right of the original. */
-const DUPLICATE_OFFSET = 10;
 
 /**
  * The markup's shortcuts. `active` (read on each key) lets a host switch them
@@ -269,26 +265,8 @@ function handleCtrl(e: KeyboardEvent): boolean {
       if (e.shiftKey) return false;
       store.select(store.doc.annotations.map((a) => a.id));
       return true;
-    case "KeyD": {
-      if (e.shiftKey || !store.selection.length) return false;
-      const picked = store.doc.annotations.filter((a) => store.selection.includes(a.id));
-      store.beginGesture();
-      // Duplicated step markers are the newest, so they take the next labels,
-      // in the order of the originals.
-      const firstSeq = nextStepSeq(store.doc);
-      const stepOrder = picked
-        .filter((a): a is StepAnnotation => a.kind === "step")
-        .sort((a, b) => a.seq - b.seq)
-        .map((a) => a.id);
-      const ids = picked.map((a) => {
-        const copy = withoutId(translateAnnotation(a, DUPLICATE_OFFSET, DUPLICATE_OFFSET));
-        if (copy.kind === "step") copy.seq = firstSeq + stepOrder.indexOf(a.id);
-        return store.add(copy);
-      });
-      store.endGesture();
-      store.select(ids);
-      return true;
-    }
+    case "KeyD":
+      return !e.shiftKey && duplicateSelection();
     case "BracketRight":
       if (!store.selection.length) return false;
       store.reorder(store.selection, e.shiftKey ? "front" : "forward");
@@ -299,10 +277,4 @@ function handleCtrl(e: KeyboardEvent): boolean {
       return true;
   }
   return false;
-}
-
-function withoutId(a: Annotation): NewAnnotation {
-  const copy: Partial<Annotation> = { ...a };
-  delete copy.id;
-  return copy as NewAnnotation;
 }

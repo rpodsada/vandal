@@ -6,6 +6,12 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Right-click an object** for Duplicate, To Front, Forward One, Back One, To Back and
+  Delete. It acts on everything selected with it. The arrange items are greyed out when
+  there's nothing else to move past.
+
 ### Changed
 
 - **The editor opens where you left it**: the same position and size as the last editor you

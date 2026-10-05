@@ -450,6 +450,28 @@
   background: var(--accent-soft);
 }
 
+.menuRow:disabled {
+  background: transparent;
+  color: var(--text-2);
+  opacity: 0.6;
+}
+
+.menuSep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border);
+}
+
+/* A right-click menu, outside the options bar that sets the type elsewhere. */
+.contextMenu {
+  font-size: 13px;
+  user-select: none;
+}
+
+.contextMenu .menuKey {
+  margin-left: 24px;
+}
+
 .menuLabel {
   flex-grow: 1;
 }

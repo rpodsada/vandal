@@ -92,6 +92,7 @@ import { textBoxPadding, textFontStyle } from "./textMeasure";
 import { TextEditor } from "./TextEditor";
 import { createText, editText, finishTextEdit } from "./textEditing";
 import { markTaken } from "./pressRouting";
+import { ObjectMenu } from "./ObjectMenu";
 import { useToolStore } from "./toolStore";
 import styles from "./markup.module.css";
 
@@ -301,6 +302,8 @@ export function MarkupLayer({
     { a: CalloutAnnotation; width: number; height: number; extent: Rect }
   > | null>(null);
   const [marquee, setMarquee] = useState<Rect | null>(null);
+  /** The objects' right-click menu, where it was opened (client px). */
+  const [objectMenu, setObjectMenu] = useState<Point | null>(null);
   // Text redaction (PLAN 3J): the words, the one under the pointer, a drag's
   // selection, and the last clicks (a triple click takes the line).
   const redactTextOn = useToolStore((s) => s.redactText);
@@ -436,6 +439,25 @@ export function MarkupLayer({
     const r = stageRef.current!.container().getBoundingClientRect();
     const { scale: s, offset: o } = view.current;
     return { x: (clientX - r.left - o.x) / s, y: (clientY - r.top - o.y) / s };
+  };
+
+  /**
+   * A right-click on an object opens its menu, for it and whatever else is
+   * selected with it (any other object is selected instead). Whatever the
+   * tool: the menu only acts on what's there.
+   */
+  const onContextMenu = (e: KonvaEventObject<PointerEvent>) => {
+    if (!interactive || e.target.name() !== "annotation") return;
+    markTaken(e.evt);
+    if (useToolStore.getState().editing) finishTextEdit();
+    const store = docStore.getState();
+    const id = e.target.id();
+    if (!store.doc.annotations.some((a) => a.id === id)) return;
+    if (!store.selection.includes(id)) {
+      setWholeId(null);
+      store.select([id]);
+    }
+    setObjectMenu({ x: e.evt.clientX, y: e.evt.clientY });
   };
 
   const onPointerDown = (e: KonvaEventObject<PointerEvent>) => {
@@ -1178,6 +1200,7 @@ export function MarkupLayer({
           setOverRedactedWord(false);
         }}
         onDblClick={onDblClick}
+        onContextMenu={onContextMenu}
       >
         {/* Under everything, whatever the z-order: redactions hide the image only. */}
         <Layer imageSmoothingEnabled={scale < 1}>
@@ -1431,6 +1454,7 @@ export function MarkupLayer({
           offset={offset}
         />
       )}
+      {objectMenu && <ObjectMenu at={objectMenu} onClose={() => setObjectMenu(null)} />}
     </div>
   );
 }
