@@ -149,7 +149,9 @@ function NumberDropdown(props: Props & { values: number[] }) {
             <span className={styles.menuLabel}>
               {v} {props.unit}
             </span>
-            {props.hints && <span className={styles.menuKey}>{slotKey(i)}</span>}
+            {props.hints && props.keyModifier !== null && (
+              <span className={styles.menuKey}>{`${props.keyModifier ?? ""}${slotKey(i)}`}</span>
+            )}
           </button>
         ))
       }
