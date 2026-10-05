@@ -1,10 +1,17 @@
 // The editor's markup as text (internal/decisions.md, 2026-10-01): hidden
 // editor shortcuts copy it to the clipboard and paste it back, for building
-// the screenshot kit's examples and for reproducing bug reports. It's the
-// Doc as it is, tagged so a paste can tell it from other text; a start on the
+// the screenshot kit's examples and for reproducing bug reports, and the
+// right-click menu copies it and adds what it pastes (PLAN 3R). It's the Doc
+// as it is, tagged so a paste can tell it from other text; a start on the
 // saved project files in ideas.md.
 
-import { DOC_VERSION, type AnnotationKind, type Doc, type Rect } from "../markup/model/types";
+import {
+  DOC_VERSION,
+  type Annotation,
+  type AnnotationKind,
+  type Doc,
+  type Rect,
+} from "../markup/model/types";
 
 /** Marks the text as Vandal markup. */
 export const MARKUP_KIND = "vandal-markup";
@@ -37,11 +44,17 @@ export type PastedMarkup =
     }
   | { ok: false; reason: string };
 
-/**
- * `current` with the markup in `text` in place of its own. Checks the shape
- * down to each annotation's kind and id; the rest is trusted (we wrote it).
- */
-export function markupFromJson(text: string, current: Doc): PastedMarkup {
+/** Markup read from the clipboard: what it was made on, and its annotations. */
+export interface Markup {
+  source: { width: number; height: number };
+  crop: Rect;
+  annotations: Annotation[];
+}
+
+export type ReadMarkup = { ok: true; markup: Markup } | { ok: false; reason: string };
+
+/** Checks the shape down to each annotation's kind and id; the rest is trusted (we wrote it). */
+export function readMarkup(text: string): ReadMarkup {
   let data: unknown;
   try {
     data = JSON.parse(text);
@@ -68,7 +81,15 @@ export function markupFromJson(text: string, current: Doc): PastedMarkup {
     }
     ids.add(a.id);
   }
-  const doc = { ...current, annotations: annotations as Doc["annotations"] };
+  return { ok: true, markup: { source, crop, annotations: annotations as Annotation[] } };
+}
+
+/** `current` with the markup in `text` in place of its own (the hidden paste). */
+export function markupFromJson(text: string, current: Doc): PastedMarkup {
+  const read = readMarkup(text);
+  if (!read.ok) return read;
+  const { source, crop, annotations } = read.markup;
+  const doc = { ...current, annotations };
   const sameSize = source.width === current.source.width && source.height === current.source.height;
   if (!sameSize) return { ok: true, doc, madeFor: source };
   return { ok: true, doc: { ...doc, crop } };

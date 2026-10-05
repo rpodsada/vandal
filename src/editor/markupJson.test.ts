@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyDoc, type Annotation, type Doc } from "../markup/model/types";
-import { MARKUP_KIND, markupFromJson, markupToJson } from "./markupJson";
+import { MARKUP_KIND, markupFromJson, markupToJson, readMarkup } from "./markupJson";
 
 const step: Annotation = {
   kind: "step",
@@ -64,5 +64,18 @@ describe("markupFromJson", () => {
     for (const v of variants) {
       expect(markupFromJson(JSON.stringify({ kind: MARKUP_KIND, ...v }), current).ok).toBe(false);
     }
+  });
+});
+
+describe("readMarkup", () => {
+  it("gives what it was made on and its annotations", () => {
+    expect(readMarkup(markupToJson(made))).toEqual({
+      ok: true,
+      markup: { source: made.source, crop: made.crop, annotations: [step] },
+    });
+  });
+
+  it("refuses text that isn't markup", () => {
+    expect(readMarkup("hello").ok).toBe(false);
   });
 });

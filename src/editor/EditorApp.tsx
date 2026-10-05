@@ -4,7 +4,9 @@ import { docStore, hasUnsavedChanges } from "../markup/model/store";
 import { useMarkupKeys } from "../markup/useMarkupKeys";
 import { emptyDoc } from "../markup/model/types";
 import { initialDoc } from "./handoff";
-import { markupFromJson, markupToJson } from "./markupJson";
+import { markupFromJson, markupToJson, readMarkup } from "./markupJson";
+import { setMarkupClipboard } from "../markup/markupClipboard";
+import { addCopies } from "../markup/objectActions";
 import { useRedactSource } from "../markup/redact";
 import { setTextRecognizer } from "../markup/textRedact";
 import {
@@ -138,6 +140,21 @@ export function EditorApp() {
   useStyleSettings((s) => {
     settingsRef.current = s;
   });
+
+  // The right-click menu's copy and paste (PLAN 3R).
+  useEffect(() => {
+    setMarkupClipboard({
+      copyAll: () => void copyMarkup(setNotice),
+      paste: () => void pasteMarkup(setNotice),
+      canPaste: async () => {
+        const read = await commands.clipboardText();
+        if (read.status === "error") return false;
+        const markup = readMarkup(read.data);
+        return markup.ok && markup.markup.annotations.length > 0;
+      },
+    });
+    return () => setMarkupClipboard(null);
+  }, []);
 
   // Tool styles carry over between windows (PLAN 2A.6d).
   useEffect(() => startToolStylesSync(), []);
@@ -355,7 +372,7 @@ export function EditorApp() {
       if (e.ctrlKey && e.altKey && e.shiftKey && (e.code === "KeyC" || e.code === "KeyV")) {
         if (emptyRef.current || isTyping(e.target)) return;
         e.preventDefault();
-        void (e.code === "KeyC" ? copyMarkup() : pasteMarkup());
+        void (e.code === "KeyC" ? copyMarkup(setNotice) : replaceMarkup(setNotice));
         return;
       }
       if (!e.ctrlKey || e.altKey) return;
@@ -409,39 +426,6 @@ export function EditorApp() {
           return;
       }
       e.preventDefault();
-    };
-    const copyMarkup = async () => {
-      try {
-        await navigator.clipboard.writeText(markupToJson(docStore.getState().doc));
-        setNotice({ text: "Markup copied as JSON", success: true });
-      } catch (e) {
-        setNotice({ text: `Markup not copied: ${errorText(e)}`, error: true });
-      }
-    };
-    const pasteMarkup = async () => {
-      // From Rust: WebView2 asks permission for navigator.clipboard.readText.
-      const read = await commands.clipboardText();
-      if (read.status === "error") {
-        setNotice({ text: `Markup not pasted: ${read.error}`, error: true });
-        return;
-      }
-      const text = read.data;
-      const store = docStore.getState();
-      const pasted = markupFromJson(text, store.doc);
-      if (!pasted.ok) {
-        setNotice({ text: `Markup not pasted: ${pasted.reason}`, error: true });
-        return;
-      }
-      store.replace(pasted.doc);
-      const { madeFor } = pasted;
-      setNotice(
-        madeFor
-          ? {
-              text: `Markup pasted, without its crop: it was made for a ${madeFor.width}×${madeFor.height} image`,
-              error: true,
-            }
-          : { text: "Markup pasted", success: true },
-      );
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -549,4 +533,59 @@ function errorText(e: unknown): string {
 
 function fileName(path: string): string {
   return path.split(/[\\/]/).pop() ?? path;
+}
+
+type Notify = (notice: Notice) => void;
+
+/** Copy the whole markup as JSON (the hidden shortcut, and the menu's Copy All Markup). */
+async function copyMarkup(notify: Notify): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(markupToJson(docStore.getState().doc));
+    notify({ text: "Markup copied", success: true });
+  } catch (e) {
+    notify({ text: `Markup not copied: ${errorText(e)}`, error: true });
+  }
+}
+
+/** The clipboard's text, from Rust: WebView2 asks permission for navigator.clipboard.readText. */
+async function clipboardText(notify: Notify): Promise<string | null> {
+  const read = await commands.clipboardText();
+  if (read.status === "ok") return read.data;
+  notify({ text: `Markup not pasted: ${read.error}`, error: true });
+  return null;
+}
+
+/** The menu's Paste Markup: the clipboard's objects join the document, in front (PLAN 3R). */
+async function pasteMarkup(notify: Notify): Promise<void> {
+  const text = await clipboardText(notify);
+  if (text === null) return;
+  const read = readMarkup(text);
+  if (!read.ok) {
+    notify({ text: `Markup not pasted: ${read.reason}`, error: true });
+    return;
+  }
+  const n = addCopies(read.markup.annotations).length;
+  notify({ text: n === 1 ? "1 object pasted" : `${n} objects pasted`, success: true });
+}
+
+/** The hidden shortcut's paste: the clipboard's markup in place of the document's. */
+async function replaceMarkup(notify: Notify): Promise<void> {
+  const text = await clipboardText(notify);
+  if (text === null) return;
+  const store = docStore.getState();
+  const pasted = markupFromJson(text, store.doc);
+  if (!pasted.ok) {
+    notify({ text: `Markup not pasted: ${pasted.reason}`, error: true });
+    return;
+  }
+  store.replace(pasted.doc);
+  const { madeFor } = pasted;
+  notify(
+    madeFor
+      ? {
+          text: `Markup pasted, without its crop: it was made for a ${madeFor.width}×${madeFor.height} image`,
+          error: true,
+        }
+      : { text: "Markup pasted", success: true },
+  );
 }

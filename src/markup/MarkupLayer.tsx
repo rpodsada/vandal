@@ -93,6 +93,7 @@ import { TextEditor } from "./TextEditor";
 import { createText, editText, finishTextEdit } from "./textEditing";
 import { markTaken } from "./pressRouting";
 import { ObjectMenu } from "./ObjectMenu";
+import { markupClipboard } from "./markupClipboard";
 import { useToolStore } from "./toolStore";
 import styles from "./markup.module.css";
 
@@ -303,7 +304,7 @@ export function MarkupLayer({
   > | null>(null);
   const [marquee, setMarquee] = useState<Rect | null>(null);
   /** The objects' right-click menu, where it was opened (client px). */
-  const [objectMenu, setObjectMenu] = useState<Point | null>(null);
+  const [objectMenu, setObjectMenu] = useState<{ at: Point; onObject: boolean } | null>(null);
   // Text redaction (PLAN 3J): the words, the one under the pointer, a drag's
   // selection, and the last clicks (a triple click takes the line).
   const redactTextOn = useToolStore((s) => s.redactText);
@@ -444,20 +445,33 @@ export function MarkupLayer({
   /**
    * A right-click on an object opens its menu, for it and whatever else is
    * selected with it (any other object is selected instead). Whatever the
-   * tool: the menu only acts on what's there.
+   * tool: the menu only acts on what's there. On a selection's handles, it's
+   * the selection's menu; on empty canvas, where the host offers copy and
+   * paste (PLAN 3R), the menu with nothing selected.
    */
   const onContextMenu = (e: KonvaEventObject<PointerEvent>) => {
-    if (!interactive || e.target.name() !== "annotation") return;
+    if (!interactive) return;
+    const store = docStore.getState();
+    const onHandle =
+      e.target.getParent() instanceof Konva.Transformer || e.target.name() === "endpoint";
+    const id = e.target.name() === "annotation" ? e.target.id() : null;
+    const onObject = id !== null && store.doc.annotations.some((a) => a.id === id);
+    if (!onObject && !(onHandle && store.selection.length) && !markupClipboard()) return;
     markTaken(e.evt);
     if (useToolStore.getState().editing) finishTextEdit();
-    const store = docStore.getState();
-    const id = e.target.id();
-    if (!store.doc.annotations.some((a) => a.id === id)) return;
-    if (!store.selection.includes(id)) {
+    if (onObject) {
+      if (!store.selection.includes(id)) {
+        setWholeId(null);
+        store.select([id]);
+      }
+    } else if (!onHandle) {
       setWholeId(null);
-      store.select([id]);
+      store.select([]);
     }
-    setObjectMenu({ x: e.evt.clientX, y: e.evt.clientY });
+    setObjectMenu({
+      at: { x: e.evt.clientX, y: e.evt.clientY },
+      onObject: onObject || docStore.getState().selection.length > 0,
+    });
   };
 
   const onPointerDown = (e: KonvaEventObject<PointerEvent>) => {
@@ -1454,7 +1468,13 @@ export function MarkupLayer({
           offset={offset}
         />
       )}
-      {objectMenu && <ObjectMenu at={objectMenu} onClose={() => setObjectMenu(null)} />}
+      {objectMenu && (
+        <ObjectMenu
+          at={objectMenu.at}
+          onObject={objectMenu.onObject}
+          onClose={() => setObjectMenu(null)}
+        />
+      )}
     </div>
   );
 }

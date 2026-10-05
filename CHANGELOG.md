@@ -11,6 +11,9 @@ All notable changes to Vandal are listed here. The format follows
 - **Right-click an object** for Duplicate, To Front, Forward One, Back One, To Back and
   Delete. It acts on everything selected with it. The arrange items are greyed out when
   there's nothing else to move past.
+- **Copy and paste markup** from the editor's right-click menu, on an object or on empty
+  canvas: Copy All Markup puts every object on the clipboard, and Paste Markup adds the
+  clipboard's objects in front of yours, selected, in another editor or the same one.
 
 ### Changed
 
