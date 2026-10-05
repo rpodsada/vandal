@@ -308,6 +308,11 @@ pub fn run() {
             WindowEvent::CloseRequested { .. } if editor::id_from_label(window.label()).is_some() => {
                 editor::closing(window.app_handle(), window);
             }
+            WindowEvent::Moved(_) | WindowEvent::Resized(_)
+                if editor::id_from_label(window.label()).is_some() =>
+            {
+                editor::moved(window.app_handle(), window);
+            }
             WindowEvent::Destroyed => editor::destroyed(window.app_handle(), window.label()),
             WindowEvent::Focused(true) => editor::focused(window.app_handle(), window.label()),
             // Files dropped on an editor open in editors of their own; an

@@ -6,6 +6,12 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **The editor opens where you left it**: the same position and size as the last editor you
+  closed, maximized if it was. If that spot is no longer on a screen, it opens centred on the
+  screen under the pointer as before. An editor opening on top of another steps down and right.
+
 ## [0.3.0-beta.8] - 2026-10-03
 
 ### Added

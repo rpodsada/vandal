@@ -30,14 +30,14 @@ use tauri_plugin_dialog::{
 };
 use tauri_plugin_store::StoreExt;
 use windows::Win32::Foundation::HWND;
-use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWMAXIMIZED};
+use windows::Win32::UI::WindowsAndMessaging::{IsIconic, IsZoomed, ShowWindow, SW_SHOWMAXIMIZED};
 
 use crate::capture::MonitorFrame;
 use crate::compose::{self, RgbaImage};
 use crate::encode::{self, FileFormat};
 use crate::folder::{self, FolderPosition, FolderStep};
 use crate::frames::Capture;
-use crate::geometry::{monitor_at, virtual_bounds, MonitorInfo, PhysicalRect};
+use crate::geometry::{monitor_at, virtual_bounds, MonitorInfo, PhysicalPoint, PhysicalRect};
 use crate::redact::{self, Redaction};
 use crate::state::AppState;
 use crate::{decode, output, overlay, protocol, session, settings};
@@ -55,6 +55,8 @@ const MIN_SIZE: (f64, f64) = (800.0, 560.0);
 /// A new window never takes more than this share of the work area unless the
 /// user sized it bigger last time.
 const MAX_SHARE: f64 = 0.9;
+/// How far a new window steps from one already in its place (logical px).
+const CASCADE: f64 = 30.0;
 
 pub struct Editor {
     /// None: an empty editor (PLAN 3G), waiting for an image to load into it.
@@ -62,6 +64,9 @@ pub struct Editor {
     /// In `image` pixels.
     pub crop: PhysicalRect,
     pub maximized: bool,
+    /// Where the window is when not maximized or minimized, kept up to date as
+    /// it moves, so closing it maximized still remembers where it was.
+    pub normal: Option<Placement>,
     /// The last annotation layer the page uploaded: straight-alpha RGBA.
     pub layer: Option<Vec<u8>>,
     /// The last highlight layer (multiplied into the image): straight-alpha RGBA.
@@ -525,6 +530,7 @@ fn load_into(
             image: Some(image),
             crop,
             maximized: e.maximized,
+            normal: e.normal,
             layer: None,
             highlights: None,
             markup: None,
@@ -742,6 +748,7 @@ fn open(
         image,
         crop,
         maximized: remembered.maximized,
+        normal: None,
         layer: None,
         highlights: None,
         markup,
@@ -760,12 +767,28 @@ fn open(
     else {
         return;
     };
-    let rect = initial_rect(
-        monitor.work_area,
-        monitor.scale_factor,
-        (crop.width as u32, crop.height as u32),
-        remembered.size(),
-    );
+    // Where the last one was left, else centred on the cursor's monitor; a
+    // step down and right of any editor already there.
+    let (rect, scale) = remembered
+        .placement()
+        .and_then(|p| remembered_rect(&monitors, p))
+        .unwrap_or_else(|| {
+            let rect = initial_rect(
+                monitor.work_area,
+                monitor.scale_factor,
+                (crop.width as u32, crop.height as u32),
+                remembered.size(),
+            );
+            (rect, monitor.scale_factor)
+        });
+    let taken: Vec<PhysicalPoint> = app
+        .webview_windows()
+        .into_iter()
+        .filter(|(l, _)| *l != label(id) && id_from_label(l).is_some())
+        .filter_map(|(_, w)| w.outer_position().ok())
+        .map(|p| PhysicalPoint::new(p.x, p.y))
+        .collect();
+    let rect = cascade(rect, scale, &taken);
 
     // Creating a webview from the main thread's event handlers can deadlock
     // on Windows, so build it elsewhere.
@@ -1211,14 +1234,62 @@ pub fn closing(app: &AppHandle, window: &Window) {
     };
     let mut state = load_window_state(app);
     state.maximized = window.is_maximized().unwrap_or(false);
-    // A maximized window's size isn't the one to restore to.
-    if !state.maximized {
-        if let Ok(size) = window.inner_size() {
-            state.width = Some(f64::from(size.width) / scale);
-            state.height = Some(f64::from(size.height) / scale);
-        }
+    // A maximized window's size isn't the one to restore to: use where it was
+    // before it was maximized.
+    let placement = if state.maximized || window.is_minimized().unwrap_or(false) {
+        id_from_label(window.label()).and_then(|id| {
+            let state = app.state::<AppState>();
+            let editors = state.editors.lock().unwrap();
+            editors.open.get(&id).and_then(|e| e.normal)
+        })
+    } else {
+        current_placement(window, scale)
+    };
+    if let Some(p) = placement {
+        state.x = Some(p.x);
+        state.y = Some(p.y);
+        state.width = Some(p.width);
+        state.height = Some(p.height);
     }
     save_window_state(app, &state);
+}
+
+/// The window moved or resized: note where it is unless it's maximized or
+/// minimized, for [`closing`].
+pub fn moved(app: &AppHandle, window: &Window) {
+    let Some(id) = id_from_label(window.label()) else {
+        return;
+    };
+    // Ask Windows, not Tauri: while a window maximizes, its move arrives
+    // before Tauri's `is_maximized` says so.
+    let Ok(hwnd) = window.hwnd().map(|h| HWND(h.0)) else {
+        return;
+    };
+    if unsafe { IsZoomed(hwnd).as_bool() || IsIconic(hwnd).as_bool() } {
+        return;
+    }
+    let Some(placement) = window
+        .scale_factor()
+        .ok()
+        .and_then(|scale| current_placement(window, scale))
+    else {
+        return;
+    };
+    let state = app.state::<AppState>();
+    if let Some(e) = state.editors.lock().unwrap().open.get_mut(&id) {
+        e.normal = Some(placement);
+    };
+}
+
+fn current_placement(window: &Window, scale: f64) -> Option<Placement> {
+    let pos = window.outer_position().ok()?;
+    let size = window.inner_size().ok()?;
+    Some(Placement {
+        x: pos.x,
+        y: pos.y,
+        width: f64::from(size.width) / scale,
+        height: f64::from(size.height) / scale,
+    })
 }
 
 /// The window is gone: free its image.
@@ -1233,10 +1304,23 @@ pub fn destroyed(app: &AppHandle, window_label: &str) {
 
 // ---------- window size ----------
 
-/// Remembered editor window state, in logical px.
+/// Where an editor window is: its outer position in physical px, and its inner
+/// size in logical px (as Tauri sizes a new window).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Placement {
+    pub x: i32,
+    pub y: i32,
+    pub width: f64,
+    pub height: f64,
+}
+
+/// Remembered editor window state: the position in physical px, the size in
+/// logical px.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 struct WindowState {
+    x: Option<i32>,
+    y: Option<i32>,
     width: Option<f64>,
     height: Option<f64>,
     maximized: bool,
@@ -1248,6 +1332,16 @@ impl WindowState {
             (Some(w), Some(h)) if w.is_finite() && h.is_finite() => Some((w, h)),
             _ => None,
         }
+    }
+
+    fn placement(&self) -> Option<Placement> {
+        let (width, height) = self.size()?;
+        Some(Placement {
+            x: self.x?,
+            y: self.y?,
+            width,
+            height,
+        })
     }
 }
 
@@ -1265,7 +1359,13 @@ fn save_window_state(app: &AppHandle, state: &WindowState) {
     };
     store.set(
         STATE_KEY,
-        json!({ "width": state.width, "height": state.height, "maximized": state.maximized }),
+        json!({
+            "x": state.x,
+            "y": state.y,
+            "width": state.width,
+            "height": state.height,
+            "maximized": state.maximized,
+        }),
     );
     if let Err(e) = store.save() {
         eprintln!("[editor] cannot save window state: {e}");
@@ -1311,6 +1411,45 @@ pub fn initial_rect(
         pw,
         ph,
     )
+}
+
+/// A remembered placement in physical px (inner size), and the scale of the
+/// monitor it's on, if the middle of its title bar is still on a work area
+/// (the monitor it was on may be gone or rearranged). The size is limited by
+/// that work area.
+pub fn remembered_rect(monitors: &[MonitorInfo], p: Placement) -> Option<(PhysicalRect, f64)> {
+    monitors.iter().find_map(|m| {
+        let scale = if m.scale_factor.is_finite() && m.scale_factor > 0.0 {
+            m.scale_factor
+        } else {
+            1.0
+        };
+        let work = m.work_area;
+        let width = ((p.width * scale).round() as i32).min(work.width);
+        let height = ((p.height * scale).round() as i32).min(work.height);
+        // Below the invisible resize border.
+        let title = PhysicalPoint::new(
+            p.x.saturating_add(width / 2),
+            p.y.saturating_add((16.0 * scale) as i32),
+        );
+        work.contains(title)
+            .then(|| (PhysicalRect::new(p.x, p.y, width, height), scale))
+    })
+}
+
+/// Step `rect` down and right (by [`CASCADE`] logical px) while another editor
+/// window is already at its position, so the new one doesn't hide it.
+pub fn cascade(rect: PhysicalRect, scale: f64, taken: &[PhysicalPoint]) -> PhysicalRect {
+    let step = (CASCADE * scale).round() as i32;
+    let mut r = rect;
+    for _ in 0..10 {
+        let near = |p: &PhysicalPoint| (p.x - r.x).abs() < step / 2 && (p.y - r.y).abs() < step / 2;
+        if !taken.iter().any(near) {
+            break;
+        }
+        r = PhysicalRect::new(r.x + step, r.y + step, r.width, r.height);
+    }
+    r
 }
 
 #[cfg(test)]
@@ -1366,6 +1505,79 @@ mod tests {
         let work = PhysicalRect::new(0, 0, 700, 500);
         let r = initial_rect(work, 1.0, (200, 100), None);
         assert_eq!((r.width, r.height), (700, 500));
+    }
+
+    fn monitor(work: PhysicalRect, scale: f64) -> MonitorInfo {
+        MonitorInfo {
+            index: 0,
+            name: String::new(),
+            physical_bounds: work,
+            work_area: work,
+            scale_factor: scale,
+            is_primary: true,
+        }
+    }
+
+    fn placement(x: i32, y: i32, width: f64, height: f64) -> Placement {
+        Placement {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+
+    #[test]
+    fn remembered_placement_on_screen_is_kept() {
+        let monitors = [
+            monitor(WORK, 1.0),
+            monitor(PhysicalRect::new(-2880, 0, 2880, 1560), 1.5),
+        ];
+        let (r, scale) = remembered_rect(&monitors, placement(100, 50, 1000.0, 700.0)).unwrap();
+        assert_eq!((r, scale), (PhysicalRect::new(100, 50, 1000, 700), 1.0));
+        // On the 150% monitor left of the primary: sized at its scale.
+        let (r, scale) = remembered_rect(&monitors, placement(-2000, 100, 1000.0, 600.0)).unwrap();
+        assert_eq!((r, scale), (PhysicalRect::new(-2000, 100, 1500, 900), 1.5));
+    }
+
+    #[test]
+    fn remembered_placement_off_screen_is_dropped() {
+        let monitors = [monitor(WORK, 1.0)];
+        // Its monitor was unplugged.
+        assert_eq!(
+            remembered_rect(&monitors, placement(-1500, 100, 800.0, 600.0)),
+            None
+        );
+        // Title bar below the work area.
+        assert_eq!(
+            remembered_rect(&monitors, placement(100, 1030, 800.0, 600.0)),
+            None
+        );
+        // Mostly off the left edge, but the middle of its title bar is on screen.
+        assert!(remembered_rect(&monitors, placement(-300, 100, 800.0, 600.0)).is_some());
+    }
+
+    #[test]
+    fn remembered_size_is_limited_to_the_work_area() {
+        let monitors = [monitor(WORK, 1.0)];
+        let (r, _) = remembered_rect(&monitors, placement(0, 0, 3000.0, 3000.0)).unwrap();
+        assert_eq!((r.width, r.height), (1920, 1040));
+    }
+
+    #[test]
+    fn cascade_steps_past_open_windows() {
+        let r = PhysicalRect::new(100, 100, 800, 600);
+        assert_eq!(cascade(r, 1.0, &[]), r);
+        assert_eq!(cascade(r, 1.0, &[PhysicalPoint::new(500, 500)]), r);
+        let taken = [PhysicalPoint::new(100, 100), PhysicalPoint::new(130, 131)];
+        assert_eq!(
+            cascade(r, 1.0, &taken).origin(),
+            PhysicalPoint::new(160, 160)
+        );
+        assert_eq!(
+            cascade(r, 1.5, &taken[..1]).origin(),
+            PhysicalPoint::new(145, 145)
+        );
     }
 
     #[test]
