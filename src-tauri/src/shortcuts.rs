@@ -68,6 +68,8 @@ pub const FIXED: &[(&str, &str)] = &[
     ("Ctrl+B", "Bold"),
     ("Ctrl+I", "Italic"),
     ("Ctrl+C", "Copy"),
+    ("Ctrl+Shift+C", "Copy objects"),
+    ("Ctrl+V", "Paste"),
     ("Ctrl+S", "Save"),
     ("Ctrl+Shift+S", "Save as"),
     ("Ctrl+E", "Open in editor"),

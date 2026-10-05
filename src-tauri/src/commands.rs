@@ -344,11 +344,19 @@ pub fn editor_paste(app: AppHandle, window: WebviewWindow) {
     editor::open_clipboard(&app, editor::empty_editor(&app, window.label()));
 }
 
-/// The clipboard's text, for the editor's hidden markup paste (`markupJson.ts`).
+/// The clipboard's text, for the editor's markup paste (`markupJson.ts`).
 #[tauri::command]
 #[specta::specta]
 pub fn clipboard_text() -> Result<String, String> {
     output::paste_text()
+}
+
+/// Whether the clipboard holds an image: Ctrl+V explains it can't paste one
+/// over an image (PLAN 3R).
+#[tauri::command]
+#[specta::specta]
+pub fn clipboard_has_image() -> bool {
+    crate::clipboard::has_image()
 }
 
 /// Show a file selected in Explorer.

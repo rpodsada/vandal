@@ -11,7 +11,8 @@ use std::time::Duration;
 use windows::core::w;
 use windows::Win32::Foundation::{GlobalFree, HANDLE, HGLOBAL};
 use windows::Win32::System::DataExchange::{
-    CloseClipboard, EmptyClipboard, OpenClipboard, RegisterClipboardFormatW, SetClipboardData,
+    CloseClipboard, EmptyClipboard, IsClipboardFormatAvailable, OpenClipboard,
+    RegisterClipboardFormatW, SetClipboardData,
 };
 use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
 
@@ -19,6 +20,8 @@ use crate::compose::RgbaImage;
 use crate::encode::flatten_on_white;
 use crate::output;
 
+/// `CF_BITMAP`: a GDI bitmap.
+const CF_BITMAP: u32 = 2;
 /// `CF_DIB`: a BITMAPINFOHEADER followed by the pixels.
 const CF_DIB: u32 = 8;
 /// Another app may hold the clipboard for a moment.
@@ -37,6 +40,14 @@ pub fn set_image(image: &RgbaImage) -> Result<(), String> {
         put(RegisterClipboardFormatW(w!("PNG")), &png)?;
         put(CF_DIB, &dib)
     }
+}
+
+/// Does the clipboard hold an image? Without opening it or reading the pixels.
+pub fn has_image() -> bool {
+    let available = |format: u32| unsafe { IsClipboardFormatAvailable(format).is_ok() };
+    available(CF_DIB)
+        || available(CF_BITMAP)
+        || available(unsafe { RegisterClipboardFormatW(w!("PNG")) })
 }
 
 /// The clipboard, open until dropped.

@@ -31,6 +31,7 @@ export function ObjectMenu({ at, onObject, onClose }: Props) {
   const menuRef = useRef<HTMLDivElement>(null);
   const arrange = useDoc((s) => canArrange(s.doc, s.selection));
   const hasObjects = useDoc((s) => s.doc.annotations.length > 0);
+  const selected = useDoc((s) => s.selection.length);
   const clipboard = markupClipboard();
   // Greyed until the clipboard has been read.
   const [canPaste, setCanPaste] = useState(false);
@@ -93,7 +94,18 @@ export function ObjectMenu({ at, onObject, onClose }: Props) {
             disabled={!hasObjects}
             onClick={run(() => clipboard.copyAll())}
           />
-          <Row label="Paste Markup" disabled={!canPaste} onClick={run(() => clipboard.paste())} />
+          <Row
+            label={selected > 1 ? `Copy ${selected} Objects` : "Copy Object"}
+            keys="Ctrl+Shift+C"
+            disabled={!onObject}
+            onClick={run(() => clipboard.copySelection())}
+          />
+          <Row
+            label="Paste Markup"
+            keys="Ctrl+V"
+            disabled={!canPaste}
+            onClick={run(() => clipboard.paste())}
+          />
           <div className={styles.menuSep} role="separator" />
         </>
       )}

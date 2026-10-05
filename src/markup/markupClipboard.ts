@@ -5,6 +5,8 @@
 export interface MarkupClipboard {
   /** Copy every object as markup. */
   copyAll: () => void;
+  /** Copy the selected objects as markup. */
+  copySelection: () => void;
   /** Add the clipboard's markup to the document. */
   paste: () => void;
   /** Does the clipboard hold markup that `paste` would take? */

@@ -145,6 +145,7 @@ export function EditorApp() {
   useEffect(() => {
     setMarkupClipboard({
       copyAll: () => void copyMarkup(setNotice),
+      copySelection: () => void copySelection(setNotice),
       paste: () => void pasteMarkup(setNotice),
       canPaste: async () => {
         const read = await commands.clipboardText();
@@ -386,8 +387,12 @@ export function EditorApp() {
           void getCurrentWindow().close();
           break;
         case "KeyC":
-          if (e.shiftKey || isTyping(e.target)) return;
-          void run("copy");
+          if (isTyping(e.target)) return;
+          // Shift: the selected objects as markup (PLAN 3R); else the image.
+          if (e.shiftKey) {
+            if (!docStore.getState().selection.length) return;
+            void copySelection(setNotice);
+          } else void run("copy");
           break;
         case "KeyS":
           void run(e.shiftKey ? "saveAs" : "save");
@@ -405,9 +410,11 @@ export function EditorApp() {
           void commands.openSettings();
           break;
         case "KeyV":
-          // Paste an image into an empty editor.
-          if (e.shiftKey || !emptyRef.current) return;
-          void commands.editorPaste();
+          if (e.shiftKey) return;
+          // An image into an empty editor; markup into one with an image (PLAN 3R).
+          if (emptyRef.current) void commands.editorPaste();
+          else if (isTyping(e.target)) return;
+          else void pasteMarkup(setNotice);
           break;
         case "Equal":
         case "NumpadAdd":
@@ -547,11 +554,34 @@ async function copyMarkup(notify: Notify): Promise<void> {
   }
 }
 
-/** The clipboard's text, from Rust: WebView2 asks permission for navigator.clipboard.readText. */
+/** Copy the selected objects as markup (Ctrl+Shift+C, the menu's Copy Object). */
+async function copySelection(notify: Notify): Promise<void> {
+  const { doc, selection } = docStore.getState();
+  const annotations = doc.annotations.filter((a) => selection.includes(a.id));
+  if (!annotations.length) return;
+  try {
+    await navigator.clipboard.writeText(markupToJson({ ...doc, annotations }));
+    const n = annotations.length;
+    notify({ text: n === 1 ? "Object copied" : `${n} objects copied`, success: true });
+  } catch (e) {
+    notify({ text: `Not copied: ${errorText(e)}`, error: true });
+  }
+}
+
+/**
+ * The clipboard's text, from Rust: WebView2 asks permission for
+ * navigator.clipboard.readText. An image instead gets a pointer to the
+ * duplicate keys: Ctrl+C copies the image, so Ctrl+C, Ctrl+V on an object
+ * lands here (PLAN 3R).
+ */
 async function clipboardText(notify: Notify): Promise<string | null> {
   const read = await commands.clipboardText();
   if (read.status === "ok") return read.data;
-  notify({ text: `Markup not pasted: ${read.error}`, error: true });
+  if (await commands.clipboardHasImage()) {
+    notify({
+      text: "The clipboard has an image. To duplicate objects: Ctrl+D, or Ctrl+Shift+C then Ctrl+V",
+    });
+  } else notify({ text: `Markup not pasted: ${read.error}`, error: true });
   return null;
 }
 

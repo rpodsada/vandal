@@ -66,6 +66,7 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::editor_open_here,
             commands::editor_paste,
             commands::clipboard_text,
+            commands::clipboard_has_image,
             commands::windows_accent,
             commands::hotkeys_pause,
             commands::hotkeys_resume,

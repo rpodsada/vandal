@@ -33,6 +33,8 @@ export const MARKUP_KEYS: KeyEntry[] = [
   { keys: ["Shift+drag"], what: "Square, circle, 45° lines, straight moves" },
   { keys: ["Ctrl+drag"], what: "Draw over an object instead of selecting it, or the reverse" },
   { keys: ["Ctrl+C"], what: "Copy" },
+  { keys: ["Ctrl+Shift+C"], what: "Copy the selected objects (editor)" },
+  { keys: ["Ctrl+V"], what: "Paste copied objects (editor)" },
   { keys: ["Ctrl+S"], what: "Save" },
   { keys: ["Ctrl+,"], what: "Settings" },
 ];
