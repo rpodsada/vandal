@@ -33,8 +33,6 @@ export const MARKUP_KEYS: KeyEntry[] = [
   { keys: ["Shift+drag"], what: "Square, circle, 45° lines, straight moves" },
   { keys: ["Ctrl+drag"], what: "Draw over an object instead of selecting it, or the reverse" },
   { keys: ["Ctrl+C"], what: "Copy" },
-  { keys: ["Ctrl+Shift+C"], what: "Copy the selected objects (editor)" },
-  { keys: ["Ctrl+V"], what: "Paste copied objects (editor)" },
   { keys: ["Ctrl+S"], what: "Save" },
   { keys: ["Ctrl+,"], what: "Settings" },
 ];
@@ -57,6 +55,10 @@ export const EDITOR_KEYS: KeyEntry[] = [
   { keys: ["Ctrl+Shift+S"], what: "Save as" },
   { keys: ["Ctrl+N"], what: "Capture" },
   { keys: ["Ctrl+O"], what: "Open an image" },
+  { keys: ["Ctrl+Shift+C"], what: "Copy the selected objects" },
+  { keys: ["Ctrl+V"], what: "Paste copied objects (into an empty editor: an image)" },
+  { keys: ["Ctrl+Alt+Shift+C"], what: "Copy all the markup as text, e.g. for a bug report" },
+  { keys: ["Ctrl+Alt+Shift+V"], what: "Replace the markup with the clipboard's" },
   {
     keys: ["←", "→"],
     what: "Previous, next image in the folder (an image file, nothing selected)",
