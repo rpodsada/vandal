@@ -6,6 +6,8 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0-beta.10] - 2026-10-05
+
 ### Added
 
 - **Vandal Screen Capture is in the [Chrome Web Store](https://chromewebstore.google.com/detail/vandal-screen-capture/glniniimcccgnpgfddfdepdnpbajpnfc)**,
@@ -352,7 +354,8 @@ The first build for beta testers.
 - Copy to clipboard, auto-save with a file-name pattern, and capture notifications.
 - Searchable Settings window where changes apply immediately.
 
-[Unreleased]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.9...HEAD
+[Unreleased]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.10...HEAD
+[0.3.0-beta.10]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.9...v0.3.0-beta.10
 [0.3.0-beta.9]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.8...v0.3.0-beta.9
 [0.3.0-beta.8]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.7...v0.3.0-beta.8
 [0.3.0-beta.7]: https://github.com/rpodsada/vandal/compare/v0.3.0-beta.6...v0.3.0-beta.7
