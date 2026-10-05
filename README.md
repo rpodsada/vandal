@@ -421,6 +421,8 @@ printed on the pickers (you can hide them in Settings).
 | Home / End            | First / last image in the folder                                         |
 | Ctrl+N                | Capture, back into the editor                                            |
 | Ctrl+V                | Paste an image into an empty editor (or copied marks, see Editing)       |
+| Ctrl+Alt+Shift+C      | Copy all the markup as text (JSON), e.g. for a bug report                |
+| Ctrl+Alt+Shift+V      | Replace the markup with the clipboard's, crop included on the same size  |
 | Ctrl+W                | Close                                                                    |
 | Ctrl+,                | Settings                                                                 |
 | Ctrl+= / Ctrl+−       | Zoom in / out                                                            |
@@ -606,6 +608,8 @@ helps to include:
 - your Vandal version (**Settings › About**) and Windows version
 - how many monitors you use and their scaling (Windows **Settings › System › Display**)
 - what you did, what you expected, and what happened instead, with a screenshot if you can
+- for a problem with markup, the markup itself: press **Ctrl+Alt+Shift+C** in the editor and
+  paste the text into the issue
 
 Security problems are the exception: please report those privately, as
 [SECURITY.md](https://github.com/rpodsada/vandal/blob/main/SECURITY.md) explains.
