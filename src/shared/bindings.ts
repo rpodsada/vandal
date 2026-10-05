@@ -115,6 +115,11 @@ export const commands = {
 	 */
 	openWebsite: () => __TAURI_INVOKE<void>("open_website"),
 	/**
+	 *  The browser extension's Chrome Web Store page (Settings › About). A fixed
+	 *  address, like `open_project_page`.
+	 */
+	openExtensionPage: () => __TAURI_INVOKE<void>("open_extension_page"),
+	/**
 	 *  GitHub's new-issue page, to report a bug or suggest an idea (Settings ›
 	 *  About). A fixed address, like `open_project_page`.
 	 */

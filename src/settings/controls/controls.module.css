@@ -874,6 +874,40 @@
   text-decoration-thickness: 2px;
 }
 
+/* ---- Chrome Extension (PLAN 3N.10) ---- */
+
+/* The text and button, with the popup's screenshot to their right; the
+   screenshot drops below when the window is too narrow. */
+.extension {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px 24px;
+  padding: 4px 0;
+}
+
+.extensionText {
+  flex: 1 1 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.extensionText p {
+  margin: 0;
+}
+
+/* A 306 px capture of the popup, shown smaller: sharp up to about 140% scaling. */
+.extensionShot {
+  width: 220px;
+  max-width: 100%;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--control-border);
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 /* ---- Updates (PLAN 3P.4) ---- */
 
 .updates {

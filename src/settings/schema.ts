@@ -135,6 +135,11 @@ export interface AboutItem extends BaseItem {
   kind: "about";
 }
 
+/** The browser extension: what it does and a link to its store page (PLAN 3N.10). */
+export interface ExtensionItem extends BaseItem {
+  kind: "extension";
+}
+
 /** Update status, Check now and Install (PLAN 3P.4). */
 export interface UpdatesItem extends BaseItem {
   kind: "updates";
@@ -161,6 +166,7 @@ export type Item =
   | ShortcutItem
   | KeyListItem
   | AboutItem
+  | ExtensionItem
   | UpdatesItem
   | InfoItem;
 export type ItemKind = Item["kind"];

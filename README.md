@@ -291,9 +291,7 @@ Capture notifications have buttons to **Edit**, **Save**, or **Open folder** (af
 region, or the whole page from top to bottom. Copy or save the capture right there, or
 open it in Vandal's editor to mark it up.
 
-<!-- TODO(PLAN 3N.10): the store link, once the listing is approved. -->
-
-Available soon from the Chrome Web Store.
+Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/vandal-screen-capture/glniniimcccgnpgfddfdepdnpbajpnfc).
 
 Click the V icon for the popup, or use a shortcut:
 

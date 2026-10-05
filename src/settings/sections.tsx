@@ -787,6 +787,26 @@ export const sections: Section[] = [
           },
         ],
       },
+      {
+        title: "Chrome Extension",
+        items: [
+          {
+            id: "extension",
+            kind: "extension",
+            label: "Vandal Screen Capture for Chrome",
+            keywords: [
+              "browser",
+              "extension",
+              "chrome",
+              "edge",
+              "brave",
+              "web page",
+              "full page",
+              "scrolling",
+            ],
+          },
+        ],
+      },
     ],
   },
 ];

@@ -6,6 +6,13 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Vandal Screen Capture is in the [Chrome Web Store](https://chromewebstore.google.com/detail/vandal-screen-capture/glniniimcccgnpgfddfdepdnpbajpnfc)**,
+  and Open in Vandal works with it.
+- **Settings › About › Chrome Extension** says what the extension does and links to its store
+  page.
+
 ## [0.3.0-beta.9] - 2026-10-05
 
 ### Added

@@ -166,6 +166,16 @@ pub fn open_website() {
         .spawn();
 }
 
+/// The browser extension's Chrome Web Store page (Settings › About). A fixed
+/// address, like `open_project_page`.
+#[tauri::command]
+#[specta::specta]
+pub fn open_extension_page() {
+    let _ = std::process::Command::new("explorer.exe")
+        .arg("https://chromewebstore.google.com/detail/vandal-screen-capture/glniniimcccgnpgfddfdepdnpbajpnfc")
+        .spawn();
+}
+
 /// Where the editor's image file is in its folder ("12 of 41"), PLAN 3Q.
 /// None for captures and pasted images.
 #[tauri::command]
