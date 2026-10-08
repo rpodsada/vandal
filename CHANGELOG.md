@@ -6,6 +6,11 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The editor's tool options bar shrinks back to one row when you switch from a tool whose
+  options wrapped (such as the callout in a narrow window) to one that fits on a row.
+
 ## [0.3.0-beta.10] - 2026-10-05
 
 ### Added

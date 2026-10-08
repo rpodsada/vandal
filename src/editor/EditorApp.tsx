@@ -29,7 +29,6 @@ import { Stage } from "./Stage";
 import { useCropKeys } from "./useCropKeys";
 import { StatusBar, type Notice } from "./StatusBar";
 import { useViewStore } from "./viewStore";
-import { useStickyHeight } from "./useStickyHeight";
 import { isTyping } from "../shared/dom";
 import { useHintSources } from "../markup/hints";
 import { useStyleSettings } from "../markup/useStyleSettings";
@@ -59,10 +58,8 @@ export function EditorApp() {
   const initRef = useRef<EditorInit | null>(null);
   const busyRef = useRef(false);
   const settingsRef = useRef<Settings | null>(null);
-  const optionsBarRef = useRef<HTMLDivElement>(null);
   // Nothing to mark up or crop until an image loads into it.
   const emptyRef = useRef(false);
-  useStickyHeight(optionsBarRef);
   useMarkupKeys(() => !emptyRef.current);
   useCropKeys(() => !emptyRef.current);
   const cropping = useCropStore((s) => s.draft !== null);
@@ -452,7 +449,7 @@ export function EditorApp() {
         onSave={() => void run("save")}
         onSaveAs={() => void run("saveAs")}
       />
-      <div ref={optionsBarRef} className={styles.optionsBar}>
+      <div className={styles.optionsBar}>
         {status.kind === "empty" ? null : cropping ? <CropOptions /> : <ToolOptions />}
       </div>
       {status.kind === "empty" ? (
