@@ -15,6 +15,10 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/rpodsada/vandal/releases"><img src="https://img.shields.io/github/downloads/rpodsada/vandal/total?logo=github" alt="Downloads"></a>
+</p>
+
+<p align="center">
   <a href="https://vandalscreenshot.com"><strong>vandalscreenshot.com</strong></a>
 </p>
 
