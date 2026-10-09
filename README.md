@@ -5,7 +5,7 @@
 <h1 align="center">Vandal</h1>
 
 <p align="center">
-  <strong>The screenshot tool that gets out of your way.</strong><br>
+  <strong>The screenshot & markup tool built for productivity.</strong><br>
   Free, open-source screen capture and markup for Windows.
 </p>
 
@@ -34,7 +34,7 @@ and hover states stay in the picture.
 
 <!-- TODO(Phase 4): screenshot: selecting a region on a dimmed screen (docs/images/select.png) -->
 
-> **Vandal is in beta.** Expect rough edges, and please [report anything odd](#feedback-and-bug-reports).
+> **Vandal is in beta.** Please [report anything odd](#feedback-and-bug-reports).
 
 ## Why Vandal?
 
