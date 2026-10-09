@@ -25,8 +25,10 @@ export function AboutCard({ id }: ControlProps<AboutItem>) {
         <p className={styles.aboutName}>
           Vandal <span className={styles.aboutVersion}>{versionLabel()}</span>
         </p>
-        {/* The README's tagline. */}
-        <p className={styles.aboutDescription}>The screenshot tool that gets out of your way.</p>
+        {/* The tagline, as in the GitHub repo's About description. */}
+        <p className={styles.aboutDescription}>
+          The screenshot & markup tool that unlocks your productivity.
+        </p>
         <p className={styles.aboutMeta}>
           Created by {pkg.author}
           <br />
