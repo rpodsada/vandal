@@ -6,6 +6,10 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The color picker's eyedropper button has a clearer, filled icon.
+
 ### Fixed
 
 - The editor's tool options bar shrinks back to one row when you switch from a tool whose

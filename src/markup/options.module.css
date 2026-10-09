@@ -30,6 +30,13 @@
   fill: currentColor;
 }
 
+/* An icon drawn filled, not stroked (the eyedropper). */
+.options svg.filledIcon,
+.menu svg.filledIcon {
+  fill: currentColor;
+  stroke: none;
+}
+
 /* Tags a picker for the hint line without affecting its layout. */
 .hintArea {
   display: contents;

@@ -243,9 +243,8 @@ function Eyedropper({ onPick }: { onPick: (hex: string) => void }) {
       title="Pick a color from the screen"
       onClick={() => void pick()}
     >
-      <svg viewBox="0 0 24 24" aria-hidden>
-        <path d="M14.5 5.5l4 4M17 3a2.1 2.1 0 0 1 3 3l-2.5 2.5-3-3z" />
-        <path d="M15.5 7.5L6 17l-1 3 3-1 9.5-9.5" />
+      <svg viewBox="0 0 24 24" className={styles.filledIcon} aria-hidden>
+        <path d="M20.71 5.63l-2.34-2.34a1 1 0 0 0-1.41 0l-3.12 3.12-1.93-1.91-1.41 1.41 1.42 1.42L3 16.25V21h4.75l8.92-8.92 1.42 1.42 1.41-1.41-1.92-1.92 3.12-3.12a1 1 0 0 0 .01-1.42zM6.92 19L5 17.08l8.06-8.06 1.92 1.92z" />
       </svg>
     </button>
   );
