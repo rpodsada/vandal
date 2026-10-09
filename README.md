@@ -29,10 +29,7 @@
 </p>
 
 Press a shortcut, drag over any part of the screen, mark it up right there, and it's on your
-clipboard. Vandal freezes the screen the instant you press the shortcut, so open menus, tooltips
-and hover states stay in the picture.
-
-<!-- TODO(Phase 4): screenshot: selecting a region on a dimmed screen (docs/images/select.png) -->
+clipboard. Vandal is built for speedy & efficient workflows.
 
 > **Vandal is in beta.** Please [report anything odd](#feedback-and-bug-reports).
 
