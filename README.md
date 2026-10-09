@@ -5,7 +5,7 @@
 <h1 align="center">Vandal</h1>
 
 <p align="center">
-  <strong>The screenshot & markup tool built for productivity.</strong><br>
+  <strong>The screenshot & markup tool built for speed.</strong><br>
   Free, open-source screen capture and markup for Windows.
 </p>
 
@@ -28,46 +28,56 @@
   <img src="docs/images/quick-edit.png" width="980" alt="Vandal's quick edit toolbar under a selected region of a Wikipedia page">
 </p>
 
-Press a shortcut, drag over any part of the screen, mark it up right there, and it's on your
-clipboard. Vandal is built for speedy & efficient workflows.
+Every single feature in Vandal is built for speed and efficiency. We hate useless clicks as much
+as you do.
+
+1. **Capture.** Press a shortcut to capture a region, a window, your monitor, or all of your
+   monitors together. Everything is captured, including open menus and hover states.
+2. **Mark up.** Draw right on the frozen screen with arrows, boxes, highlights, text and more.
+   Every tool and style has keyboard shortcuts to make it faster.
+3. **Share.** It's on your clipboard the moment you're done, ready to paste into a chat, email or
+   ticket. Prefer files? Have every capture save itself. It's your choice.
 
 > **Vandal is in beta.** Please [report anything odd](#feedback-and-bug-reports).
 
 ## Why Vandal?
 
-If you take screenshots all day, small annoyances add up fast. Vandal has the markup tools you
-already know (arrows, boxes, highlights, text) and is built so you spend less time on each
-screenshot.
+Vandal is built to save you time.
 
-- **Less click, more markup.** Keys to pick tools, number keys set the line width or font size,
-  Ctrl+number picks a color, Alt+number picks a font. Mark up without hunting through menus.
-- **Simplicity.** Only the most useful markup tools, designed and built well with a nice UI,
-  and no extra fluff. Vandal isn't meant to be a kitchen sink.
-- **Personalize to your workflow.** Choose exactly which colors, widths, fonts and font sizes appear
-  in the pickers, for every tool or per tool. Load your brand or project styles once and skip
-  scrolling through hundreds of fonts.
-- **Use the controls you like.** A size picker can be a row of buttons, a dropdown, a stepped
-  slider or a free slider with your own values. Make the UI fit your workflow and needs, not the
-  other way around.
-- **It remembers.** Each tool remembers its own settings (color, size, font, options, everything),
-  even after a restart. Set your style once, and every screenshot after will match.
-- **Free, fast, private, and lightweight.** Open source, no account, no tracking, and no admin
-  rights needed. The only connection Vandal makes is an update check, which you can turn off.
-  Built in Rust with an installer of about 3.5 MB.
+- **It remembers everything.** Every tool keeps its style and settings across sessions and
+  restarts. Set a style once and every screenshot after it matches.
+- **Keyboard shortcuts for styles, not just tools.** Number keys set line width and font size,
+  Ctrl+number picks a color, Alt+number picks a font. Fewer clicks, more markup.
+- **Everything stays editable.** Every arrow, box and note stays a live, editable object: move,
+  restyle or delete it, with 200 levels of undo. Even crops can be redone after the fact.
+- **Presets you control.** Decide exactly which colors, widths, fonts and font sizes appear in
+  the pickers, globally or per tool. Load your styles once and stop scrolling.
+- **Controls you choose.** Change not just the values but the control itself. Want buttons for
+  font size instead of a dropdown? You can do that.
+- **Automate saving and copying.** Decide what happens after each capture, and when the editor
+  closes. Automate the routine, or keep it manual.
+- **Free, private, and open source.** GPL-3.0, no accounts, no telemetry, and no admin rights
+  needed. A Rust core, an installer of about 3.5 MB, and it runs quietly in the system tray.
 
-### Who it's for
+### Design philosophy
 
-People who take and mark up screenshots many times a day: **developers, QA testers, technical
-writers, support teams and account managers**. It's especially handy for guides and manuals,
-where every screenshot should look the same.
+1. **Speed.** _Get out of the way._ Every click, dialog and extra step is friction that compounds
+   over hundreds of captures. Common actions are one keystroke.
+2. **Simplicity.** _Do the essentials, and do them well._ A clean, uncluttered interface with the
+   features people use every day. No kitchen sink.
+3. **Personalization.** _Your workflow, not ours._ Controls, settings, and behaviors bend to fit
+   your workflow. Not the other way around.
+
+### Built for people who screenshot all day
+
+- **Developers:** sharing ideas, bugs, PR feedback and UI notes.
+- **QA and testers:** bug reports, reproduction steps, test evidence.
+- **Technical writers:** manuals and guides with many consistent screenshots.
+- **Support teams:** showing customers where to click; annotated answers.
+- **Account managers:** feedback on deliverables, walkthroughs, status updates.
+- **Designers and product people:** visual feedback and review notes.
 
 > If you suffer from the Windows Snipping Tool, like I did, this will change your life.
-
-### Driving principles
-
-1. **Speed.** Common actions are one keystroke. The tool stays out of the way.
-2. **Simplicity.** A clean interface with the features you'll use every day. No kitchen sink.
-3. **Personalization.** Your values, your controls, your workflow, remembered.
 
 ## Contents
 
@@ -542,6 +552,7 @@ policy is at [vandalscreenshot.com/privacy](https://vandalscreenshot.com/privacy
 - Freezes the screen the instant you press the shortcut: open menus, tooltips and hover states
   stay in the picture
 - Region, window, one monitor or all monitors
+- Window capture as a clean cutout, even when other windows cover it
 - Pixel-exact on multi-monitor setups with mixed scaling
 - Precise selection with handles, arrow keys and a size readout
 - Your own capture shortcuts (Win+F12, Win+Alt+F12 and Win+Shift+F12 by default), checked for
@@ -555,7 +566,8 @@ policy is at [vandalscreenshot.com/privacy](https://vandalscreenshot.com/privacy
 - Detect text: select words in the image to redact them, as in a document
 - Curved lines and arrows, rounded corners, and two colors with a one-key swap
 - Quick edit: draw right on the frozen screen, without opening a window
-- Full editor with zoom, pan, undo/redo and crop that never throws pixels away
+- Full editor with zoom, pan, fit to width, 200 levels of undo, and crop that never throws
+  pixels away
 - Every mark stays editable: select, move, resize, restyle, duplicate, reorder or delete it,
   from the keyboard or a right-click menu
 - Copy and paste marks between images
@@ -591,7 +603,8 @@ policy is at [vandalscreenshot.com/privacy](https://vandalscreenshot.com/privacy
 - Installs for your user account only, with no admin rights
 - Works entirely on your PC: no account and no usage data. The only connection is an update
   check, which you can turn off
-- Updates itself when you say so, with every update signed and checked before it installs
+- Updates itself when you say so, with every update signed and checked before it installs, on
+  the Beta or Stable channel
 - Free and open source (GPL-3.0)
 - A Rust core and an installer of about 3.5 MB. Vandal uses the WebView2 already in Windows
   instead of bundling a browser engine
