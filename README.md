@@ -39,7 +39,8 @@ as you do.
    ticket. Prefer files? Have every capture save itself. It's your choice.
 
 **Installed? Press Win+F12** and drag over part of your screen to take your first screenshot.
-More in [Getting started](#getting-started).
+More in [Getting started](#getting-started), or learn Vandal in ten minutes with the
+[quick start guide](https://vandalscreenshot.com/docs/quick-start/).
 
 > **Vandal is in beta.** Please [report anything odd](#feedback-and-bug-reports).
 
@@ -119,7 +120,7 @@ Vandal is built to save you time.
 
 4. Vandal starts in the tray (bottom-right, next to the clock; it may be under the **^**
    overflow arrow). You can drag its icon onto the taskbar to keep it visible. The first
-   time, a notification says how to take a screenshot, with a **Capture now** button.
+   time, a notification says how to take a screenshot, with **Capture now** and **Guide** buttons.
 5. **Vandal starts with Windows from now on**, so your capture shortcut always works. To
    turn that off, untick **Launch on login** in the tray menu (or in **Settings › General**).
 
@@ -130,6 +131,9 @@ To check that the installer is genuine before you run it, see
 [Verify your download](#verify-your-download).
 
 ## Getting started
+
+New to Vandal? The [quick start guide](https://vandalscreenshot.com/docs/quick-start/) walks
+you through the essentials, one goal at a time. In short:
 
 1. Press **Win+F12** (you can change it in **Settings › Keyboard shortcuts**).
 2. Drag over the part of the screen you want. A toolbar appears under the selection: this is

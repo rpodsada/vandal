@@ -34,6 +34,7 @@ pub fn show(app: &AppHandle) {
         .text2(&line2)
         .add_button("Capture now", "capture")
         .add_button("Settings", "settings")
+        .add_button("Guide", "guide")
         .on_activated(move |action| {
             match action.as_deref() {
                 Some("capture") => {
@@ -45,6 +46,7 @@ pub fn show(app: &AppHandle) {
                     });
                 }
                 Some("settings") => settings_window::open(&app),
+                Some("guide") => crate::commands::open_quick_start(),
                 _ => {}
             }
             Ok(())

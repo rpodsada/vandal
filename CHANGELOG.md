@@ -6,6 +6,12 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **A [quick start guide](https://vandalscreenshot.com/docs/quick-start/)** on the website:
+  learn Vandal in about ten minutes, one goal at a time. The welcome notification's new
+  **Guide** button and **Settings › About** open it.
+
 ## [0.3.0-beta.11] - 2026-10-10
 
 ### Added

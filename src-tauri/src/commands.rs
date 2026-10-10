@@ -166,6 +166,16 @@ pub fn open_website() {
         .spawn();
 }
 
+/// The quick start guide on the website (Settings › About, the welcome
+/// toast's Guide). A fixed address, like `open_project_page`.
+#[tauri::command]
+#[specta::specta]
+pub fn open_quick_start() {
+    let _ = std::process::Command::new("explorer.exe")
+        .arg("https://vandalscreenshot.com/docs/quick-start/")
+        .spawn();
+}
+
 /// The browser extension's Chrome Web Store page (Settings › About). A fixed
 /// address, like `open_project_page`.
 #[tauri::command]

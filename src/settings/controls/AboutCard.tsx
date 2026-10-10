@@ -47,6 +47,13 @@ export function AboutCard({ id }: ControlProps<AboutItem>) {
           <button
             type="button"
             className={styles.aboutLink}
+            onClick={() => void commands.openQuickStart()}
+          >
+            Quick start guide
+          </button>
+          <button
+            type="button"
+            className={styles.aboutLink}
             onClick={() => void commands.openProjectPage()}
           >
             github.com/rpodsada/vandal

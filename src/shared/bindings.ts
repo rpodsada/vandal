@@ -120,6 +120,11 @@ export const commands = {
 	 */
 	openExtensionPage: () => __TAURI_INVOKE<void>("open_extension_page"),
 	/**
+	 *  The quick start guide on the website (Settings › About, the welcome
+	 *  toast's Guide). A fixed address, like `open_project_page`.
+	 */
+	openQuickStart: () => __TAURI_INVOKE<void>("open_quick_start"),
+	/**
 	 *  GitHub's new-issue page, to report a bug or suggest an idea (Settings ›
 	 *  About). A fixed address, like `open_project_page`.
 	 */
