@@ -1,11 +1,11 @@
 {
-  "version": "0.3.0-beta.10",
-  "notes": "### Added\n\n- **Vandal Screen Capture is in the [Chrome Web Store](https://chromewebstore.google.com/detail/vandal-screen-capture/glniniimcccgnpgfddfdepdnpbajpnfc)**,\n  and Open in Vandal works with it.\n- **Settings › About › Chrome Extension** says what the extension does and links to its store\n  page.\n",
-  "pub_date": "2026-10-05T19:14:38Z",
+  "version": "0.3.0-beta.11",
+  "notes": "### Added\n\n- **A welcome notification the first time Vandal runs**, saying how to take a screenshot (your\n  region shortcut, or the tray icon if the shortcut isn't available), with **Capture now** and\n  **Settings** buttons. Upgrading doesn't show it.\n\n### Changed\n\n- The color picker's eyedropper button has a clearer, filled icon.\n\n### Fixed\n\n- The editor's tool options bar shrinks back to one row when you switch from a tool whose\n  options wrapped (such as the callout in a narrow window) to one that fits on a row.\n",
+  "pub_date": "2026-10-10T17:32:16Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUYkpmeDFMdFh6ZnVialRPYWVwNjFpcjV5cUJTd3BldWdPMjUzd3F1NnZMYXhoWXhYSnJMVTMwaGpEaE5nTnREaU9uNU42aUdxclo4M3pvbW1saWpUODBJTTVuV3FFWGdZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxMjI3NTQ5CWZpbGU6VmFuZGFsXzAuMy4wLWJldGEuMTBfeDY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMy4wLWJldGEuMTAKWURoUlNPMkI5VythOU9JQWwyKzZZeGxUQTZKUGd4RS9venU4VU5rYkdHeVR6ZlgxMmRMT1FqbWV5bmN5bDdOSDI4Rlo1UWFld3M4dWcyS3BGT2FpQXc9PQo=",
-      "url": "https://github.com/rpodsada/vandal/releases/download/v0.3.0-beta.10/Vandal_0.3.0-beta.10_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUYkpmeDFMdFh6ZnZ3aXp0S3QyY2RYdGtTVTRzaUplT2wxelZ0bmxHTHNYSThFRVFHMWU0bTlZQjlFenIxY0NCT25qZzRrUVJZNEZLZ21LdUVTNlpPbUQ0SUdVTmNVbUFVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxNjUzNDI0CWZpbGU6VmFuZGFsXzAuMy4wLWJldGEuMTFfeDY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMy4wLWJldGEuMTEKK0w0b0RGWWxrNkdHc0VTT2pWRmg1engwWEFRRThjZ05WTUtac3lYWnAyTjYvN0xzMDhNN3ZHY051L1c0SnZwNEdpWFVNSnlndUdOOGRyTHlONWRwQ2c9PQo=",
+      "url": "https://github.com/rpodsada/vandal/releases/download/v0.3.0-beta.11/Vandal_0.3.0-beta.11_x64-setup.exe"
     }
   }
 }
