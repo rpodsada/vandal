@@ -624,22 +624,26 @@ fn repair_file(app: &AppHandle<Wry>) {
     }
 }
 
-pub fn load(app: &AppHandle<Wry>) -> Settings {
+/// The settings, and whether this is the first run ever: nothing was stored
+/// yet (PLAN 3S.0.1's welcome toast).
+pub fn load(app: &AppHandle<Wry>) -> (Settings, bool) {
     repair_file(app);
     let store = match app.store(STORE_FILE) {
         Ok(s) => s,
         Err(e) => {
             eprintln!("[settings] cannot open store: {e}; using defaults");
-            return Settings::default();
+            return (Settings::default(), false);
         }
     };
-    let (settings, changed) = migrate(store.get(STORE_KEY));
+    let stored = store.get(STORE_KEY);
+    let first_run = stored.is_none();
+    let (settings, changed) = migrate(stored);
     if changed {
         if let Err(e) = save(app, &settings) {
             eprintln!("[settings] cannot save: {e}");
         }
     }
-    settings
+    (settings, first_run)
 }
 
 pub fn save(app: &AppHandle<Wry>, settings: &Settings) -> Result<(), String> {

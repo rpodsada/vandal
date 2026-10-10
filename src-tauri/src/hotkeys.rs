@@ -130,6 +130,12 @@ fn windows_11() -> bool {
 }
 
 /// (Re)register all hotkeys. Failures are reported in one notification.
+/// Whether `hotkey` is ours right now (not unset, and not taken by another app).
+pub fn is_registered(app: &AppHandle, hotkey: &str) -> bool {
+    app.global_shortcut()
+        .is_registered(to_accelerator(hotkey).as_str())
+}
+
 pub fn register(app: &AppHandle, hotkeys: &Hotkeys) {
     let gs = app.global_shortcut();
     let _ = gs.unregister_all();

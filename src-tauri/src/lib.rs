@@ -33,6 +33,7 @@ mod styles;
 mod tool_styles;
 mod tray;
 mod updater;
+mod welcome;
 mod winenum;
 
 use std::sync::{Mutex, RwLock};
@@ -185,6 +186,11 @@ pub fn run() {
             let browser = native_host::open_capture_args(&args, cwd);
             if args.iter().any(|a| a == "--settings") {
                 settings_window::open(app);
+            } else if cfg!(debug_assertions) && args.iter().any(|a| a == welcome::WELCOME_ARG) {
+                // This runs inside the second launch's WM_COPYDATA, where COM
+                // refuses outgoing calls (RPC_E_CANTCALLOUT_ININPUTSYNCCALL).
+                let app = app.clone();
+                std::thread::spawn(move || welcome::show(&app));
             } else if files.is_empty()
                 && browser.is_empty()
                 && !args
@@ -235,7 +241,7 @@ pub fn run() {
                 );
             }
 
-            let settings = settings::load(app.handle());
+            let (settings, first_run) = settings::load(app.handle());
             app.manage(AppState {
                 capturer: Box::new(GdiCapturer),
                 window_capturer: Box::new(capture::wgc::WgcCapturer::default()),
@@ -274,6 +280,11 @@ pub fn run() {
                 updater::announce_updated(app.handle());
             }
             updater::delete_old_installers(app.handle());
+            let force_welcome =
+                cfg!(debug_assertions) && std::env::args().any(|a| a == welcome::WELCOME_ARG);
+            if first_run || force_welcome {
+                welcome::show(app.handle());
+            }
             // Dev builds leave the Run key alone unless toggled from the tray.
             #[cfg(not(debug_assertions))]
             tray::apply_autostart(app.handle(), settings.startup.launch_on_login);

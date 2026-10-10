@@ -6,6 +6,12 @@ All notable changes to Vandal are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **A welcome notification the first time Vandal runs**, saying how to take a screenshot (your
+  region shortcut, or the tray icon if the shortcut isn't available), with **Capture now** and
+  **Settings** buttons. Upgrading doesn't show it.
+
 ### Changed
 
 - The color picker's eyedropper button has a clearer, filled icon.
