@@ -38,6 +38,9 @@ as you do.
 3. **Share.** It's on your clipboard the moment you're done, ready to paste into a chat, email or
    ticket. Prefer files? Have every capture save itself. It's your choice.
 
+**Installed? Press Win+F12** and drag over part of your screen to take your first screenshot.
+More in [Getting started](#getting-started).
+
 > **Vandal is in beta.** Please [report anything odd](#feedback-and-bug-reports).
 
 ## Why Vandal?
@@ -115,7 +118,8 @@ Vandal is built to save you time.
    <img src="docs/images/smartscreen-run-anyway.png" width="380" alt="The same dialog after More info, with the Run anyway button highlighted">
 
 4. Vandal starts in the tray (bottom-right, next to the clock; it may be under the **^**
-   overflow arrow). You can drag its icon onto the taskbar to keep it visible.
+   overflow arrow). You can drag its icon onto the taskbar to keep it visible. The first
+   time, a notification says how to take a screenshot, with a **Capture now** button.
 5. **Vandal starts with Windows from now on**, so your capture shortcut always works. To
    turn that off, untick **Launch on login** in the tray menu (or in **Settings › General**).
 
